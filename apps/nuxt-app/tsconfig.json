@@ -1,4 +1,11 @@
 {
   // https://nuxt.com/docs/guide/concepts/typescript
-  "extends": "./.nuxt/tsconfig.json"
+  "extends": "./.nuxt/tsconfig.json",
+  // "compilerOptions": {
+  //   "paths": {
+  //     "@shipeasy/database": ["../../libs/database/src"],
+  //     "@shipeasy/database/*": ["../../libs/database/src/*"],
+  //     "@shipeasy/auth": ["../../libs/auth"]
+  //   }
+  // }
 }

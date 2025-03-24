@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import pg from 'pg';
 import * as dotenv from "dotenv";
 
 // 加载环境变量
@@ -12,6 +12,7 @@ if (!connectionString) {
   throw new Error("DATABASE_URL 环境变量未设置");
 }
 
+const { Pool } = pg;
 // 创建连接池
 export const pool = new Pool({
   connectionString,

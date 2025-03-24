@@ -1,3 +1,10 @@
 {
-  "extends": "../.nuxt/tsconfig.server.json"
+  "extends": "../.nuxt/tsconfig.server.json",
+  "compilerOptions": {
+    "paths": {
+      "@shipeasy/database": ["../../../libs/database/src"],
+      "@shipeasy/database/*": ["../../../libs/database/src/*"],
+      "@shipeasy/auth": ["../../../libs/auth"]
+    }
+  }
 }
