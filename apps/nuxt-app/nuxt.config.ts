@@ -1,6 +1,8 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { resolve } from 'path';
 import { loadEnv } from 'vite'
+import tailwindcss from "@tailwindcss/vite";
+
 
 // 加载根目录的环境变量
 const rootEnv = loadEnv('', resolve(__dirname, '../..'), '')
@@ -8,7 +10,12 @@ const rootEnv = loadEnv('', resolve(__dirname, '../..'), '')
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
-  
+  css: ['~/assets/css/main.css'],
+  vite: {
+    plugins: [
+      tailwindcss(),
+    ],
+  },
   // 配置环境变量
   runtimeConfig: {
     // 服务端环境变量
@@ -24,13 +31,11 @@ export default defineNuxtConfig({
 
   // 配置路径别名
   alias: {
-    "@shipeasy/database": resolve(__dirname, '../../libs/database/src'),
-    "@shipeasy/auth": resolve(__dirname, '../../libs/auth')
+    "@libs": resolve(__dirname, '../../libs'),
   },
 
   // 加载根目录的环境变量
   nitro: {
     rootDir: resolve(__dirname, '../..'),
-    envDir: resolve(__dirname, '../..')
   }
 })

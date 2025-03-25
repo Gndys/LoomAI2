@@ -12,7 +12,7 @@ if (!connectionString) {
 }
 
 export default defineConfig({
-  schema: "./libs/database/src/schema/*",
+  schema: "./libs/database/schema/*",
   out: "./libs/database/drizzle",
   dialect: 'postgresql',
   dbCredentials: {

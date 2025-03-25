@@ -21,7 +21,7 @@ const [, , command] = process.argv;
 // 执行相应命令
 switch (command) {
   case 'check':
-    runCommand('tsx ./libs/database/src/check-connection.ts', '检查数据库连接');
+    runCommand('tsx ./libs/database/check-connection.ts', '检查数据库连接');
     break;
     
   case 'push':
@@ -37,7 +37,7 @@ switch (command) {
     break;
     
   case 'seed':
-    runCommand('tsx ./libs/database/src/seed.ts', '填充测试数据');
+    runCommand('tsx ./libs/database/seed.ts', '填充测试数据');
     break;
     
   case 'studio':

@@ -22,4 +22,8 @@ export const user = pgTable("user", {
   // 时间戳
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+
+  // 手机相关
+  phoneNumber: text("phone_number"),
+  phoneNumberVerified: boolean("phone_number_verified").default(false),
 }); 

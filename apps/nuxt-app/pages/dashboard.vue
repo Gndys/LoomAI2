@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { authClientVue } from "@shipeasy/auth/authClient"
+import { authClientVue } from "@libs/auth/authClient"
  
 const session = authClientVue.useSession() 
 </script>

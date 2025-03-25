@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { authClientVue } from "@shipeasy/auth/authClient"
+import { authClientVue } from "@libs/auth/authClient"
 
 // 表单数据
 const form = reactive({

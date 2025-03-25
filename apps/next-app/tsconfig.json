@@ -1,18 +1,14 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "plugins": [{ "name": "next" }],
     "paths": {
-      "@shipeasy/database": ["../../libs/database/src"],
-      "@shipeasy/database/*": ["../../libs/database/src/*"],
-      "@shipeasy/auth": ["../../libs/auth"]
+      "@libs/*": ["../../libs/*"]
     }
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"
