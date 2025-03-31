@@ -5,6 +5,8 @@ import {
   phoneSignUpSchema,
   updateUserSchema,
   userIdSchema,
+  loginFormSchema,
+  signupFormSchema,
 } from '@libs/validators/user';
 import { userRoles } from '@libs/database/schema/user';
 
@@ -50,6 +52,7 @@ describe('User Validators', () => {
   describe('emailSignUpSchema', () => {
     it('should validate valid email signup', () => {
       const validSignup = {
+        name: 'John Doe',
         email: 'test@example.com',
         password: 'password123',
       };
@@ -60,6 +63,7 @@ describe('User Validators', () => {
 
     it('should fail with short password', () => {
       const invalidSignup = {
+        name: 'John Doe',
         email: 'test@example.com',
         password: '12345',
       };
@@ -70,6 +74,7 @@ describe('User Validators', () => {
 
     it('should fail with invalid email', () => {
       const invalidSignup = {
+        name: 'John Doe',
         email: 'invalid-email',
         password: 'password123',
       };
@@ -107,6 +112,101 @@ describe('User Validators', () => {
       };
 
       const result = phoneSignUpSchema.safeParse(invalidSignup);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('loginFormSchema', () => {
+    it('should validate valid login form data', () => {
+      const validLogin = {
+        email: 'test@example.com',
+        password: 'password123',
+        remember: true,
+      };
+
+      const result = loginFormSchema.safeParse(validLogin);
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate login form without remember field', () => {
+      const validLogin = {
+        email: 'test@example.com',
+        password: 'password123',
+      };
+
+      const result = loginFormSchema.safeParse(validLogin);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.remember).toBe(false);
+      }
+    });
+
+    it('should fail with invalid email', () => {
+      const invalidLogin = {
+        email: 'invalid-email',
+        password: 'password123',
+      };
+
+      const result = loginFormSchema.safeParse(invalidLogin);
+      expect(result.success).toBe(false);
+    });
+
+    it('should fail with short password', () => {
+      const invalidLogin = {
+        email: 'test@example.com',
+        password: '123',
+      };
+
+      const result = loginFormSchema.safeParse(invalidLogin);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('signupFormSchema', () => {
+    it('should validate valid signup form data with image', () => {
+      const validSignup = {
+        name: 'John Doe',
+        email: 'test@example.com',
+        password: 'password123',
+        image: 'https://example.com/image.jpg',
+      };
+
+      const result = signupFormSchema.safeParse(validSignup);
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate signup form without image', () => {
+      const validSignup = {
+        name: 'John Doe',
+        email: 'test@example.com',
+        password: 'password123',
+      };
+
+      const result = signupFormSchema.safeParse(validSignup);
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate signup form with empty image string', () => {
+      const validSignup = {
+        name: 'John Doe',
+        email: 'test@example.com',
+        password: 'password123',
+        image: '',
+      };
+
+      const result = signupFormSchema.safeParse(validSignup);
+      expect(result.success).toBe(true);
+    });
+
+    it('should fail with invalid image URL', () => {
+      const invalidSignup = {
+        name: 'John Doe',
+        email: 'test@example.com',
+        password: 'password123',
+        image: 'not-a-url',
+      };
+
+      const result = signupFormSchema.safeParse(invalidSignup);
       expect(result.success).toBe(false);
     });
   });

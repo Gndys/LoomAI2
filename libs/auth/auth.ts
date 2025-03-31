@@ -1,12 +1,13 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { genericOAuth, phoneNumber } from "better-auth/plugins"
+import { genericOAuth, phoneNumber, admin } from "better-auth/plugins"
 import { validator, StandardAdapter} from "validation-better-auth"
 
 
 import { db, user, account, session, verification } from '@libs/database'
-import { sendSMSByAliyun } from '@libs/sms/aliyun'
+// import { sendSMSByAliyun } from '@libs/sms/aliyun'
 import { emailSignInSchema, emailSignUpSchema } from '@libs/validators/user'
+export { toNextJsHandler } from "better-auth/next-js";
 
 interface WeChatProfile {
   unionid?: string;
@@ -45,6 +46,12 @@ export const auth = betterAuth({
     }
   },
   plugins: [
+    // https://www.better-auth.com/docs/plugins/admin
+    admin(
+      {
+        adminRoles: ["admin"],
+      }
+    ),
     // https://www.better-auth.com/docs/plugins/generic-oauth#custom-user-info-fetching
     genericOAuth({
       config: [
@@ -79,12 +86,12 @@ export const auth = betterAuth({
       sendOTP: async ({ phoneNumber, code }, request) => { 
         try {
           // Implement sending OTP code via SMS
-          await sendSMSByAliyun({
-            phoneNumber,
-            signName: '阿里云短信测试',
-            templateCode: 'SMS_154950105',
-            templateParam: { code }
-          })
+          // await sendSMSByAliyun({
+          //   phoneNumber,
+          //   signName: '阿里云短信测试',
+          //   templateCode: 'SMS_154950105',
+          //   templateParam: { code }
+          // })
           console.log(`OTP ${code} sent to ${phoneNumber}`);
         } catch (error) {
           console.error('Failed to send OTP:', error);

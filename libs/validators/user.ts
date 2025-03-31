@@ -16,14 +16,25 @@ export const userSchema = z.object({
 
 // 邮箱注册验证器
 export const emailSignUpSchema = z.object({
+  name: z.string().min(2).max(50),
   email: z.string().email(),
-  password: z.string().min(6).max(100),
+  password: z.string().min(8).max(100),
+});
+
+// 扩展的注册表单验证器（包含可选的图片URL）
+export const signupFormSchema = emailSignUpSchema.extend({
+  image: z.string().url().optional().or(z.literal('')),
 });
 
 // 邮箱登录验证器
 export const emailSignInSchema = z.object({
   email: z.string().email(),
-  password: z.string(),
+  password: z.string().min(8).max(100),
+});
+
+// 扩展的登录表单验证器（包含记住我选项）
+export const loginFormSchema = emailSignInSchema.extend({
+  remember: z.boolean().default(false),
 });
 
 // 手机号注册验证器 手机号登录验证器

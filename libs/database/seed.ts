@@ -1,6 +1,7 @@
 import { pool } from "./client";
 import * as dotenv from "dotenv";
 import * as crypto from "crypto";
+import { role } from "better-auth/plugins/access";
 
 dotenv.config({ path: "../../../.env" });
 

@@ -1,4 +1,5 @@
-import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
+import { InferSelectModel, InferInsertModel } from "drizzle-orm";
+import { pgTable, text, boolean, timestamp, numeric } from "drizzle-orm/pg-core";
 
 // 用户角色枚举
 export const userRoles = {
@@ -26,4 +27,12 @@ export const user = pgTable("user", {
   // 手机相关
   phoneNumber: text("phone_number"),
   phoneNumberVerified: boolean("phone_number_verified").default(false),
+
+  // better-auth admin  https://www.better-auth.com/docs/plugins/admin#schema
+  banned: boolean('banned').default(false),
+  banReason: text('ban_reason'),
+  banExpires: numeric('ban_expires')
 }); 
+
+export type User = InferSelectModel<typeof user>;
+export type NewUser = InferInsertModel<typeof user>;

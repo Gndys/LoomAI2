@@ -1,18 +1,21 @@
 import { createAuthClient as createAuthClientVue } from "better-auth/vue"
 import { createAuthClient as createAuthClientReact } from "better-auth/react"
-import { genericOAuthClient } from "better-auth/client/plugins"
+import { genericOAuthClient, adminClient } from "better-auth/client/plugins"
+
 
 
 export const authClientVue = createAuthClientVue({
   baseURL: 'http://localhost:3000',
   plugins: [
-    genericOAuthClient()
+    genericOAuthClient(),
+    adminClient()
   ]
 })
 
 export const authClientReact = createAuthClientReact({
   baseURL: 'http://localhost:3000',
   plugins: [
-    genericOAuthClient()
+    genericOAuthClient(),
+    adminClient()
   ]
 })
