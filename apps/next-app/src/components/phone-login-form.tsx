@@ -18,6 +18,7 @@ import {
 import { Loader2 } from "lucide-react"
 import { phoneLoginSchema, phoneVerifySchema } from "@libs/validators/user"
 import type { z } from "zod"
+import { useTranslation } from "@/hooks/use-translation"
 
 type FormData = z.infer<typeof phoneLoginSchema>;
 type VerifyData = z.infer<typeof phoneVerifySchema>;
@@ -27,6 +28,7 @@ export function PhoneLoginForm({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ code?: string; message: string } | null>(null);
   const [otpSent, setOtpSent] = useState(false);
@@ -54,7 +56,7 @@ export function PhoneLoginForm({
     } catch (err: any) {
       setError({
         code: err.code || "UNKNOWN_ERROR",
-        message: err.message || "An unknown error occurred",
+        message: err.message || t.common.unexpectedError,
       });
     } finally {
       setLoading(false);
@@ -77,7 +79,7 @@ export function PhoneLoginForm({
     } catch (err: any) {
       setError({
         code: err.code || "UNKNOWN_ERROR",
-        message: err.message || "An unknown error occurred",
+        message: err.message || t.common.unexpectedError,
       });
     } finally {
       setLoading(false);
@@ -90,10 +92,10 @@ export function PhoneLoginForm({
         <form onSubmit={handleSubmit(onSubmitPhone)}>
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="phone">{t.auth.phone.phoneNumber}</Label>
               <Input
                 id="phone"
-                placeholder="Enter your phone number"
+                placeholder={t.auth.phone.phoneNumberPlaceholder}
                 type="tel"
                 autoCapitalize="none"
                 autoComplete="tel"
@@ -103,7 +105,9 @@ export function PhoneLoginForm({
               />
               {errors?.phone && (
                 <p className="px-1 text-xs text-red-600">
-                  {errors.phone.message}
+                  {errors.phone.type === 'required' 
+                    ? t.auth.phone.errors.requiredPhone 
+                    : t.auth.phone.errors.invalidPhone}
                 </p>
               )}
             </div>
@@ -111,7 +115,7 @@ export function PhoneLoginForm({
               {loading && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Send Code
+              {loading ? t.auth.phone.sendingCode : t.actions.sendCode}
             </Button>
           </div>
         </form>
@@ -122,7 +126,7 @@ export function PhoneLoginForm({
         }}>
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label>Verification Code</Label>
+              <Label>{t.auth.phone.verificationCode}</Label>
               <div className="flex justify-center">
                 <InputOTP
                   value={otp}
@@ -145,7 +149,7 @@ export function PhoneLoginForm({
               {loading && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Verify
+              {loading ? t.auth.phone.verifying : t.actions.verify}
             </Button>
           </div>
         </form>

@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
-
 import "../globals.css";
-
+import { i18n } from '../i18n-config';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,24 +19,22 @@ export const metadata: Metadata = {
   keywords: ["shipping", "logistics", "ecommerce", "delivery", "tracking"],
 };
 
+export async function generateStaticParams() {
+  return i18n.locales.map((locale) => ({ lang: locale }));
+}
+
 export default function RootLayout({
   children,
-}: Readonly<{
+  params,
+}: {
   children: React.ReactNode;
-}>) {
+  params: { lang: string };
+}) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <SidebarProvider>
-          <AppSidebar />
-          <main className="flex-grow">
-            <SidebarTrigger />
-            {children}
-          </main>
-        </SidebarProvider>
+    <html lang={params.lang}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {children}
       </body>
     </html>
   );
-}
+} 

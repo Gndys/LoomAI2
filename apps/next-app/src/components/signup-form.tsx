@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label"
 import { FormError } from "@/components/ui/form-error"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Inbox } from "lucide-react"
+import { useTranslation } from "@/hooks/use-translation"
+import Link from "next/link"
 
 type FormData = z.infer<typeof signupFormSchema>;
 
@@ -22,6 +24,7 @@ export function SignupForm({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorCode, setErrorCode] = useState('');
@@ -62,7 +65,7 @@ export function SignupForm({
         setErrorMessage(error.message);
         setErrorCode(error.code);
       } else {
-        setErrorMessage('An unexpected error occurred');
+        setErrorMessage(t.common.unexpectedError);
         setErrorCode('UNKNOWN_ERROR');
       }
       setLoading(false);
@@ -80,7 +83,7 @@ export function SignupForm({
         setErrorMessage(verificationError.message);
         setErrorCode(verificationError.code);
       } else {
-        setErrorMessage('An unexpected error occurred');
+        setErrorMessage(t.common.unexpectedError);
         setErrorCode('UNKNOWN_ERROR');
       }
     } else {
@@ -96,19 +99,19 @@ export function SignupForm({
       <div className={cn("flex flex-col gap-4", className)} {...props}>
         <Alert className="my-4">
           <Inbox className="h-4 w-4" />
-          <AlertTitle>Verification Required</AlertTitle>
+          <AlertTitle>{t.auth.signup.verification.title}</AlertTitle>
           <AlertDescription className="mt-2">
             <p className="mb-2">
-              We've sent a verification email to <strong>{verificationEmail}</strong>.
-              Please check your inbox and click the verification link to complete your registration.
+              {t.auth.signup.verification.sent} <strong>{verificationEmail}</strong>.
             </p>
             <p className="text-sm text-muted-foreground">
-              Can't find the email? Please check your spam folder. If you still don't see it,{" "}
+              {t.auth.signup.verification.checkSpam}{" "}
+              {t.auth.signup.verification.spamInstruction}{" "}
               <button 
                 onClick={() => setIsVerificationEmailSent(false)} 
                 className="text-primary underline underline-offset-4 hover:text-primary/90"
               >
-                try again
+                {t.actions.tryAgain}
               </button>
             </p>
           </AlertDescription>
@@ -123,86 +126,94 @@ export function SignupForm({
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div className="grid gap-6">
           <div className="grid gap-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t.auth.signup.name}</Label>
             <div className="relative">
               <Input
                 id="name"
                 type="text"
                 {...register('name')}
-                placeholder="Enter your name"
+                placeholder={t.auth.signup.namePlaceholder}
                 className={cn(errors.name && "border-destructive")}
                 aria-invalid={errors.name ? "true" : "false"}
               />
               {errors.name && (
                 <span className="text-destructive text-xs absolute -bottom-5 left-0">
-                  {errors.name.message}
+                  {errors.name.type === 'required' 
+                    ? t.auth.signup.errors.requiredName 
+                    : t.auth.signup.errors.invalidName}
                 </span>
               )}
             </div>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t.auth.signup.email}</Label>
             <div className="relative">
               <Input
                 id="email"
                 type="email"
                 {...register('email')}
-                placeholder="m@example.com"
+                placeholder={t.auth.signup.emailPlaceholder}
                 className={cn(errors.email && "border-destructive")}
                 aria-invalid={errors.email ? "true" : "false"}
               />
               {errors.email && (
                 <span className="text-destructive text-xs absolute -bottom-5 left-0">
-                  {errors.email.message}
+                  {errors.email.type === 'required' 
+                    ? t.auth.signup.errors.requiredEmail 
+                    : t.auth.signup.errors.invalidEmail}
                 </span>
               )}
             </div>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t.auth.signup.password}</Label>
             <div className="relative">
               <Input
                 id="password"
                 type="password"
                 {...register('password')}
-                placeholder="Create a password"
+                placeholder={t.auth.signup.passwordPlaceholder}
                 className={cn(errors.password && "border-destructive")}
                 aria-invalid={errors.password ? "true" : "false"}
               />
               {errors.password && (
                 <span className="text-destructive text-xs absolute -bottom-5 left-0">
-                  {errors.password.message}
+                  {errors.password.type === 'required' 
+                    ? t.auth.signup.errors.requiredPassword 
+                    : t.auth.signup.errors.invalidPassword}
                 </span>
               )}
             </div>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="image">Profile Image URL (Optional)</Label>
+            <Label htmlFor="image">
+              {t.auth.signup.imageUrl} ({t.auth.signup.optional})
+            </Label>
             <div className="relative">
               <Input
                 id="image"
                 type="url"
                 {...register('image')}
-                placeholder="https://example.com/your-image.jpg"
+                placeholder={t.auth.signup.imageUrlPlaceholder}
                 className={cn(errors.image && "border-destructive")}
                 aria-invalid={errors.image ? "true" : "false"}
               />
               {errors.image && (
                 <span className="text-destructive text-xs absolute -bottom-5 left-0">
-                  {errors.image.message}
+                  {t.auth.signup.errors.invalidImage}
                 </span>
               )}
             </div>
           </div>
           <Button type="submit" className="w-full" disabled={loading || isSubmitting}>
-            {loading ? 'Creating account...' : 'Create account'}
+            {loading ? t.auth.signup.submitting : t.auth.signup.submit}
           </Button>
         </div>
         <div className="text-center text-sm">
-          Already have an account?{" "}
-          <a href="/signin" className="text-primary hover:underline underline-offset-4">
-            Sign in
-          </a>
+          {t.auth.signup.haveAccount}{" "}
+          <Link href={`/${locale}/signin`} className="text-primary hover:underline underline-offset-4">
+            {t.auth.signup.signinLink}
+          </Link>
         </div>
       </form>
     </div>

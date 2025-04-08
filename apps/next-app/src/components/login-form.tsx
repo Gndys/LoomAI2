@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FormError } from "@/components/ui/form-error"
+import { useTranslation } from "@/hooks/use-translation";
+import Link from "next/link";
 
 type FormData = z.infer<typeof loginFormSchema>;
 
@@ -20,6 +22,7 @@ export function LoginForm({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorCode, setErrorCode] = useState('');
@@ -47,17 +50,17 @@ export function LoginForm({
       {
         email: data.email,
         password: data.password,
-        callbackURL: '/',
+        callbackURL: `/${locale}`,
         ...(data.remember ? { rememberMe: true } : {}),
       }
     );
 
     if (error) {
       if (error.code && error.message) {
-        setErrorMessage(error.message);
+        setErrorMessage(t.auth.signin.errors.invalidCredentials);
         setErrorCode(error.code);
       } else {
-        setErrorMessage('An unexpected error occurred');
+        setErrorMessage(t.auth.signin.errors.invalidCredentials);
         setErrorCode('UNKNOWN_ERROR');
       }
     }
@@ -71,32 +74,34 @@ export function LoginForm({
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div className="grid gap-6">
           <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t.auth.signin.email}</Label>
             <div className="relative">
               <Input
                 id="email"
                 type="email"
                 {...register('email')}
-                placeholder="m@example.com"
+                placeholder={t.auth.signin.emailPlaceholder}
                 className={cn(errors.email && "border-destructive")}
                 aria-invalid={errors.email ? "true" : "false"}
               />
               {errors.email && (
                 <span className="text-destructive text-xs absolute -bottom-5 left-0">
-                  {errors.email.message}
+                  {errors.email.type === 'required' 
+                    ? t.auth.signin.errors.requiredEmail 
+                    : t.auth.signin.errors.invalidEmail}
                 </span>
               )}
             </div>
           </div>
           <div className="grid gap-2">
             <div className="flex items-center">
-              <Label htmlFor="password">Password</Label>
-              <a
-                href="#"
+              <Label htmlFor="password">{t.auth.signin.password}</Label>
+              <Link
+                href={`/${locale}/forgot-password`}
                 className="ml-auto text-sm underline-offset-4 hover:underline"
               >
-                Forgot your password?
-              </a>
+                {t.auth.signin.forgotPassword}
+              </Link>
             </div>
             <div className="relative">
               <Input
@@ -108,7 +113,7 @@ export function LoginForm({
               />
               {errors.password && (
                 <span className="text-destructive text-xs absolute -bottom-5 left-0">
-                  {errors.password.message}
+                  {t.auth.signin.errors.requiredPassword}
                 </span>
               )}
             </div>
@@ -121,18 +126,18 @@ export function LoginForm({
               className="border-primary text-primary ring-offset-background focus-visible:ring-ring h-4 w-4 rounded border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             />
             <label htmlFor="remember" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              Remember me
+              {t.auth.signin.rememberMe}
             </label>
           </div>
           <Button type="submit" className="w-full" disabled={loading || isSubmitting}>
-            {loading ? 'Signing in...' : 'Login'}
+            {loading ? t.auth.signin.submitting : t.auth.signin.submit}
           </Button>
         </div>
         <div className="text-center text-sm">
-          Don&apos;t have an account?{" "}
-          <a href="/signup" className="underline underline-offset-4">
-            Sign up
-          </a>
+          {t.auth.signin.noAccount}{" "}
+          <Link href={`/${locale}/signup`} className="underline underline-offset-4">
+            {t.auth.signin.signupLink}
+          </Link>
         </div>
       </form>
     </div>
