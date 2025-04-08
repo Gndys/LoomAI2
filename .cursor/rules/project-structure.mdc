@@ -1,0 +1,49 @@
+---
+description: Project Structure Guidelines
+globs: 
+alwaysApply: false
+---
+superbooster/
+├── apps/                       # Application directory
+│   ├── next-app/              # Next.js application
+│   │   ├── app/               # App router directory
+│   │   │   ├── api/          # API routes (thin adapters to core logic)
+│   │   │   ├── auth/         # Authentication endpoints with Better-Auth
+│   │   │   ├── dashboard/    # User dashboard pages
+│   │   │   └── admin/        # Admin interface pages
+│   │   ├── components/        # Shared React components
+│   │   ├── lib/              # Utility functions and configurations
+│   │   └── public/           # Static assets
+│   ├── nuxt-app/              # Nuxt.js application
+│   │   ├── components/        # Vue components
+│   │   ├── pages/            # Pages directory
+│   │   ├── server/           # Server APIs
+│   │   │   ├── api/         # API endpoints
+│   │   │   ├── auth/        # Auth endpoints
+│   │   │   ├── routes/      # Server routes
+│   │   │   └── middleware/  # Server middleware
+│   │   └── public/          # Static assets
+│   └── docs/                  # Documentation site
+├── libs/                      # Libraries directory
+│   ├── database/             # Database related code
+│   │   ├── migrations/      # Database migrations
+│   │   └── schema/         # Database schema definitions
+│   ├── auth/                 # Authentication library
+│   ├── email/                # Email service library
+│   ├── i18n/                 # Internationalization
+│   ├── permissions/          # Permission management
+│   ├── sms/                  # SMS service
+│   └── validators/           # Data validation library
+├── docs/                      # Project documentation
+│   ├── arch.md              # Architecture documentation
+│   ├── database-schema.md   # Database schema documentation
+│   └── framework-setup.md   # Framework setup guide
+├── tests/                     # Test directory
+│   ├── e2e/                 # End-to-end tests
+│   └── unit/                # Unit tests
+├── public/                    # Public assets
+├── package.json              # Root package configuration
+├── pnpm-workspace.yaml       # PNPM workspace configuration
+├── tsconfig.json            # TypeScript configuration
+├── drizzle.config.ts        # Drizzle ORM configuration
+└── turbo.json               # Turborepo configuration

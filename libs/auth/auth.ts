@@ -75,6 +75,7 @@ export const auth = betterAuth({
       }
     ),
     // https://www.better-auth.com/docs/plugins/generic-oauth#custom-user-info-fetching
+    // https://developers.weixin.qq.com/doc/oplatform/Website_App/WeChat_Login/Wechat_Login.html
     genericOAuth({
       config: [
         {
@@ -106,7 +107,7 @@ export const auth = betterAuth({
 
     // https://www.better-auth.com/docs/plugins/phone-number
     phoneNumber({
-      otpLength: 4,
+      //otpLength: 4,
       sendOTP: async ({ phoneNumber, code }, request) => { 
         try {
           // Implement sending OTP code via SMS

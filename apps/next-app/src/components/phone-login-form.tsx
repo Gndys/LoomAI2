@@ -7,13 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { authClientReact } from '@libs/auth/authClient'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FormError } from "@/components/ui/form-error"
@@ -25,7 +18,6 @@ import {
 import { Loader2 } from "lucide-react"
 import { phoneLoginSchema, phoneVerifySchema } from "@libs/validators/user"
 import type { z } from "zod"
-
 
 type FormData = z.infer<typeof phoneLoginSchema>;
 type VerifyData = z.infer<typeof phoneVerifySchema>;
@@ -70,7 +62,7 @@ export function PhoneLoginForm({
   };
 
   const onVerifyOTP = async () => {
-    if (otp.length !== 4) return;
+    if (otp.length !== 6) return;
     try {
       setLoading(true);
       setError(null);
@@ -93,75 +85,72 @@ export function PhoneLoginForm({
   };
 
   return (
-    <Card className={cn("w-[380px]", className)} {...props}>
-      <CardHeader>
-        <CardTitle>Phone Login</CardTitle>
-        <CardDescription>
-          Enter your phone number to receive a verification code
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {!otpSent ? (
-          <form onSubmit={handleSubmit(onSubmitPhone)}>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  placeholder="Enter your phone number"
-                  type="tel"
-                  autoCapitalize="none"
-                  autoComplete="tel"
-                  autoCorrect="off"
-                  disabled={loading}
-                  {...register("phone")}
-                />
-                {errors?.phone && (
-                  <p className="px-1 text-xs text-red-600">
-                    {errors.phone.message}
-                  </p>
-                )}
-              </div>
-              <Button disabled={loading}>
-                {loading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Send Code
-              </Button>
+    <div className={cn("flex flex-col gap-4", className)} {...props}>
+      {!otpSent ? (
+        <form onSubmit={handleSubmit(onSubmitPhone)}>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                placeholder="Enter your phone number"
+                type="tel"
+                autoCapitalize="none"
+                autoComplete="tel"
+                autoCorrect="off"
+                disabled={loading}
+                {...register("phone")}
+              />
+              {errors?.phone && (
+                <p className="px-1 text-xs text-red-600">
+                  {errors.phone.message}
+                </p>
+              )}
             </div>
-          </form>
-        ) : (
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            onVerifyOTP();
-          }}>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label>Verification Code</Label>
+            <Button disabled={loading}>
+              {loading && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Send Code
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          onVerifyOTP();
+        }}>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label>Verification Code</Label>
+              <div className="flex justify-center">
                 <InputOTP
                   value={otp}
                   onChange={(value) => setOtp(value)}
-                  maxLength={4}
+                  maxLength={6}
+                  className="gap-2"
                 >
                   <InputOTPGroup>
                     <InputOTPSlot index={0} />
                     <InputOTPSlot index={1} />
                     <InputOTPSlot index={2} />
                     <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
                   </InputOTPGroup>
                 </InputOTP>
               </div>
-              <Button disabled={loading || otp.length !== 4}>
-                {loading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Verify
-              </Button>
             </div>
-          </form>
-        )}
-        {error && <FormError message={error.message} code={error.code} />}
-      </CardContent>
-    </Card>
+            <Button disabled={loading || otp.length !== 6}>
+              {loading && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Verify
+            </Button>
+          </div>
+        </form>
+      )}
+      {error && <FormError message={error.message} code={error.code} />}
+    </div>
   );
 } 
