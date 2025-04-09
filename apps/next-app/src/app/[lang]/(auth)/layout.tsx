@@ -2,7 +2,8 @@ import { GalleryVerticalEnd } from "lucide-react"
 import Link from "next/link";
 import { translations } from "@libs/i18n";
 
-export async function generateMetadata({ params: { lang } }: { params: { lang: string } }) {
+export async function generateMetadata({ params }: { params: { lang: string } }) {
+  const { lang } = await params; // Await the params object
   const t = translations[lang as keyof typeof translations];
   
   return {
