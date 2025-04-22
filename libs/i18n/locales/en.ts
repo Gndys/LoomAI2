@@ -111,8 +111,8 @@ export const en: Locale = {
       }
     },
     forgetPassword: {
-      title: "Reset your password",
-      description: "Enter your email address and we'll send you a link to reset your password",
+      title: "Forgot Password",
+      description: "Reset your password and regain access to your account",
       email: "Email",
       emailPlaceholder: "m@example.com",
       submit: "Send reset link",
@@ -131,8 +131,8 @@ export const en: Locale = {
       }
     },
     resetPassword: {
-      title: "Reset your password",
-      description: "Please enter your new password below",
+      title: "Reset Password",
+      description: "Create a new password for your account",
       password: "New Password",
       passwordPlaceholder: "Enter your new password",
       confirmPassword: "Confirm Password",

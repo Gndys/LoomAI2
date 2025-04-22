@@ -111,8 +111,8 @@ export const zhCN: Locale = {
       }
     },
     forgetPassword: {
-      title: "重置密码",
-      description: "输入您的邮箱地址，我们将向您发送重置密码的链接",
+      title: "忘记密码",
+      description: "重置密码并重新获得账户访问权限",
       email: "邮箱",
       emailPlaceholder: "m@example.com",
       submit: "发送重置链接",
@@ -132,7 +132,7 @@ export const zhCN: Locale = {
     },
     resetPassword: {
       title: "重置密码",
-      description: "请输入您的新密码",
+      description: "为您的账户创建新密码",
       password: "新密码",
       passwordPlaceholder: "请输入新密码",
       confirmPassword: "确认密码",
