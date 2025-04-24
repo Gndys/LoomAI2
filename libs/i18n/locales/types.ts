@@ -46,6 +46,13 @@ export type Locale = {
       termsNotice: string
       termsOfService: string
       privacyPolicy: string
+      socialProviders: {
+        google: string
+        github: string
+        apple: string
+        wechat: string
+        phone: string
+      }
       errors: {
         invalidEmail: string
         requiredEmail: string
@@ -88,17 +95,6 @@ export type Locale = {
         invalidPassword: string
         requiredPassword: string
         invalidImage: string
-      }
-    }
-    wechat: {
-      title: string
-      description: string
-      scanQRCode: string
-      orUseOtherMethods: string
-      loadingQRCode: string
-      errors: {
-        loadingFailed: string
-        networkError: string
       }
     }
     phone: {
@@ -158,6 +154,17 @@ export type Locale = {
         requiredPassword: string
         passwordsDontMatch: string
         invalidToken: string
+      }
+    }
+    wechat: {
+      title: string
+      description: string
+      scanQRCode: string
+      orUseOtherMethods: string
+      loadingQRCode: string
+      errors: {
+        loadingFailed: string
+        networkError: string
       }
     }
   }

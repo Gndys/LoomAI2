@@ -20,9 +20,9 @@ export default function WeixinLoginPage() {
       if (typeof window.WxLogin !== 'undefined') {
         new window.WxLogin({
           id: 'login_container',
-          appid: process.env.WECHAT_APP_ID || 'wx404a81738f3be900',
+          appid: process.env.NEXT_PUBLIC_WECHAT_APP_ID,
           scope: 'snsapi_login',
-          redirect_uri: encodeURIComponent(process.env.WECHAT_REDIRECT_URI || 'http://localhost:3000/api/auth/oauth2/callback/wechat'),
+          redirect_uri: encodeURIComponent(process.env.NEXT_PUBLIC_WECHAT_REDIRECT_URI!),
           state: nanoid(10),
           style: 'black',
           href: 'https://api.easycv.cn/public/wxLogin.css',

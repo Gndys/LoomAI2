@@ -48,6 +48,13 @@ export const zhCN: Locale = {
       termsNotice: "点击继续即表示您同意我们的",
       termsOfService: "服务条款",
       privacyPolicy: "隐私政策",
+      socialProviders: {
+        google: "使用 Google 账号继续",
+        github: "使用 GitHub 账号继续",
+        apple: "使用 Apple 账号继续",
+        wechat: "使用微信账号继续",
+        phone: "使用手机号继续"
+      },
       errors: {
         invalidEmail: "请输入有效的邮箱地址",
         requiredEmail: "请输入邮箱",

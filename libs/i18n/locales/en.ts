@@ -34,12 +34,12 @@ export const en: Locale = {
     signin: {
       title: "Sign in to your account",
       welcomeBack: "Welcome back",
-      socialLogin: "Login with your favorite social account",
+      socialLogin: "Sign in with your favorite social account",
       continueWith: "Or continue with",
       email: "Email",
       emailPlaceholder: "m@example.com",
       password: "Password",
-      forgotPassword: "Forgot your password?",
+      forgotPassword: "Forgot password?",
       rememberMe: "Remember me",
       submit: "Sign in",
       submitting: "Signing in...",
@@ -48,6 +48,13 @@ export const en: Locale = {
       termsNotice: "By clicking continue, you agree to our",
       termsOfService: "Terms of Service",
       privacyPolicy: "Privacy Policy",
+      socialProviders: {
+        google: "Continue with Google",
+        github: "Continue with GitHub",
+        apple: "Continue with Apple",
+        wechat: "Continue with WeChat",
+        phone: "Continue with Phone"
+      },
       errors: {
         invalidEmail: "Please enter a valid email",
         requiredEmail: "Email is required",
