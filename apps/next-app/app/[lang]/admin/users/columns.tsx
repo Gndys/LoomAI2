@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
+import { DataTableColumnHeader } from "./components/data-table-column-header"
 
 // This type is used to define the shape of our data.
 // You can use a Zod schema here if you want.
@@ -206,12 +207,27 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "createdAt",
-    header: "Created At",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Created At" />
+    ),
     cell: ({ row }) => {
       const createdAt = row.getValue("createdAt") as Date;
       const formatted = `${createdAt.getFullYear()}/${String(createdAt.getMonth() + 1).padStart(2, "0")}/${String(createdAt.getDate()).padStart(2, "0")}`;
       return <div className="text-right font-medium">{formatted}</div>;
     },
+    enableSorting: true,
+  },
+  {
+    accessorKey: "updatedAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Updated At" />
+    ),
+    cell: ({ row }) => {
+      const updatedAt = row.getValue("updatedAt") as Date;
+      const formatted = `${updatedAt.getFullYear()}/${String(updatedAt.getMonth() + 1).padStart(2, "0")}/${String(updatedAt.getDate()).padStart(2, "0")}`;
+      return <div className="text-right font-medium">{formatted}</div>;
+    },
+    enableSorting: true,
   },
   {
     id: "actions",
