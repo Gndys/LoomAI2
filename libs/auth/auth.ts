@@ -1,8 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { genericOAuth, phoneNumber, admin } from "better-auth/plugins"
+import { phoneNumber, admin } from "better-auth/plugins"
 import { validator, StandardAdapter } from "validation-better-auth"
-import { createAuthMiddleware, APIError } from "better-auth/api"
 
 import { db, user, account, session, verification } from '@libs/database'
 // import { sendSMSByAliyun } from '@libs/sms/aliyun'
@@ -10,17 +9,6 @@ import { emailSignInSchema, emailSignUpSchema } from '@libs/validators/user'
 import { wechatPlugin } from './plugins/wechat'
 export { toNextJsHandler } from "better-auth/next-js";
 
-interface WeChatProfile {
-  unionid?: string;
-  openid: string;
-  nickname: string;
-  headimgurl: string;
-}
-
-interface WeChatTokens {
-  accessToken: string;
-  openid: string;
-}
 
 export const auth = betterAuth({
   appName: 'shipeasy',

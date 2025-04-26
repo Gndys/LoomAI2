@@ -27,6 +27,89 @@ export type Locale = {
     createAccount: string
     sendCode: string
     verify: string
+    backToList: string
+    saveChanges: string
+    createUser: string
+    deleteUser: string
+  }
+  admin: {
+    users: {
+      title: string
+      actions: {
+        addUser: string
+      }
+      createUser: string
+      editUser: string
+      form: {
+        title: string
+        description: string
+        labels: {
+          name: string
+          email: string
+          password: string
+          role: string
+          image: string
+          phoneNumber: string
+          emailVerified: string
+          phoneVerified: string
+          banned: string
+          banReason: string
+        }
+        placeholders: {
+          selectRole: string
+        }
+      }
+      messages: {
+        createSuccess: string
+        updateSuccess: string
+        deleteSuccess: string
+        deleteError: string
+        fetchError: string
+        operationFailed: string
+      }
+      deleteDialog: {
+        title: string
+        description: string
+      }
+      table: {
+        noResults: string
+        search: {
+          searchBy: string
+          searchPlaceholder: string
+          filterByRole: string
+          allRoles: string
+          banStatus: string
+          allUsers: string
+          bannedUsers: string
+          notBannedUsers: string
+          view: string
+          toggleColumns: string
+        }
+        columns: {
+          id: string
+          name: string
+          email: string
+          role: string
+          emailVerified: string
+          banned: string
+          createdAt: string
+          updatedAt: string
+          actions: string
+        }
+        actions: {
+          editUser: string
+          deleteUser: string
+        }
+        dialog: {
+          banTitle: string
+          banDescription: string
+          unbanSuccess: string
+          banSuccess: string
+          updateRoleSuccess: string
+          updateRoleFailed: string
+        }
+      }
+    }
   }
   auth: {
     signin: {

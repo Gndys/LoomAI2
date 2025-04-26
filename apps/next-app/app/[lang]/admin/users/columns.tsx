@@ -5,6 +5,7 @@ import type { User } from '@libs/database'
 import { userRoles } from '@libs/database/constants'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { toast } from "sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
 import { DataTableColumnHeader } from "./components/data-table-column-header"
+import { authClientReact } from "@libs/auth/authClient"
+import { useTranslation } from "@/hooks/use-translation"
 
 // This type is used to define the shape of our data.
 // You can use a Zod schema here if you want.
@@ -56,13 +59,30 @@ export type Payment = {
 
 // BannedCellComponent to handle the banned status with confirmation dialog
 const BannedCellComponent = ({ value, userId }: { value: boolean, userId: string }) => {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [checked, setChecked] = useState(value)
 
-  const handleConfirm = () => {
-    // Here you would typically call an API to update the user's banned status
-    setChecked(!checked)
-    setIsOpen(false)
+  const handleConfirm = async () => {
+    try {
+      if (!checked) {
+        await authClientReact.admin.banUser({
+          userId,
+          banReason: 'No reason provided',
+        });
+      } else {
+        await authClientReact.admin.unbanUser({
+          userId,
+        });
+      }
+
+      setChecked(!checked);
+      setIsOpen(false);
+      toast.success(checked ? t.admin.users.table.dialog.unbanSuccess : t.admin.users.table.dialog.banSuccess);
+    } catch (error) {
+      toast.error(t.admin.users.messages.operationFailed);
+      console.error('Error updating user status:', error);
+    }
   }
 
   return (
@@ -76,8 +96,7 @@ const BannedCellComponent = ({ value, userId }: { value: boolean, userId: string
               if (!checked) {
                 setIsOpen(true)
               } else {
-                // If unbanning, no confirmation needed
-                setChecked(false)
+                handleConfirm()
               }
             }} 
           />
@@ -85,29 +104,70 @@ const BannedCellComponent = ({ value, userId }: { value: boolean, userId: string
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Ban User</AlertDialogTitle>
+          <AlertDialogTitle>{t.admin.users.table.dialog.banTitle}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to ban this user? They will no longer be able to access the platform.
+            {t.admin.users.table.dialog.banDescription}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm}>Continue</AlertDialogAction>
+          <AlertDialogCancel>{t.actions.cancel}</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirm}>{t.actions.confirm}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
 }
 
+// RoleCellComponent to handle role changes
+const RoleCellComponent = ({ currentRole, userId }: { currentRole: string, userId: string }) => {
+  const { t } = useTranslation()
+  const handleRoleChange = async (newRole: string) => {
+    try {
+      await authClientReact.admin.setRole({
+        userId,
+        role: newRole,
+      });
+
+      toast.success(t.admin.users.table.dialog.updateRoleSuccess);
+    } catch (error) {
+      toast.error(t.admin.users.table.dialog.updateRoleFailed);
+      console.error('Error updating user role:', error);
+    }
+  };
+
+  return (
+    <Select defaultValue={currentRole} onValueChange={handleRoleChange}>
+      <SelectTrigger className="w-[100px]">
+        <SelectValue placeholder={t.admin.users.form.placeholders.selectRole} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={userRoles.ADMIN}>{userRoles.ADMIN}</SelectItem>
+        <SelectItem value={userRoles.USER}>{userRoles.USER}</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+};
+
 // ActionsCellComponent to handle user actions
 const ActionsCellComponent = ({ user }: { user: User }) => {
+  const { t } = useTranslation()
   const router = useRouter()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
-  const handleDeleteConfirm = () => {
-    // Here you would typically call an API to delete the user
-    console.log("Deleting user", user.id)
-    setDeleteDialogOpen(false)
+  const handleDeleteConfirm = async () => {
+    try {
+      await authClientReact.admin.removeUser({
+        userId: user.id,
+      });
+
+      setDeleteDialogOpen(false);
+      toast.success(t.admin.users.messages.deleteSuccess);
+      // Refresh the page to update the table
+      router.refresh();
+    } catch (error) {
+      toast.error(t.admin.users.messages.deleteError);
+      console.error('Error deleting user:', error);
+    }
   }
 
   return (
@@ -115,25 +175,25 @@ const ActionsCellComponent = ({ user }: { user: User }) => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
+            <span className="sr-only">{t.admin.users.table.columns.actions}</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuLabel>{t.admin.users.table.columns.actions}</DropdownMenuLabel>
           <DropdownMenuItem
             onClick={() => {
               router.push(`/admin/users/${user.id}`)
             }}
           >
-            Edit user
+            {t.admin.users.table.actions.editUser}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => setDeleteDialogOpen(true)}
             className="text-red-600 focus:text-red-600"
           >
-            Delete user
+            {t.admin.users.table.actions.deleteUser}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -141,18 +201,18 @@ const ActionsCellComponent = ({ user }: { user: User }) => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle>{t.admin.users.deleteDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this user? This action cannot be undone.
+              {t.admin.users.deleteDialog.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t.actions.cancel}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteConfirm}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
-              Delete
+              {t.actions.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -161,79 +221,74 @@ const ActionsCellComponent = ({ user }: { user: User }) => {
   )
 }
 
-export const columns: ColumnDef<User>[] = [
-  {
-    accessorKey: "id",
-    header: "ID",
-  },
-  {
-    accessorKey: "name",
-    header: "Name",
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-  },
-  {
-    accessorKey: "role",
-    header: "Role",
-    cell: ({ row }) => {
-      const currentRole = row.getValue("role") as string
-      return (
-        <Select defaultValue={currentRole}>
-          <SelectTrigger className="w-[100px]">
-            <SelectValue placeholder="Select role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={userRoles.ADMIN}>{userRoles.ADMIN}</SelectItem>
-            <SelectItem value={userRoles.USER}>{userRoles.USER}</SelectItem>
-          </SelectContent>
-        </Select>
-      )
+export const columns = () => {
+  const { t } = useTranslation()
+  
+  return [
+    {
+      accessorKey: "id",
+      header: t.admin.users.table.columns.id,
     },
-  },
-  {
-    accessorKey: "emailVerified",
-    header: "Email Verified",
-  },
-  {
-    accessorKey: "banned",
-    header: "Banned",
-    cell: ({ row }) => {
-      const isBanned = row.getValue("banned") as boolean
-      const userId = row.getValue("id") as string
-      return <BannedCellComponent value={isBanned} userId={userId} />
+    {
+      accessorKey: "name",
+      header: t.admin.users.table.columns.name,
     },
-  },
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created At" />
-    ),
-    cell: ({ row }) => {
-      const createdAt = row.getValue("createdAt") as Date;
-      const formatted = `${createdAt.getFullYear()}/${String(createdAt.getMonth() + 1).padStart(2, "0")}/${String(createdAt.getDate()).padStart(2, "0")}`;
-      return <div className="text-right font-medium">{formatted}</div>;
+    {
+      accessorKey: "email",
+      header: t.admin.users.table.columns.email,
     },
-    enableSorting: true,
-  },
-  {
-    accessorKey: "updatedAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Updated At" />
-    ),
-    cell: ({ row }) => {
-      const updatedAt = row.getValue("updatedAt") as Date;
-      const formatted = `${updatedAt.getFullYear()}/${String(updatedAt.getMonth() + 1).padStart(2, "0")}/${String(updatedAt.getDate()).padStart(2, "0")}`;
-      return <div className="text-right font-medium">{formatted}</div>;
+    {
+      accessorKey: "role",
+      header: t.admin.users.table.columns.role,
+      cell: ({ row }) => {
+        const currentRole = row.getValue("role") as string;
+        const userId = row.getValue("id") as string;
+        return <RoleCellComponent currentRole={currentRole} userId={userId} />;
+      },
     },
-    enableSorting: true,
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      const user = row.original
-      return <ActionsCellComponent user={user} />
+    {
+      accessorKey: "emailVerified",
+      header: t.admin.users.table.columns.emailVerified,
     },
-  }
-]
+    {
+      accessorKey: "banned",
+      header: t.admin.users.table.columns.banned,
+      cell: ({ row }) => {
+        const isBanned = row.getValue("banned") as boolean
+        const userId = row.getValue("id") as string
+        return <BannedCellComponent value={isBanned} userId={userId} />
+      },
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t.admin.users.table.columns.createdAt} />
+      ),
+      cell: ({ row }) => {
+        const createdAt = row.getValue("createdAt") as Date;
+        const formatted = `${createdAt.getFullYear()}/${String(createdAt.getMonth() + 1).padStart(2, "0")}/${String(createdAt.getDate()).padStart(2, "0")}`;
+        return <div className="text-right font-medium">{formatted}</div>;
+      },
+      enableSorting: true,
+    },
+    {
+      accessorKey: "updatedAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t.admin.users.table.columns.updatedAt} />
+      ),
+      cell: ({ row }) => {
+        const updatedAt = row.getValue("updatedAt") as Date;
+        const formatted = `${updatedAt.getFullYear()}/${String(updatedAt.getMonth() + 1).padStart(2, "0")}/${String(updatedAt.getDate()).padStart(2, "0")}`;
+        return <div className="text-right font-medium">{formatted}</div>;
+      },
+      enableSorting: true,
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const user = row.original
+        return <ActionsCellComponent user={user} />
+      },
+    }
+  ] as ColumnDef<User>[]
+}

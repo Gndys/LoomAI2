@@ -1,3 +1,5 @@
+'use client';
+
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import { translations, type SupportedLocale, defaultLocale, locales } from '@libs/i18n';
 import type { Translations, TranslationPath, TranslationValue } from '@/types/i18n';

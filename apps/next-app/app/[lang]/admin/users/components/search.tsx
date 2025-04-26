@@ -6,12 +6,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Search as SearchIcon } from "lucide-react"
+import { useTranslation } from "@/hooks/use-translation"
 
 type SearchField = "email" | "name" | "id";
 type Role = "admin" | "user" | "all";
 type BannedStatus = "true" | "false" | "all";
 
 export function Search() {
+  const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -86,17 +88,17 @@ export function Search() {
         onValueChange={onFieldChange}
       >
         <SelectTrigger className="w-[120px]">
-          <SelectValue placeholder="Search by..." />
+          <SelectValue placeholder={t.admin.users.table.search.searchBy} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="email">Email</SelectItem>
-          <SelectItem value="name">Name</SelectItem>
-          <SelectItem value="id">ID</SelectItem>
+          <SelectItem value="email">{t.admin.users.table.columns.email}</SelectItem>
+          <SelectItem value="name">{t.admin.users.table.columns.name}</SelectItem>
+          <SelectItem value="id">{t.admin.users.table.columns.id}</SelectItem>
         </SelectContent>
       </Select>
 
       <Input
-        placeholder={`Search by ${searchField}...`}
+        placeholder={t.admin.users.table.search.searchPlaceholder.replace("{field}", searchField)}
         value={searchValue}
         onChange={(e) => setSearchValue(e.target.value)}
         className="w-[250px]"
@@ -113,10 +115,10 @@ export function Search() {
         onValueChange={onRoleChange}
       >
         <SelectTrigger className="w-[130px]">
-          <SelectValue placeholder="Filter by role" />
+          <SelectValue placeholder={t.admin.users.table.search.filterByRole} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All roles</SelectItem>
+          <SelectItem value="all">{t.admin.users.table.search.allRoles}</SelectItem>
           <SelectItem value="admin">Admin</SelectItem>
           <SelectItem value="user">User</SelectItem>
         </SelectContent>
@@ -127,12 +129,12 @@ export function Search() {
         onValueChange={onBannedChange}
       >
         <SelectTrigger className="w-[130px]">
-          <SelectValue placeholder="Ban status" />
+          <SelectValue placeholder={t.admin.users.table.search.banStatus} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All users</SelectItem>
-          <SelectItem value="true">Banned</SelectItem>
-          <SelectItem value="false">Not banned</SelectItem>
+          <SelectItem value="all">{t.admin.users.table.search.allUsers}</SelectItem>
+          <SelectItem value="true">{t.admin.users.table.search.bannedUsers}</SelectItem>
+          <SelectItem value="false">{t.admin.users.table.search.notBannedUsers}</SelectItem>
         </SelectContent>
       </Select>
     </form>

@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Settings2, Check } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useTranslation } from "@/hooks/use-translation"
 
 interface ColumnToggleProps<TData> {
   table: Table<TData>
@@ -20,6 +20,7 @@ interface ColumnToggleProps<TData> {
 export function ColumnToggle<TData>({
   table,
 }: ColumnToggleProps<TData>) {
+  const { t } = useTranslation()
   const hiddenColumns = [
     "id",
     "emailVerified",
@@ -32,11 +33,11 @@ export function ColumnToggle<TData>({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="ml-auto h-8">
           <Settings2 className="mr-2 h-4 w-4" />
-          View
+          {t.admin.users.table.search.view}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[180px]">
-        <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+        <DropdownMenuLabel>{t.admin.users.table.search.toggleColumns}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()
@@ -56,13 +57,7 @@ export function ColumnToggle<TData>({
                 }}
               >
                 <span className="capitalize">
-                  {column.id === "emailVerified" 
-                    ? "Email Verified" 
-                    : column.id === "createdAt"
-                    ? "Created At"
-                    : column.id === "updatedAt"
-                    ? "Updated At"
-                    : column.id}
+                  {t.admin.users.table.columns[column.id as keyof typeof t.admin.users.table.columns]}
                 </span>
                 {column.getIsVisible() && (
                   <Check className="h-4 w-4" />

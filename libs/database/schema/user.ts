@@ -10,11 +10,6 @@ export const user = pgTable("user", {
   emailVerified: boolean('email_verified').notNull(),
   image: text("image"),
   role: text("role").default(userRoles.USER).notNull(),
-
-  // OAuth2 相关字段
-  provider: text("provider"),
-  providerId: text("provider_id"),
-
   // 时间戳
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

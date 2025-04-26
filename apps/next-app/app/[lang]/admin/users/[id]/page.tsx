@@ -1,10 +1,8 @@
-// "use client"
+'use client';
 
-import { notFound } from 'next/navigation'
-import { headers } from 'next/headers'
-import { db } from '@libs/database/client'
-import { user } from '@libs/database/schema/user'
-import { eq } from 'drizzle-orm'
+import { use } from 'react'
+import { useEffect, useState } from 'react'
+import { notFound, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +12,11 @@ import { Label } from '@/components/ui/label'
 import { userRoles } from '@libs/database/constants'
 import Link from 'next/link'
 import { SaveIcon, Trash2Icon } from 'lucide-react'
-
+import { authClientReact } from "@libs/auth/authClient"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { userSchema } from "@libs/validators/user"
+import { z } from "zod"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,231 +28,406 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { toast } from "sonner"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useTranslation } from "@/hooks/use-translation"
 
-interface UserDetailPageProps {
-  params: {
-    id: string
-  }
+// 创建用户schema（包含密码字段）
+const createUserSchema = userSchema.extend({
+  password: z.string().min(8).max(100),
+  image: z.string().url().optional().or(z.literal('')),
+});
+
+// 更新用户schema（所有字段可选）
+const updateUserSchema = userSchema.partial();
+
+type CreateUserFormData = z.infer<typeof createUserSchema>;
+type UpdateUserFormData = z.infer<typeof updateUserSchema>;
+
+interface UserPageProps {
+  params: Promise<{
+    id?: string
+  }>
 }
 
-export default async function UserDetailPage({ params }: UserDetailPageProps) {
-  // Extract user ID from URL params
-  const { id } = params
+export default function UserPage({ params }: UserPageProps) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch user from database
-  const users = await db.select().from(user).where(eq(user.id, id))
-  
-  // If user not found, return 404 page
-  if (!users || users.length === 0) {
-    notFound()
+  const resolvedParams = use(params);
+  const { id } = resolvedParams;
+  const isEditMode = id !== 'new';
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors }
+  } = useForm<CreateUserFormData | UpdateUserFormData>({
+    resolver: zodResolver(isEditMode ? updateUserSchema : createUserSchema),
+    defaultValues: {
+      role: userRoles.USER,
+      emailVerified: false,
+      phoneNumberVerified: false,
+      banned: false,
+    }
+  });
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (id === 'new') {
+        setLoading(false);
+        return;
+      }
+
+      if (!id) {
+        notFound();
+      }
+
+      try {
+        const response = await fetch(`/api/users/${id}`);
+        if (!response.ok) {
+          throw new Error(t.admin.users.messages.fetchError);
+        }
+        const userData = await response.json();
+        reset(userData);
+        setLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t.admin.users.messages.fetchError);
+        notFound();
+      }
+    };
+
+    fetchUser();
+  }, [id, reset, t]);
+
+  const onSubmit = async (data: CreateUserFormData | UpdateUserFormData) => {
+    setError(null);
+
+    try {
+      if (isEditMode && id) {
+        // Update user
+        await authClientReact.admin.setRole({
+          userId: id,
+          role: data.role!,
+        });
+
+        if (data.banned) {
+          await authClientReact.admin.banUser({
+            userId: id,
+            banReason: data.banReason || 'No reason provided',
+          });
+        } else {
+          await authClientReact.admin.unbanUser({
+            userId: id,
+          });
+        }
+
+        // Other updates through your API
+        await fetch(`/api/users/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        toast.success(t.admin.users.messages.updateSuccess);
+      } else {
+        // Create user
+        const createData = data as CreateUserFormData;
+        await authClientReact.admin.createUser({
+          name: createData.name,
+          email: createData.email,
+          password: createData.password,
+          role: createData.role,
+          data: {
+            image: createData.image || undefined,
+            phoneNumber: createData.phoneNumber || undefined,
+            emailVerified: createData.emailVerified,
+            phoneNumberVerified: createData.phoneNumberVerified,
+            banned: createData.banned,
+            banReason: createData.banReason || undefined,
+          },
+        });
+
+        toast.success(t.admin.users.messages.createSuccess);
+      }
+
+      router.push('/admin/users');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : t.admin.users.messages.operationFailed;
+      setError(errorMessage);
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await authClientReact.admin.removeUser({
+        userId: id as string,
+      });
+      toast.success(t.admin.users.messages.deleteSuccess);
+      router.push('/admin/users');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : t.admin.users.messages.deleteError;
+      setError(errorMessage);
+      toast.error(errorMessage);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-10">
+        <div className="mb-6">
+          <Skeleton className="h-6 w-32" />
+        </div>
+
+        <Skeleton className="h-10 w-60 mb-6" />
+
+        <Card className="max-w-2xl mx-auto">
+          <CardHeader>
+            <Skeleton className="h-7 w-40 mb-2" />
+            <Skeleton className="h-4 w-60" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </CardContent>
+          <CardFooter className="pt-6">
+            <Skeleton className="h-10 w-32" />
+          </CardFooter>
+        </Card>
+      </div>
+    );
   }
-
-  const userData = users[0]
 
   return (
     <div className="container mx-auto p-10">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center mb-6">
         <Link href="/admin/users" className="text-blue-500 hover:text-blue-700">
-          ← Back to Users
+          ← {t.actions.backToList}
         </Link>
-        
-        <Button type="submit" form="user-edit-form" className="flex items-center gap-2">
-          <SaveIcon className="h-4 w-4" />
-          Save Changes
-        </Button>
       </div>
 
-      <h1 className="text-3xl font-bold mb-6">Edit User</h1>
+      <h1 className="text-3xl font-bold mb-6">
+        {isEditMode ? t.admin.users.editUser : t.admin.users.createUser}
+      </h1>
 
-      <form id="user-edit-form" action="/api/admin/users/update" method="POST" className="space-y-6">
-        <input type="hidden" name="id" value={userData.id} />
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-              <CardDescription>User profile information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="id">ID (Read-only)</Label>
-                <Input id="id" value={userData.id} disabled />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" name="name" defaultValue={userData.name} />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email (Read-only)</Label>
-                <Input id="email" value={userData.email} disabled />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select name="role" defaultValue={userData.role}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={userRoles.ADMIN}>{userRoles.ADMIN}</SelectItem>
-                    <SelectItem value={userRoles.USER}>{userRoles.USER}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="image">Profile Image URL</Label>
-                <Input id="image" name="image" defaultValue={userData.image || ''} />
-              </div>
-            </CardContent>
-          </Card>
+      {error && (
+        <div className="mb-4 p-4 text-red-700 bg-red-100 rounded-md">
+          {error}
+        </div>
+      )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Status</CardTitle>
-              <CardDescription>User account verification and status</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="emailVerified" className="font-semibold">Email Verified</Label>
-                <Switch 
-                  id="emailVerified" 
-                  name="emailVerified" 
-                  defaultChecked={userData.emailVerified}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="banned" className="font-semibold">Banned</Label>
-                <Switch 
-                  id="banned" 
-                  name="banned" 
-                  defaultChecked={userData.banned || false}
-                />
-              </div>
-              
+      <form 
+        onSubmit={handleSubmit(onSubmit)}
+        className="max-w-2xl mx-auto"
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.admin.users.form.title}</CardTitle>
+            <CardDescription>{t.admin.users.form.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">{t.admin.users.form.labels.name}</Label>
+              <Input 
+                id="name"
+                {...register('name')}
+                className={errors.name ? "border-red-500" : ""}
+              />
+              {errors.name && (
+                <p className="text-red-500 text-sm">{errors.name.message}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">{t.admin.users.form.labels.email}</Label>
+              <Input 
+                id="email"
+                type="email"
+                {...register('email')}
+                disabled={isEditMode}
+                className={errors.email ? "border-red-500" : ""}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm">{errors.email.message}</p>
+              )}
+            </div>
+            
+            {!isEditMode && (
               <div className="space-y-2">
-                <Label htmlFor="banReason">Ban Reason</Label>
+                <Label htmlFor="password">{t.admin.users.form.labels.password}</Label>
                 <Input 
-                  id="banReason" 
-                  name="banReason" 
-                  defaultValue={userData.banReason || ''}
+                  id="password"
+                  type="password"
+                  {...register('password')}
+                  className={errors['password' as keyof typeof errors] ? "border-red-500" : ""}
                 />
+                {errors['password' as keyof typeof errors] && (
+                  <p className="text-red-500 text-sm">
+                    {errors['password' as keyof typeof errors]?.message}
+                  </p>
+                )}
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="banExpires">Ban Expires (Unix Timestamp)</Label>
-                <Input 
-                  id="banExpires" 
-                  name="banExpires" 
-                  defaultValue={userData.banExpires?.toString() || ''}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="createdAt">Created At (Read-only)</Label>
-                <Input 
-                  id="createdAt" 
-                  value={userData.createdAt ? new Date(userData.createdAt).toLocaleString() : 'N/A'} 
-                  disabled
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="updatedAt">Updated At (Read-only)</Label>
-                <Input 
-                  id="updatedAt" 
-                  value={userData.updatedAt ? new Date(userData.updatedAt).toLocaleString() : 'N/A'} 
-                  disabled
-                />
-              </div>
-            </CardContent>
-          </Card>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="role">{t.admin.users.form.labels.role}</Label>
+              <Controller
+                name="role"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <SelectTrigger className={errors.role ? "border-red-500" : ""}>
+                      <SelectValue placeholder={t.admin.users.form.placeholders.selectRole} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={userRoles.ADMIN}>{userRoles.ADMIN}</SelectItem>
+                      <SelectItem value={userRoles.USER}>{userRoles.USER}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.role && (
+                <p className="text-red-500 text-sm">{errors.role.message}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="image">{t.admin.users.form.labels.image}</Label>
+              <Input 
+                id="image"
+                {...register('image')}
+                className={errors.image ? "border-red-500" : ""}
+              />
+              {errors.image && (
+                <p className="text-red-500 text-sm">{errors.image.message}</p>
+              )}
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Authentication</CardTitle>
-              <CardDescription>Provider and phone verification</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="provider">Provider</Label>
-                <Input id="provider" name="provider" defaultValue={userData.provider || ''} />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="providerId">Provider ID</Label>
-                <Input id="providerId" name="providerId" defaultValue={userData.providerId || ''} />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Phone Number</Label>
-                <Input id="phoneNumber" name="phoneNumber" defaultValue={userData.phoneNumber || ''} />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="phoneNumberVerified" className="font-semibold">Phone Verified</Label>
-                <Switch 
-                  id="phoneNumberVerified" 
-                  name="phoneNumberVerified" 
-                  defaultChecked={userData.phoneNumberVerified || false}
-                />
-              </div>
-            </CardContent>
-          </Card>
+            <div className="space-y-2">
+              <Label htmlFor="phoneNumber">{t.admin.users.form.labels.phoneNumber}</Label>
+              <Input 
+                id="phoneNumber"
+                {...register('phoneNumber')}
+                className={errors.phoneNumber ? "border-red-500" : ""}
+              />
+              {errors.phoneNumber && (
+                <p className="text-red-500 text-sm">{errors.phoneNumber.message}</p>
+              )}
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-              <CardDescription>Save or delete this user</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Button 
-                  type="submit" 
-                  form="user-edit-form" 
-                  className="flex items-center gap-2"
-                >
-                  <SaveIcon className="h-4 w-4" />
-                  Save Changes
-                </Button>
-                
+            <div className="flex items-center justify-between">
+              <Label htmlFor="emailVerified" className="font-semibold">
+                {t.admin.users.form.labels.emailVerified}
+              </Label>
+              <Controller
+                name="emailVerified"
+                control={control}
+                render={({ field }) => (
+                  <Switch 
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="phoneNumberVerified" className="font-semibold">
+                {t.admin.users.form.labels.phoneVerified}
+              </Label>
+              <Controller
+                name="phoneNumberVerified"
+                control={control}
+                render={({ field }) => (
+                  <Switch 
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="banned" className="font-semibold">
+                {t.admin.users.form.labels.banned}
+              </Label>
+              <Controller
+                name="banned"
+                control={control}
+                render={({ field }) => (
+                  <Switch 
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="banReason">{t.admin.users.form.labels.banReason}</Label>
+              <Input 
+                id="banReason"
+                {...register('banReason')}
+                className={errors.banReason ? "border-red-500" : ""}
+              />
+              {errors.banReason && (
+                <p className="text-red-500 text-sm">{errors.banReason.message}</p>
+              )}
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-between space-x-4 pt-6">
+            <div className="flex space-x-4">
+              <Button 
+                type="submit" 
+                className="flex items-center gap-2"
+              >
+                <SaveIcon className="h-4 w-4" />
+                {isEditMode ? t.actions.saveChanges : t.actions.createUser}
+              </Button>
+              
+              {isEditMode && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" type="button" className="flex items-center gap-2">
                       <Trash2Icon className="h-4 w-4" />
-                      Delete User
+                      {t.actions.deleteUser}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogTitle>{t.admin.users.deleteDialog.title}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the user
-                        and remove their data from our servers.
+                        {t.admin.users.deleteDialog.description}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <form action="/api/admin/users/delete" method="POST">
-                        <input type="hidden" name="id" value={userData.id} />
-                        <AlertDialogAction type="submit" className="bg-red-600 hover:bg-red-700">
-                          Delete
-                        </AlertDialogAction>
-                      </form>
+                      <AlertDialogCancel>{t.actions.cancel}</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDelete}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        {t.actions.delete}
+                      </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </div>
-            </CardContent>
-            <CardFooter className="text-sm text-gray-500">
-              All changes will be logged for accountability.
-            </CardFooter>
-          </Card>
-        </div>
+              )}
+            </div>
+          </CardFooter>
+        </Card>
       </form>
     </div>
-  )
+  );
 } 

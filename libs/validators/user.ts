@@ -8,10 +8,9 @@ export const userSchema = z.object({
   emailVerified: z.boolean().default(false),
   image: z.string().url().nullable().optional(),
   role: z.enum([userRoles.ADMIN, userRoles.USER]).default(userRoles.USER),
-  provider: z.string().optional(),
-  providerId: z.string().optional(),
   phoneNumber: z.string().nullable().optional(),
-  phoneNumberVerified: z.boolean().default(false),
+  phoneNumberVerified: z.boolean().default(false),  banned: z.boolean().default(false),
+  banReason: z.string().nullable().optional(),
 });
 
 // 邮箱注册验证器

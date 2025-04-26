@@ -28,7 +28,11 @@ export const zhCN: Locale = {
     tryAgain: "重试",
     createAccount: "创建账户",
     sendCode: "发送验证码",
-    verify: "验证"
+    verify: "验证",
+    backToList: "返回用户列表",
+    saveChanges: "保存更改",
+    createUser: "创建用户",
+    deleteUser: "删除用户"
   },
   auth: {
     signin: {
@@ -167,6 +171,85 @@ export const zhCN: Locale = {
       errors: {
         loadingFailed: "微信二维码加载失败",
         networkError: "网络错误，请重试"
+      }
+    }
+  },
+  admin: {
+    users: {
+      title: "用户管理",
+      createUser: "创建用户",
+      editUser: "编辑用户",
+      form: {
+        title: "用户信息",
+        description: "基本用户信息和账户设置",
+        labels: {
+          name: "姓名",
+          email: "邮箱",
+          password: "密码",
+          role: "角色",
+          image: "头像图片链接",
+          phoneNumber: "手机号",
+          emailVerified: "邮箱已验证",
+          phoneVerified: "手机号已验证",
+          banned: "已封禁",
+          banReason: "封禁原因"
+        },
+        placeholders: {
+          selectRole: "选择角色"
+        }
+      },
+      messages: {
+        createSuccess: "用户创建成功",
+        updateSuccess: "用户更新成功",
+        deleteSuccess: "用户删除成功",
+        fetchError: "获取用户信息失败",
+        operationFailed: "操作失败",
+        deleteError: "删除用户失败"
+      },
+      deleteDialog: {
+        title: "确定要删除吗？",
+        description: "此操作无法撤销。这将永久删除该用户并从服务器中移除其数据。"
+      },
+      actions: {
+        addUser: "添加用户"
+      },
+      table: {
+        noResults: "未找到结果",
+        search: {
+          searchBy: "搜索条件...",
+          searchPlaceholder: "按{field}搜索...",
+          filterByRole: "按角色筛选",
+          allRoles: "所有角色",
+          banStatus: "封禁状态",
+          allUsers: "所有用户",
+          bannedUsers: "已封禁",
+          notBannedUsers: "未封禁",
+          view: "视图",
+          toggleColumns: "切换列显示"
+        },
+        columns: {
+          id: "ID",
+          name: "姓名",
+          email: "邮箱",
+          role: "角色",
+          emailVerified: "邮箱已验证",
+          banned: "已封禁",
+          createdAt: "创建时间",
+          updatedAt: "更新时间",
+          actions: "操作"
+        },
+        actions: {
+          editUser: "编辑用户",
+          deleteUser: "删除用户"
+        },
+        dialog: {
+          banTitle: "封禁用户",
+          banDescription: "您确定要封禁此用户吗？封禁后该用户将无法访问平台。",
+          unbanSuccess: "用户解封成功",
+          banSuccess: "用户封禁成功",
+          updateRoleSuccess: "用户角色更新成功",
+          updateRoleFailed: "用户角色更新失败"
+        }
       }
     }
   }

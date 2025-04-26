@@ -30,6 +30,11 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     type: 'page',
   },
   {
+    pattern: new RegExp('^/api/users(\\/.*)?$'),
+    type: 'api',
+    requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
+  },
+  {
     pattern: new RegExp('^/api/chat(\\/.*)?$'), 
     type: 'api',
     // TODO: Replace Subject.CHAT_MESSAGE with a valid Subject 

@@ -28,7 +28,11 @@ export const en: Locale = {
     tryAgain: "Try again",
     createAccount: "Create account",
     sendCode: "Send Code",
-    verify: "Verify"
+    verify: "Verify",
+    backToList: "Back to Users",
+    saveChanges: "Save Changes",
+    createUser: "Create User",
+    deleteUser: "Delete User"
   },
   auth: {
     signin: {
@@ -167,6 +171,85 @@ export const en: Locale = {
       errors: {
         loadingFailed: "Failed to load WeChat QR code",
         networkError: "Network error, please try again"
+      }
+    }
+  },
+  admin: {
+    users: {
+      title: "Users",
+      createUser: "Create User",
+      editUser: "Edit User",
+      form: {
+        title: "User Information",
+        description: "Basic user details and account settings",
+        labels: {
+          name: "Name",
+          email: "Email",
+          password: "Password",
+          role: "Role",
+          image: "Profile Image URL",
+          phoneNumber: "Phone Number",
+          emailVerified: "Email Verified",
+          phoneVerified: "Phone Verified",
+          banned: "Banned",
+          banReason: "Ban Reason"
+        },
+        placeholders: {
+          selectRole: "Select role"
+        }
+      },
+      messages: {
+        createSuccess: "User created successfully",
+        updateSuccess: "User updated successfully",
+        deleteSuccess: "User deleted successfully",
+        fetchError: "Failed to fetch user",
+        operationFailed: "Operation failed",
+        deleteError: "Failed to delete user"
+      },
+      deleteDialog: {
+        title: "Are you absolutely sure?",
+        description: "This action cannot be undone. This will permanently delete the user and remove their data from our servers."
+      },
+      actions: {
+        addUser: "Add User"
+      },
+      table: {
+        noResults: "No results.",
+        search: {
+          searchBy: "Search by...",
+          searchPlaceholder: "Search by {field}...",
+          filterByRole: "Filter by role",
+          allRoles: "All roles",
+          banStatus: "Ban status",
+          allUsers: "All users",
+          bannedUsers: "Banned",
+          notBannedUsers: "Not banned",
+          view: "View",
+          toggleColumns: "Toggle columns"
+        },
+        columns: {
+          id: "ID",
+          name: "Name",
+          email: "Email",
+          role: "Role",
+          emailVerified: "Email Verified",
+          banned: "Banned",
+          createdAt: "Created At",
+          updatedAt: "Updated At",
+          actions: "Actions"
+        },
+        actions: {
+          editUser: "Edit user",
+          deleteUser: "Delete user"
+        },
+        dialog: {
+          banTitle: "Ban User",
+          banDescription: "Are you sure you want to ban this user? They will no longer be able to access the platform.",
+          unbanSuccess: "User unbanned successfully",
+          banSuccess: "User banned successfully",
+          updateRoleSuccess: "User role updated successfully",
+          updateRoleFailed: "Failed to update user role"
+        }
       }
     }
   }

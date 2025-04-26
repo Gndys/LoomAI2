@@ -30,9 +30,10 @@ import { useRouter, usePathname } from "next/navigation"
 import { useState } from "react"
 import { ColumnToggle } from "./components/column-toggle"
 import { Search } from "./components/search"
+import { useTranslation } from "@/hooks/use-translation"
 
 interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
+  columns: () => ColumnDef<TData, TValue>[]
   data: TData[]
   pagination?: {
     currentPage: number
@@ -47,6 +48,7 @@ export function DataTable<TData, TValue>({
   data,
   pagination,
 }: DataTableProps<TData, TValue>) {
+  const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -59,7 +61,7 @@ export function DataTable<TData, TValue>({
 
   const table = useReactTable({
     data,
-    columns,
+    columns: columns(),
     getCoreRowModel: getCoreRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: (updater) => {
@@ -134,8 +136,8 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
+                <TableCell colSpan={columns().length} className="h-24 text-center">
+                  {t.admin.users.table.noResults}
                 </TableCell>
               </TableRow>
             )}
