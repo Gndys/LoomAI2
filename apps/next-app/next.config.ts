@@ -38,6 +38,8 @@ const nextConfig: NextConfig= {
     dangerouslyAllowSVG: true,
     domains: [],
   },
+  // https://github.com/vercel/next.js/issues/50042
+  serverExternalPackages: ['mjml'],
   experimental: {
     // 允许导入外部目录
     externalDir: true,

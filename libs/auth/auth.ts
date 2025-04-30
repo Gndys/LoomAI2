@@ -53,12 +53,12 @@ export const auth = betterAuth({
       
       try {
         // 使用我们的邮件模块发送验证邮件
-        await sendVerificationEmail(user.email, {
-          name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
-          verification_url: url,
-          expiry_hours: 24, // 假设链接24小时后过期，可以根据实际情况调整
-          locale: locale as 'en' | 'zh-CN' // 类型转换
-        });
+        // await sendVerificationEmail(user.email, {
+        //   name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
+        //   verification_url: url,
+        //   expiry_hours: 24, // 假设链接24小时后过期，可以根据实际情况调整
+        //   locale: locale as 'en' | 'zh-CN' // 类型转换
+        // });
         
         console.log(`Verification email sent to ${user.email} in ${locale} language`);
       } catch (error) {

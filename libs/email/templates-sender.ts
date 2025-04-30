@@ -1,15 +1,28 @@
-import { sendEmailByResend, ShipEasyEmailOptions } from './resend';
+import { sendEmailByResend, ShipEasyEmailOptions, ResendResponse } from './resend';
 import { templates, VerificationEmailParams, ResetPasswordEmailParams, EmailTemplate } from './templates';
 
 /**
  * 默认发件人邮箱
  */
-const DEFAULT_FROM = 'no-reply@shipeasy.com';
+const DEFAULT_FROM = 'noreply@tailwindresume.co';
 
 /**
  * 邮件发送服务提供商类型
  */
 export type EmailProvider = 'resend' | 'sendgrid' | 'mailchimp' | 'smtp';
+
+/**
+ * 统一的邮件发送响应类型
+ */
+export type EmailResponse = {
+  success: boolean;
+  id?: string;
+  error?: {
+    message: string;
+    name: string;
+    provider?: EmailProvider;
+  } | null;
+};
 
 /**
  * 基础发送邮件配置，扩展自ShipEasyEmailOptions
@@ -25,7 +38,7 @@ export interface SendEmailOptions extends Omit<ShipEasyEmailOptions, 'to' | 'fro
 /**
  * 根据提供商发送邮件
  */
-async function sendEmail(options: SendEmailOptions) {
+async function sendEmail(options: SendEmailOptions): Promise<EmailResponse> {
   const { provider = 'resend', ...emailOptions } = options;
   
   // 确保有from属性
@@ -50,7 +63,12 @@ async function sendEmail(options: SendEmailOptions) {
       if (emailOptions.replyTo) resendOptions.replyTo = emailOptions.replyTo;
       if (emailOptions.text) resendOptions.text = emailOptions.text;
       
-      return sendEmailByResend(resendOptions);
+      const response = await sendEmailByResend(resendOptions);
+      return {
+        success: !response.error,
+        id: response.id,
+        error: response.error ? { ...response.error, provider: 'resend' } : null
+      };
     }
       
     case 'sendgrid':
@@ -84,7 +102,7 @@ export async function sendVerificationEmail(
   to: string, 
   params: VerificationEmailParams,
   options: Omit<SendEmailOptions, 'to' | 'subject' | 'html'> = {}
-) {
+): Promise<EmailResponse> {
   const { subject, html } = templates.verification(params);
   
   return sendEmail({
@@ -106,7 +124,7 @@ export async function sendResetPasswordEmail(
   to: string, 
   params: ResetPasswordEmailParams,
   options: Omit<SendEmailOptions, 'to' | 'subject' | 'html'> = {}
-) {
+): Promise<EmailResponse> {
   const { subject, html } = templates.resetPassword(params);
   
   return sendEmail({
@@ -128,7 +146,7 @@ export async function sendTemplateEmail(
   to: string, 
   template: EmailTemplate,
   options: Omit<SendEmailOptions, 'to' | 'subject' | 'html'> = {}
-) {
+): Promise<EmailResponse> {
   return sendEmail({
     to,
     subject: template.subject,

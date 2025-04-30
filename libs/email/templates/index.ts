@@ -1,10 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import mjml2html from 'mjml';
 import Handlebars from 'handlebars';
 import { Locale } from '../../i18n/locales/types';
 import { en } from '../../i18n/locales/en';
 import { zhCN } from '../../i18n/locales/zh-CN';
+
+// Get directory name for the current module
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // 支持的语言包
 export const locales: Record<string, Locale> = {
@@ -80,7 +84,7 @@ function prepareTranslationData(params: VerificationEmailParams | ResetPasswordE
  */
 export function generateVerificationEmail(params: VerificationEmailParams): EmailTemplate {
   // 读取MJML模板
-  const templatePath = path.join(__dirname, 'verification.mjml');
+  const templatePath = path.resolve(__dirname, './verification.mjml');
   const mjmlTemplate = fs.readFileSync(templatePath, 'utf8');
   
   // 准备翻译数据
@@ -111,7 +115,7 @@ export function generateVerificationEmail(params: VerificationEmailParams): Emai
  */
 export function generateResetPasswordEmail(params: ResetPasswordEmailParams): EmailTemplate {
   // 读取MJML模板
-  const templatePath = path.join(__dirname, 'reset-password.mjml');
+  const templatePath = path.resolve(__dirname, './reset-password.mjml');
   const mjmlTemplate = fs.readFileSync(templatePath, 'utf8');
   
   // 准备翻译数据
