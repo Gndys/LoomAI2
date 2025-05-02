@@ -1,195 +1,123 @@
-# ShipEasy Email Module
+# Email Service
 
-这个模块使用 MJML 来创建响应式电子邮件模板，并提供了发送这些模板的通用函数。支持多种邮件服务提供商，可以根据需要进行配置。
+这个服务提供了一个统一的邮件发送接口，支持多个邮件服务提供商。目前支持 Resend，计划支持 SendGrid 和 SMTP。
 
-## MJML 预览
+## 配置
 
-在开发新的电子邮件模板或修改现有模板时，可以使用 MJML 官方提供的在线预览工具来实时查看邮件的渲染效果：
+配置分为两部分：
+- 敏感信息（如 API 密钥、密码等）通过环境变量配置
+- 非敏感信息（如默认提供商、服务器地址等）直接在 `config.ts` 中配置
 
-[MJML 在线预览工具](https://mjml.io/try-it-live/)
+### 环境变量
 
-只需将 `.mjml` 文件中的代码复制到左侧编辑器中，右侧即可实时显示渲染后的邮件效果，支持移动和桌面视图的切换。
+复制 `.env.example` 文件为 `.env`，并填入敏感信息：
 
-## 使用示例
+```env
+# Resend 配置（敏感信息）
+RESEND_API_KEY=your_resend_api_key
 
-### 发送验证邮件（支持国际化和多种邮件服务提供商）
+# SendGrid 配置（敏感信息）
+SENDGRID_API_KEY=your_sendgrid_api_key
 
-```typescript
-import { sendVerificationEmail } from '@libs/email';
-
-// 在用户注册/请求重置密码后调用
-async function handleUserRegistration(user: User) {
-  const verificationToken = generateVerificationToken(); // 自定义函数
-  const verificationUrl = `https://your-app.com/verify?token=${verificationToken}`;
-
-  try {
-    // 根据用户偏好设置选择语言，默认为英文
-    const locale = user.preferredLanguage || 'en'; // 可选值: 'en', 'zh-CN'
-    
-    await sendVerificationEmail(user.email, {
-      name: user.name,
-      verification_url: verificationUrl,
-      expiry_hours: 24,
-      locale // 传入语言选项
-    }, {
-      // 可选配置
-      from: 'custom@example.com', // 自定义发件人
-      provider: 'resend', // 指定发送服务提供商，默认为 'resend'
-      cc: 'admin@example.com', // 可选抄送
-      bcc: ['archive@example.com'], // 可选密送
-      replyTo: 'support@example.com' // 可选回复地址
-    });
-    
-    console.log('Verification email sent successfully!');
-  } catch (error) {
-    console.error('Failed to send verification email:', error);
-  }
-}
+# SMTP 配置（敏感信息）
+SMTP_USERNAME=your_smtp_username
+SMTP_PASSWORD=your_smtp_password
 ```
 
-### 发送重置密码邮件
+### 配置文件
+
+`config.ts` 文件中的 Email 配置结构：
 
 ```typescript
-import { sendResetPasswordEmail } from '@libs/email';
+export const config = {
+  email: {
+    // 默认的邮件服务提供商
+    defaultProvider: 'resend',
 
-// 在用户请求重置密码后调用
-async function handlePasswordReset(user: User) {
-  const resetToken = generateResetToken(); // 自定义函数
-  const resetUrl = `https://your-app.com/reset-password?token=${resetToken}`;
+    // 默认发件人邮箱
+    defaultFrom: 'noreply@example.com',
 
-  try {
-    // 根据用户偏好设置选择语言，默认为英文
-    const locale = user.preferredLanguage || 'en'; // 可选值: 'en', 'zh-CN'
-    
-    await sendResetPasswordEmail(user.email, {
-      name: user.name,
-      reset_url: resetUrl,
-      expiry_hours: 24,
-      locale // 传入语言选项
-    }, {
-      // 可选配置
-      from: 'security@example.com', // 自定义发件人
-      provider: 'resend', // 指定发送服务提供商，默认为 'resend'
-      replyTo: 'support@example.com' // 可选回复地址
-    });
-    
-    console.log('Password reset email sent successfully!');
-  } catch (error) {
-    console.error('Failed to send password reset email:', error);
+    // Resend 配置
+    resend: {
+      apiKey: requireEnv('RESEND_API_KEY'),  // 敏感信息：从环境变量获取
+    },
+
+    // SendGrid 配置
+    sendgrid: {
+      apiKey: requireEnv('SENDGRID_API_KEY'),  // 敏感信息：从环境变量获取
+    },
+
+    // SMTP 配置
+    smtp: {
+      host: 'smtp.example.com',              // 固定值
+      port: 587,                             // 固定值
+      username: requireEnv('SMTP_USERNAME'), // 敏感信息：从环境变量获取
+      password: requireEnv('SMTP_PASSWORD'), // 敏感信息：从环境变量获取
+      secure: true,                          // 固定值
+    }
   }
-}
+};
 ```
 
-### 在 Next.js API 路由中使用
+## 使用方法
+
+### 基本使用
 
 ```typescript
-// pages/api/auth/register.ts
-import { sendVerificationEmail } from '@libs/email';
+import { sendEmail } from '@libs/email';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
+// 使用默认提供商发送邮件
+await sendEmail({
+  to: 'user@example.com',
+  subject: '欢迎使用我们的服务',
+  html: '<h1>欢迎！</h1><p>感谢您注册我们的服务。</p>'
+});
 
-  try {
-    const { email, name, locale = 'en' } = req.body;
-    // 创建用户、生成token等...
-    
-    await sendVerificationEmail(email, {
-      name,
-      verification_url: `https://your-app.com/verify?token=your-token`,
-      expiry_hours: 24,
-      locale // 从请求中获取语言设置
-    }, {
-      // 可以在不同环境中使用不同的邮件服务
-      provider: process.env.NODE_ENV === 'production' ? 'resend' : 'smtp'
-    });
-    
-    return res.status(200).json({ message: '验证邮件已发送' });
-  } catch (error) {
-    return res.status(500).json({ message: '发送邮件失败', error: error.message });
-  }
-}
-```
+// 使用指定提供商发送邮件
+await sendEmail({
+  to: 'user@example.com',
+  subject: 'Welcome',
+  html: '<h1>Welcome!</h1><p>Thanks for signing up.</p>',
+  provider: 'sendgrid'
+});
 
-### 在 Nuxt 服务器路由中使用
-
-```typescript
-// server/api/auth/register.ts
-import { sendVerificationEmail } from '@libs/email';
-
-export default defineEventHandler(async (event) => {
-  const body = await readBody(event);
-  const { email, name, locale = 'en' } = body;
-  
-  try {
-    // 创建用户、生成token等...
-    
-    await sendVerificationEmail(email, {
-      name,
-      verification_url: `https://your-app.com/verify?token=your-token`,
-      expiry_hours: 24,
-      locale // 从请求中获取语言设置
-    });
-    
-    return { message: '验证邮件已发送' };
-  } catch (error) {
-    throw createError({
-      statusCode: 500,
-      message: '发送邮件失败',
-      data: error
-    });
-  }
+// 使用自定义发件人
+await sendEmail({
+  to: 'user@example.com',
+  from: 'support@example.com',
+  subject: 'Hello',
+  html: '<p>Hello World</p>',
+  cc: ['admin@example.com'],
+  bcc: ['archive@example.com'],
+  replyTo: 'support@example.com'
 });
 ```
 
-## 支持的邮件服务提供商
+### 响应格式
 
-目前模块支持以下邮件服务提供商：
-
-- **Resend** (`provider: 'resend'`) - 默认服务提供商
-- **SendGrid** (`provider: 'sendgrid'`) - 即将支持
-- **Mailchimp** (`provider: 'mailchimp'`) - 即将支持
-- **SMTP** (`provider: 'smtp'`) - 即将支持
-
-你可以通过配置 `provider` 参数来选择使用哪个服务提供商。添加新的提供商只需要实现对应的发送函数并更新 `sendEmail` 方法。
-
-## 支持的语言
-
-目前模板支持以下语言：
-- 英文 (`en`)
-- 简体中文 (`zh-CN`)
-
-可以通过在参数中添加 `locale` 属性来指定使用哪种语言。
-
-## 添加新模板
-
-1. 在 `templates/` 目录下创建新的 MJML 模板文件 (例如 `welcome.mjml`)
-2. 在 `i18n/locales/types.ts` 添加新的翻译类型定义
-3. 在 `i18n/locales/en.ts` 和 `i18n/locales/zh-CN.ts` 添加对应翻译
-4. 在 `templates/index.ts` 中添加新的接口和生成函数
-5. 在 `templates-sender.ts` 中添加发送新模板的辅助函数
-6. 使用 [MJML 在线预览工具](https://mjml.io/try-it-live/) 测试你的模板效果
-
-## 添加新的邮件服务提供商
-
-1. 创建新的服务提供商文件 (例如 `sendgrid.ts`)
-2. 实现发送接口，确保兼容 `ShipEasyEmailOptions` 类型
-3. 在 `templates-sender.ts` 中更新 `EmailProvider` 类型和 `sendEmail` 函数
-
-## 环境变量
-
-根据选择的邮件服务提供商，需要设置相应的环境变量：
-
-### Resend
-```
-RESEND_API_KEY=your_resend_api_key
+```typescript
+interface EmailResponse {
+  success: boolean;        // 发送是否成功
+  id?: string;            // 邮件ID
+  error?: {
+    message: string;
+    name: string;
+    provider?: 'resend' | 'sendgrid' | 'smtp';
+  } | null;
+}
 ```
 
-### SendGrid (即将支持)
-```
-SENDGRID_API_KEY=your_sendgrid_api_key
-```
+## 添加新的服务提供商
 
-### 其他提供商
-根据具体的提供商配置相应的环境变量。 
+1. 在 `.env.example` 和 `.env` 中添加新提供商所需的敏感信息
+2. 在 `config.ts` 中的 `email` 配置中添加新提供商的配置（区分敏感和非敏感信息）
+3. 在 `providers` 目录下创建新的提供商实现文件
+4. 在 `types.ts` 中的 `EmailProvider` 类型中添加新的提供商
+5. 在 `email-sender.ts` 中添加新的 case 处理
+
+## 注意事项
+
+- 确保在使用前正确配置所有必需的环境变量（仅敏感信息）
+- 在 `config.ts` 中直接配置非敏感信息
+- 不同提供商可能需要不同的配置参数
+- 建议在生产环境中使用错误处理和重试机制 

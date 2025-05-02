@@ -1,9 +1,4 @@
----
-description: 
-globs: 
-alwaysApply: false
----
- # Email Template Development Guidelines
+# Email Template Development Guidelines
 
 ## File Structure
 
@@ -183,4 +178,4 @@ export type Locale = {
    - Support multiple providers
    - Allow environment-based selection
    - Implement retry logic
-   - Handle rate limits
+   - Handle rate limits 

@@ -1,3 +1,127 @@
+# Email Service
+
+This service provides a unified email sending interface that supports multiple email service providers. Currently supports Resend, with planned support for SendGrid and SMTP.
+
+## Configuration
+
+Configuration is divided into two parts:
+- Sensitive information (like API keys, passwords, etc.) configured through environment variables
+- Non-sensitive information (like default provider, server addresses, etc.) configured directly in `config.ts`
+
+### Environment Variables
+
+Copy `.env.example` file to `.env` and fill in the sensitive information:
+
+```env
+# Resend Configuration (Sensitive)
+RESEND_API_KEY=your_resend_api_key
+
+# SendGrid Configuration (Sensitive)
+SENDGRID_API_KEY=your_sendgrid_api_key
+
+# SMTP Configuration (Sensitive)
+SMTP_USERNAME=your_smtp_username
+SMTP_PASSWORD=your_smtp_password
+```
+
+### Configuration File
+
+Email configuration structure in `config.ts`:
+
+```typescript
+export const config = {
+  email: {
+    // Default email service provider
+    defaultProvider: 'resend',
+
+    // Default sender email
+    defaultFrom: 'noreply@example.com',
+
+    // Resend configuration
+    resend: {
+      apiKey: requireEnv('RESEND_API_KEY'),  // Sensitive: from env vars
+    },
+
+    // SendGrid configuration
+    sendgrid: {
+      apiKey: requireEnv('SENDGRID_API_KEY'),  // Sensitive: from env vars
+    },
+
+    // SMTP configuration
+    smtp: {
+      host: 'smtp.example.com',              // Fixed value
+      port: 587,                             // Fixed value
+      username: requireEnv('SMTP_USERNAME'), // Sensitive: from env vars
+      password: requireEnv('SMTP_PASSWORD'), // Sensitive: from env vars
+      secure: true,                          // Fixed value
+    }
+  }
+};
+```
+
+## Usage
+
+### Basic Usage
+
+```typescript
+import { sendEmail } from '@libs/email';
+
+// Send email using default provider
+await sendEmail({
+  to: 'user@example.com',
+  subject: 'Welcome to our service',
+  html: '<h1>Welcome!</h1><p>Thank you for signing up.</p>'
+});
+
+// Send email using specific provider
+await sendEmail({
+  to: 'user@example.com',
+  subject: 'Welcome',
+  html: '<h1>Welcome!</h1><p>Thanks for signing up.</p>',
+  provider: 'sendgrid'
+});
+
+// Send email with custom sender
+await sendEmail({
+  to: 'user@example.com',
+  from: 'support@example.com',
+  subject: 'Hello',
+  html: '<p>Hello World</p>',
+  cc: ['admin@example.com'],
+  bcc: ['archive@example.com'],
+  replyTo: 'support@example.com'
+});
+```
+
+### Response Format
+
+```typescript
+interface EmailResponse {
+  success: boolean;        // Whether the send was successful
+  id?: string;            // Email ID
+  error?: {
+    message: string;
+    name: string;
+    provider?: 'resend' | 'sendgrid' | 'smtp';
+  } | null;
+}
+```
+
+## Adding New Service Providers
+
+1. Add required sensitive information for the new provider in `.env.example` and `.env`
+2. Add new provider configuration in `config.ts` under the `email` config (separate sensitive and non-sensitive information)
+3. Create new provider implementation file in the `providers` directory
+4. Add new provider to `EmailProvider` type in `types.ts`
+5. Add new case handling in `email-sender.ts`
+
+## Important Notes
+
+- Ensure all required environment variables are properly configured (sensitive information only)
+- Configure non-sensitive information directly in `config.ts`
+- Different providers may require different configuration parameters
+- Error handling and retry mechanisms are recommended in production environments
+
 # ShipEasy Email Module
 
 This module uses MJML to create responsive email templates and provides generic functions for sending these templates. It supports multiple email service providers and can be configured according to your needs.

@@ -9,6 +9,7 @@ import { emailSignInSchema, emailSignUpSchema } from '@libs/validators/user'
 import { wechatPlugin } from './plugins/wechat'
 import { sendVerificationEmail, sendResetPasswordEmail } from '@libs/email'
 import { locales, defaultLocale } from '@libs/email/templates'
+import { config } from '@config'
 export { toNextJsHandler } from "better-auth/next-js";
 
 /**
@@ -52,7 +53,7 @@ export const auth = betterAuth({
   // https://www.better-auth.com/docs/concepts/email
   emailAndPassword: {
     enabled: true,
-    autoSignIn: false, //defaults to true
+    autoSignIn: false,
     requireEmailVerification: true,
     sendResetPassword: async ({user, url, token}, request) => {
       // 从 referer 中获取语言信息
@@ -63,7 +64,7 @@ export const auth = betterAuth({
         await sendResetPasswordEmail(user.email, {
           name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
           reset_url: url,
-          expiry_hours: 1, // 假设链接24小时后过期，可以根据实际情况调整
+          expiry_hours: 1,
           locale: locale as 'en' | 'zh-CN' // 类型转换
         });
         
@@ -93,7 +94,7 @@ export const auth = betterAuth({
         await sendVerificationEmail(user.email, {
           name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
           verification_url: url,
-          expiry_hours: 1, // 假设链接1小时后过期，可以根据实际情况调整
+          expiry_hours: 1,
           locale: locale as 'en' | 'zh-CN' // 类型转换
         });
         
@@ -107,62 +108,30 @@ export const auth = betterAuth({
 
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: config.auth.socialProviders.google.clientId!,
+      clientSecret: config.auth.socialProviders.google.clientSecret!,
     },
     github: {
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      clientId: config.auth.socialProviders.github.clientId!,
+      clientSecret: config.auth.socialProviders.github.clientSecret!,
     }
   },
   account: {
     accountLinking: {
       enabled: true,
-      trustedProviders: ["google", "github", "wechat"] 
+      trustedProviders: ["google", "github", "wechat"]
     }
   },
   plugins: [
     // https://www.better-auth.com/docs/plugins/admin
-    admin(
-      {
-        adminRoles: ["admin"],
-      }
-    ),
-    // https://www.better-auth.com/docs/plugins/generic-oauth#custom-user-info-fetching
-    // https://developers.weixin.qq.com/doc/oplatform/Website_App/WeChat_Login/Wechat_Login.html
-    // genericOAuth({
-    //   config: [
-    //     {
-    //       providerId: "wechat",
-    //       clientId: process.env.WECHAT_APP_ID!,
-    //       clientSecret: process.env.WECHAT_APP_SECRET!,
-    //       authorizationUrl: "https://open.weixin.qq.com/connect/qrconnect",
-    //       tokenUrl: "https://api.weixin.qq.com/sns/oauth2/access_token",
-    //       userInfoUrl: "https://api.weixin.qq.com/sns/userinfo",
-    //       scopes: ["snsapi_login"],
-    //       getUserInfo: async (tokens) => {
-    //         const wechatTokens = tokens as unknown as WeChatTokens;
-    //         const response = await fetch(`https://api.weixin.qq.com/sns/userinfo?access_token=${wechatTokens.accessToken}&openid=${wechatTokens.openid}&lang=zh_CN`);
-    //         const profile = await response.json();
-            
-    //         return {
-    //           id: profile.unionid || profile.openid,
-    //           name: profile.nickname,
-    //           email: `${profile.openid}@wechat.com`,  // 微信不提供邮箱，我们创建一个虚拟邮箱
-    //           emailVerified: true,
-    //           image: profile.headimgurl,
-    //           createdAt: new Date(),
-    //           updatedAt: new Date()
-    //         };
-    //       }
-    //     }
-    //   ]
-    // }),
+    admin({
+      adminRoles: ["admin"],
+    }),
 
-    // 添加微信插件
+    // 添加微信登录插件
     wechatPlugin({
-      appId: process.env.WECHAT_APP_ID!,
-      appSecret: process.env.WECHAT_APP_SECRET!,
+      appId: config.auth.socialProviders.wechat.appId!,
+      appSecret: config.auth.socialProviders.wechat.appSecret!,
     }),
 
     // https://www.better-auth.com/docs/plugins/phone-number
