@@ -1,0 +1,166 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Payment Integration Guidelines
+
+## Overview
+The payment system supports both WeChat Pay and Stripe, handling one-time payments and subscriptions through a factory-based implementation.
+
+## Key Concepts
+
+### Provider Types
+- `stripe`: Stripe Checkout Session based implementation
+- `wechat`: WeChat Native QR code based implementation
+
+### Payment Flow
+1. Create order record in database
+2. Create payment provider instance using factory
+3. Initialize payment and get payment URL
+4. Handle webhook notifications for status updates
+
+## Implementation Guide
+
+### 1. Creating Payment Provider
+```typescript
+import { createPaymentProvider } from '@/libs/payment';
+
+// Create Stripe provider
+const stripeProvider = createPaymentProvider('stripe');
+// Or WeChat provider
+const wechatProvider = createPaymentProvider('wechat');
+```
+
+### 2. Initiating Payment
+```typescript
+const result = await provider.createPayment({
+  orderId: string,    // Unique order ID
+  userId: string,     // User ID
+  planId: string,     // Plan ID from config.payment.plans
+  amount: number,     // Payment amount
+  currency: string,   // Currency code (e.g., 'CNY', 'USD')
+  provider: string,   // 'stripe' or 'wechat'
+  metadata?: {        // Optional metadata
+    clientIp?: string,
+    [key: string]: any
+  }
+});
+
+// Result contains:
+// - paymentUrl: URL for payment (Stripe checkout URL or WeChat QR code URL)
+// - providerOrderId: Provider's order ID
+// - metadata: Additional provider-specific information
+```
+
+### 3. Handling Webhooks
+```typescript
+app.post('/api/webhook/:provider', async (req, res) => {
+  const provider = createPaymentProvider(req.params.provider);
+  const result = await provider.handleWebhook(
+    req.body,
+    req.headers['stripe-signature'] || req.headers['wechat-signature']
+  );
+  res.status(200).json(result);
+});
+```
+
+### 4. Querying Order Status
+```typescript
+const status = await provider.queryOrder(orderId);
+```
+
+## Configuration Requirements
+
+### Environment Variables
+```env
+# Stripe Configuration
+STRIPE_SECRET_KEY=sk_...
+STRIPE_PUBLIC_KEY=pk_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# WeChat Pay Configuration
+WECHAT_PAY_APP_ID=wx...
+WECHAT_PAY_MCH_ID=...
+WECHAT_PAY_API_KEY=...
+WECHAT_PAY_NOTIFY_URL=...
+WECHAT_PAY_PUBLIC_KEY_PATH=...
+WECHAT_PAY_PRIVATE_KEY_PATH=...
+```
+
+### Config File
+```typescript
+// config.ts
+export const config = {
+  payment: {
+    providers: {
+      stripe: {
+        secretKey: string,
+        publicKey: string,
+        webhookSecret: string
+      },
+      wechat: {
+        appId: string,
+        mchId: string,
+        apiKey: string,
+        notifyUrl: string
+      }
+    },
+    plans: {
+      [planId: string]: {
+        id: string,
+        name: string,
+        description: string,
+        amount: number,
+        currency: string,
+        duration: {
+          type: 'recurring' | 'one_time',
+          months: number,
+          description: string
+        },
+        stripePriceId?: string,
+        stripeProductId?: string
+      }
+    }
+  }
+};
+```
+
+## Best Practices
+
+1. **Error Handling**
+   - Always wrap payment operations in try-catch blocks
+   - Log payment errors with order IDs for tracking
+   - Return appropriate error responses to clients
+
+2. **Webhook Security**
+   - Verify webhook signatures
+   - Process webhooks idempotently
+   - Return 200 status quickly
+
+3. **Order Management**
+   - Create order record before payment
+   - Update order status after webhook
+   - Handle payment timeouts
+
+4. **Testing**
+   - Use test mode configurations
+   - Test both success and failure scenarios
+   - Verify webhook handling
+
+## Common Issues
+
+1. **Webhook Handling**
+   - Ensure correct signature verification
+   - Handle all relevant event types
+   - Implement proper error handling
+
+2. **Payment Status**
+   - Handle payment timeout scenarios
+   - Implement status polling for WeChat Pay
+   - Update order status appropriately
+
+3. **Configuration**
+   - Verify all required environment variables
+   - Check certificate paths for WeChat Pay
+   - Validate webhook URLs 

@@ -277,5 +277,51 @@ export type Locale = {
       }
     }
   }
+  pricing: {
+    title: string;
+    subtitle: string;
+    cta: string;
+    plans: {
+      monthly: {
+        name: string;
+        description: string;
+        duration: string;
+        features: Record<string, string>;
+      };
+      yearly: {
+        name: string;
+        description: string;
+        duration: string;
+        features: Record<string, string>;
+      };
+      lifetime: {
+        name: string;
+        description: string;
+        duration: string;
+        features: Record<string, string>;
+      };
+    };
+  }
+  payment: {
+    result: {
+      success: {
+        title: string
+        description: string
+        actions: {
+          viewSubscription: string
+          backToHome: string
+        }
+      }
+      cancel: {
+        title: string
+        description: string
+        actions: {
+          tryAgain: string
+          contactSupport: string
+          backToHome: string
+        }
+      }
+    }
+  }
 } 
  

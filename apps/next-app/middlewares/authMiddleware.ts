@@ -5,6 +5,7 @@ import { i18n } from '../app/i18n-config';
 
 // Import necessary items from your permissions library
 import { can, Action, Subject, AppUser, Role } from "@libs/permissions"; 
+import { hasValidSubscription } from "./subscriptionMiddleware";
 
 // Define the structure for protected route configuration
 interface ProtectedRouteConfig {
@@ -15,6 +16,7 @@ interface ProtectedRouteConfig {
     action: Action; 
     subject: Subject; // Subject must be from the Subject enum
   };
+  requiresSubscription?: boolean; // New field to indicate if route requires subscription
 }
 
 // --- Configuration for Protected Routes ---
@@ -30,9 +32,24 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     type: 'page',
   },
   {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/dashboard(\\/.*)?$`), 
+    type: 'page',
+    requiresSubscription: true // 付费区域
+  },
+  {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/premium-features(\\/.*)?$`), 
+    type: 'page',
+    requiresSubscription: true // 高级功能区域
+  },
+  {
     pattern: new RegExp('^/api/users(\\/.*)?$'),
     type: 'api',
     requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
+  },
+  {
+    pattern: new RegExp('^/api/premium(\\/.*)?$'), 
+    type: 'api',
+    requiresSubscription: true
   },
   {
     pattern: new RegExp('^/api/chat(\\/.*)?$'), 
@@ -76,7 +93,24 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
     }
   }
 
-  // --- 2. Authorization Check (Ability-Based) ---
+  // --- 2. Subscription Check (if required) ---
+  if (matchedRoute.requiresSubscription) {
+    console.log(`Subscription check for: ${pathname}, User: ${session!.user?.id}`);
+    const hasSubscription = await hasValidSubscription(session!.user?.id!);
+    
+    if (!hasSubscription) {
+      console.log(`Subscription check failed for: ${pathname}, User: ${session!.user?.id}`);
+      if (matchedRoute.type === 'page') {
+        const currentLocale = pathname.split('/')[1];
+        const pricingUrl = new URL(`/${currentLocale}/pricing`, request.url);
+        return NextResponse.redirect(pricingUrl);
+      } else if (matchedRoute.type === 'api') {
+        return new NextResponse('Subscription required', { status: 402 });
+      }
+    }
+  }
+
+  // --- 3. Authorization Check (Ability-Based) ---
   console.log(`Authentication successful for: ${pathname}, User: ${session!.user?.id}`);
   const requiredPermission = matchedRoute.requiredPermission;
 
@@ -89,10 +123,14 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
     }
 
     // Map session.user to AppUser type expected by @libs/permissions
-
+    // 确保所有必要的字段都被映射，如果缺少字段则使用默认值
+    const appUser = {
+      ...userFromSession,
+      role: userFromSession.role as Role || Role.NORMAL
+    } as AppUser;
 
     // Check permissions
-    const hasPermission = can(userFromSession as AppUser, requiredPermission.action, requiredPermission.subject);
+    const hasPermission = can(appUser, requiredPermission.action, requiredPermission.subject);
 
     if (!hasPermission) {
       console.log(`Authorization failed (insufficient permissions) for user ${userFromSession.id} on ${pathname} (Action: ${requiredPermission.action}, Subject: ${requiredPermission.subject})`);

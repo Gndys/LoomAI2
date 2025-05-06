@@ -278,5 +278,62 @@ export const zhCN: Locale = {
         }
       }
     }
+  },
+  pricing: {
+    title: "定价",
+    subtitle: "选择最适合您的方案",
+    cta: "立即开始",
+    plans: {
+      monthly: {
+        name: "月度订阅",
+        description: "灵活管理，按月付费",
+        duration: "月",
+        features: {
+          "所有高级功能": "所有高级功能",
+          "优先支持": "优先支持"
+        }
+      },
+      yearly: {
+        name: "年度订阅",
+        description: "年付更优惠",
+        duration: "年",
+        features: {
+          "所有高级功能": "所有高级功能",
+          "优先支持": "优先支持",
+          "两个月免费": "两个月免费"
+        }
+      },
+      lifetime: {
+        name: "终身会员",
+        description: "一次付费，永久使用",
+        duration: "终身",
+        features: {
+          "所有高级功能": "所有高级功能",
+          "优先支持": "优先支持",
+          "终身免费更新": "终身免费更新"
+        }
+      }
+    }
+  },
+  payment: {
+    result: {
+      success: {
+        title: '支付成功',
+        description: '感谢您的付款。您的订阅已经激活。',
+        actions: {
+          viewSubscription: '查看订阅',
+          backToHome: '返回首页'
+        }
+      },
+      cancel: {
+        title: '支付已取消',
+        description: '您的支付已取消。如有任何问题，请联系我们的支持团队。',
+        actions: {
+          tryAgain: '重新尝试',
+          contactSupport: '联系支持',
+          backToHome: '返回首页'
+        }
+      }
+    }
   }
-} 
+} as const; 

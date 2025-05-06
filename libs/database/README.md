@@ -16,7 +16,7 @@ DATABASE_URL=postgresql://username:password@localhost:5432/shipeasy
 
 ```typescript
 // 导入数据库客户端和模型
-import { db, users, subscriptions } from "../../libs/database";
+import { db, users, subscriptions, orders } from "../../libs/database";
 
 // 查询用户
 const user = await db.select().from(users).where(eq(users.email, "user@example.com"));
@@ -24,11 +24,20 @@ const user = await db.select().from(users).where(eq(users.email, "user@example.c
 // 创建订阅
 await db.insert(subscriptions).values({
   userId: user[0].id,
-  planId: "basic",
   status: "active",
   paymentType: "one_time",
   startDate: new Date(),
   endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30天后
+});
+
+// 创建支付订单
+await db.insert(orders).values({
+  userId: user[0].id,
+  amount: 100,
+  currency: "CNY",
+  description: "高级会员 - 1个月",
+  provider: "wechat",
+  status: "pending"
 });
 ```
 
@@ -47,6 +56,15 @@ await db.insert(subscriptions).values({
 - 一次性付款
 - 订阅付款
 - 有效期跟踪
+
+### 订单 (Orders)
+
+订单表管理所有支付交易记录，包括:
+- 基本支付信息 (金额、币种、商品描述)
+- 支付状态跟踪 (pending, paid, failed, refunded)
+- 支付提供商信息 (微信支付、Stripe)
+- 关联订阅ID (可选)
+- 支付平台返回的额外信息
 
 ### 会话 (Sessions)
 

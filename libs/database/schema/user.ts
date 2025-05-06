@@ -5,8 +5,8 @@ import { userRoles } from "../constants";
 // 用户表
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
+  name: text("name"),
+  email: text("email").notNull(),
   emailVerified: boolean('email_verified').notNull(),
   image: text("image"),
   role: text("role").default(userRoles.USER).notNull(),
@@ -18,6 +18,8 @@ export const user = pgTable("user", {
   phoneNumber: text("phone_number"),
   phoneNumberVerified: boolean("phone_number_verified").default(false),
 
+  // 支付相关
+  stripeCustomerId: text("stripe_customer_id"),
   // better-auth admin  https://www.better-auth.com/docs/plugins/admin#schema
   banned: boolean('banned').default(false),
   banReason: text('ban_reason'),

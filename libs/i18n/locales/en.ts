@@ -278,5 +278,62 @@ export const en: Locale = {
         }
       }
     }
+  },
+  pricing: {
+    title: "Pricing",
+    subtitle: "Choose the plan that's right for you",
+    cta: "Get started",
+    plans: {
+      monthly: {
+        name: "Monthly Plan",
+        description: "Perfect for short-term projects",
+        duration: "month",
+        features: {
+          "所有高级功能": "All premium features",
+          "优先支持": "Priority support"
+        }
+      },
+      yearly: {
+        name: "Annual Plan",
+        description: "Best value for long-term use",
+        duration: "year",
+        features: {
+          "所有高级功能": "All premium features",
+          "优先支持": "Priority support",
+          "两个月免费": "2 months free"
+        }
+      },
+      lifetime: {
+        name: "Lifetime",
+        description: "One-time payment, lifetime access",
+        duration: "lifetime",
+        features: {
+          "所有高级功能": "All premium features",
+          "优先支持": "Priority support",
+          "终身免费更新": "Free lifetime updates"
+        }
+      }
+    }
+  },
+  payment: {
+    result: {
+      success: {
+        title: 'Payment Successful',
+        description: 'Thank you for your payment. Your subscription has been activated.',
+        actions: {
+          viewSubscription: 'View Subscription',
+          backToHome: 'Back to Home'
+        }
+      },
+      cancel: {
+        title: 'Payment Cancelled',
+        description: 'Your payment was cancelled. If you have any questions, please contact our support team.',
+        actions: {
+          tryAgain: 'Try Again',
+          contactSupport: 'Contact Support',
+          backToHome: 'Back to Home'
+        }
+      }
+    }
   }
-} 
+} as const; 

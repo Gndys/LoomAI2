@@ -1,92 +1,70 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { Action, AppUser, Subject } from './types';
 import { can, mapDatabaseRoleToAppRole } from './utils';
 
 /**
- * NextJS 中间件示例：权限检查
- * 使用方式：在 Next.js 路由处理函数中调用
+ * 通用权限检查函数
+ * 可用于任何框架的中间件或路由处理器
  */
-export async function checkPermission(
-  req: NextRequest, 
+export function checkPermission(
+  user: AppUser | null | undefined,
   action: Action,
   subject: Subject,
   data?: any
-) {
-  // 假设从请求中获取用户信息
-  // 实际使用时，需要根据你的认证系统获取当前用户信息
-  const user = req.headers.get('x-user-info') 
-    ? JSON.parse(req.headers.get('x-user-info') || '{}')
-    : null;
-
-  if (!user) {
-    return NextResponse.json(
-      { message: '未授权访问' },
-      { status: 401 }
-    );
-  }
-
-  // 将会话用户转换为 AppUser (包含角色)
-  const appUser: AppUser = {
-    ...user,
-    role: mapDatabaseRoleToAppRole(user.role || 'normal')
-  };
-
-  // 检查权限
-  if (!can(appUser, action, subject, data)) {
-    return NextResponse.json(
-      { message: '权限不足' },
-      { status: 403 }
-    );
-  }
-
-  // 通过权限检查
-  return null;
+): boolean {
+  if (!user) return false;
+  return can(user, action, subject, data);
 }
 
 /**
- * Express/Nest.js 中间件示例
- * 使用方式：作为 Express/Nest.js 中间件使用
+ * 将数据库用户转换为带有角色的AppUser
  */
-export const permissionMiddleware = (action: Action, subject: Subject, data?: any) => {
-  return (req: any, res: any, next: any) => {
-    const user = req.user; // 假设用户已由认证中间件放入 req.user
-    
-    if (!user) {
-      return res.status(401).json({ message: '未授权访问' });
-    }
+export function createAppUser(user: any, defaultRole = 'normal'): AppUser {
+  if (!user) return null as unknown as AppUser;
 
-    // 将用户转换为 AppUser (包含角色)
-    const appUser: AppUser = {
-      ...user,
-      role: mapDatabaseRoleToAppRole(user.role || 'normal')
-    };
-
-    // 检查权限
-    if (!can(appUser, action, subject, data)) {
-      return res.status(403).json({ message: '权限不足' });
-    }
-
-    // 通过权限检查
-    next();
+  return {
+    ...user,
+    role: mapDatabaseRoleToAppRole(user.role || defaultRole)
   };
-};
+}
 
 /**
- * React 组件权限校验 Hook 示例
- * 使用示例：
+ * 权限检查辅助函数示例
  * 
- * ```tsx
- * function AdminSettingsPage() {
- *   const hasAccess = usePermission(Action.READ, Subject.SETTING);
+ * 使用示例:
+ * 
+ * ```typescript
+ * // Express/Nest.js 中间件
+ * export const permissionMiddleware = (action: Action, subject: Subject) => {
+ *   return (req, res, next) => {
+ *     const user = req.user; // 假设用户已由认证中间件放入 req.user
+ *     
+ *     if (!user) {
+ *       return res.status(401).json({ message: '未授权访问' });
+ *     }
+ *     
+ *     // 创建 AppUser
+ *     const appUser = createAppUser(user);
+ *     
+ *     // 检查权限
+ *     if (!checkPermission(appUser, action, subject)) {
+ *       return res.status(403).json({ message: '权限不足' });
+ *     }
+ *     
+ *     // 通过权限检查
+ *     next();
+ *   };
+ * };
+ * 
+ * // Next.js API 路由
+ * export default async function handler(req, res) {
+ *   const session = await getSession({ req });
+ *   const appUser = createAppUser(session?.user);
  *   
- *   if (!hasAccess) {
- *     return <AccessDenied />;
+ *   if (!checkPermission(appUser, Action.CREATE, Subject.PROJECT)) {
+ *     return res.status(403).json({ message: '权限不足' });
  *   }
  *   
- *   return <SettingsPanel />;
+ *   // 继续处理请求...
  * }
  * ```
- */
-export const checkComponentPermission = (user: AppUser | null, action: Action, subject: Subject, data?: any): boolean => {
-  return can(user, action, subject, data);
-}; 
+ */ 
