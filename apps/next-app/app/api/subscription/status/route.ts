@@ -21,6 +21,7 @@ export async function GET(request: Request) {
   
   // 检查订阅状态
   const subscription = await checkSubscriptionStatus(userId);
+  console.log('subscription', subscription);
   const isLifetime = await isLifetimeMember(userId);
   
   return NextResponse.json({

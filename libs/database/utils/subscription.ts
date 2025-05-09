@@ -18,7 +18,6 @@ export async function checkSubscriptionStatus(userId: string) {
       )
     )
     .limit(1);
-
   if (!userSub.length) return null;
 
   // 检查是否过期
@@ -29,7 +28,7 @@ export async function checkSubscriptionStatus(userId: string) {
   if (metadata.isLifetime) {
     return { ...sub, isLifetime: true };
   }
-  
+  console.log('sub.periodEnd', sub);
   // 检查是否过期
   if (sub.periodEnd < new Date()) {
     // 更新状态

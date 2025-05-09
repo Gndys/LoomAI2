@@ -1,6 +1,5 @@
 import Stripe from 'stripe';
 import { config } from '@config';
-import type { RecurringPlan, OneTimePlan } from '@config';
 import { 
   PaymentProvider, 
   PaymentParams, 
@@ -18,8 +17,17 @@ import { and, eq } from 'drizzle-orm';
 import { user } from '@libs/database/schema/user';
 import { randomUUID } from 'crypto';
 
+// 添加一个简单的支付计划接口，只包含我们需要的属性
+interface PaymentPlan {
+  stripePriceId?: string;
+  duration: {
+    type: 'recurring' | 'one_time';
+    months: number;
+  };
+}
+
 export class StripeProvider implements PaymentProvider {
-  private stripe: Stripe;
+  public stripe: Stripe;
 
   constructor() {
     this.stripe = new Stripe(config.payment.providers.stripe.secretKey, {
@@ -28,16 +36,16 @@ export class StripeProvider implements PaymentProvider {
   }
 
   async createPayment(params: PaymentParams): Promise<PaymentResult> {
-    const plan = config.payment.plans[params.planId as keyof typeof config.payment.plans];
+    const plan = config.payment.plans[params.planId as keyof typeof config.payment.plans] as PaymentPlan;
     
     if (plan.duration.type === 'recurring') {
-      return this.createSubscription(params, plan as RecurringPlan);
+      return this.createSubscription(params, plan);
     } else {
-      return this.createOneTimePayment(params, plan as OneTimePlan);
+      return this.createOneTimePayment(params, plan);
     }
   }
 
-  private async createSubscription(params: PaymentParams, plan: RecurringPlan): Promise<PaymentResult> {
+  private async createSubscription(params: PaymentParams, plan: PaymentPlan): Promise<PaymentResult> {
     // 1. 获取或创建客户
     const customer = await this.getOrCreateCustomer(params.userId);
 
@@ -68,17 +76,10 @@ export class StripeProvider implements PaymentProvider {
     };
   }
 
-  private async createOneTimePayment(params: PaymentParams, plan: OneTimePlan): Promise<PaymentResult> {
+  private async createOneTimePayment(params: PaymentParams, plan: PaymentPlan): Promise<PaymentResult> {
     const session = await this.stripe.checkout.sessions.create({
       line_items: [{
-        price_data: {
-          currency: params.currency.toLowerCase(),
-          product_data: {
-            name: plan.name,
-            description: plan.description
-          },
-          unit_amount: Math.round(params.amount * 100),
-        },
+        price: plan.stripePriceId!,
         quantity: 1,
       }],
       mode: 'payment',
@@ -107,9 +108,7 @@ export class StripeProvider implements PaymentProvider {
         signature,
         config.payment.providers.stripe.webhookSecret
       );
-      console.log('event', event);
-      console.log('signature', signature);
-      console.log('payload', event.data.object);
+      console.log(event, 'event')
       switch (event.type) {
         case 'checkout.session.completed': {
           const session = event.data.object as Stripe.Checkout.Session;
@@ -121,6 +120,7 @@ export class StripeProvider implements PaymentProvider {
         }
 
         case 'customer.subscription.updated': {
+          // 处理订阅更新事件（包括计划变更、续订等）
           const subscription = event.data.object as Stripe.Subscription;
           return this.handleSubscriptionUpdated(subscription);
         }
@@ -143,9 +143,11 @@ export class StripeProvider implements PaymentProvider {
 
     const subscription = await this.stripe.subscriptions.retrieve(session.subscription as string, {
       expand: ['latest_invoice']
-    });
-    const now = new Date();
-    const periodEnd = new Date(subscription.ended_at! * 1000);
+    });    
+    // 使用 Stripe 的订阅周期
+    const subscriptionItem = subscription.items.data[0];
+    const periodStart = new Date(subscriptionItem.current_period_start * 1000);
+    const periodEnd = new Date(subscriptionItem.current_period_end * 1000);
 
     // 更新订单状态
     await db.update(order)
@@ -161,7 +163,7 @@ export class StripeProvider implements PaymentProvider {
       paymentType: paymentTypes.RECURRING,
       stripeCustomerId: session.customer as string,
       stripeSubscriptionId: subscription.id,
-      periodStart: now,
+      periodStart: periodStart,
       periodEnd: periodEnd,
       cancelAtPeriodEnd: false,
       metadata: JSON.stringify({
@@ -176,7 +178,7 @@ export class StripeProvider implements PaymentProvider {
     if (!session.metadata?.orderId) return { success: false };
 
     const now = new Date();
-    const plan = config.payment.plans[session.metadata.planId as keyof typeof config.payment.plans];
+    const plan = config.payment.plans[session.metadata.planId as keyof typeof config.payment.plans] as PaymentPlan;
     
     // 处理终身会员的情况
     const isLifetime = plan.duration.months >= 9999;
@@ -204,9 +206,10 @@ export class StripeProvider implements PaymentProvider {
       planId: session.metadata.planId,
       status: subscriptionStatus.ACTIVE,
       paymentType: paymentTypes.ONE_TIME,
+      stripeCustomerId: session.customer as string,
       periodStart: now,
       periodEnd: periodEnd,
-      cancelAtPeriodEnd: false,
+      cancelAtPeriodEnd: true,
       metadata: JSON.stringify({
         sessionId: session.id,
         isLifetime: isLifetime
@@ -217,15 +220,52 @@ export class StripeProvider implements PaymentProvider {
   }
 
   private async handleSubscriptionUpdated(stripeSubscription: Stripe.Subscription): Promise<WebhookVerification> {
+    // 获取 Stripe 客户 ID
+    const stripeCustomerId = stripeSubscription.customer as string;
+    
+    // 通过 Stripe 客户 ID 查找订阅记录，而不是通过 subscription ID
+    const existingSubscription = await db.query.subscription.findFirst({
+      where: eq(userSubscription.stripeCustomerId, stripeCustomerId)
+    });
+    console.log(existingSubscription, 'existingSubscription')
+    if (!existingSubscription) {
+      console.error(`找不到对应的订阅记录，Stripe 客户 ID: ${stripeCustomerId}`);
+      return { success: false };
+    }
+
+    // 使用 Stripe 的订阅周期
+    const subscriptionItem = stripeSubscription.items.data[0];
+    const periodStart = new Date(subscriptionItem.current_period_start * 1000);
+    const periodEnd = new Date(subscriptionItem.current_period_end * 1000);
+    
+    // 获取 price ID，用于确定当前计划
+    const priceId = subscriptionItem.price.id;
+    
+    // 查找对应的计划 ID
+    let newPlanId = existingSubscription.planId; // 默认保持原计划
+    
+    
+    // 遍历所有计划，查找匹配当前 price ID 的计划
+    for (const [planId, planDetails] of Object.entries(config.payment.plans)) {
+      if (planDetails.provider === 'stripe' && planDetails.stripePriceId === priceId) {
+        newPlanId = planId;
+        break;
+      }
+    }
+
+    console.log(newPlanId, 'newPlanId')
+    // 更新订阅记录
     await db.update(userSubscription)
       .set({
         status: this.mapStripeStatus(stripeSubscription.status),
-        periodStart: new Date(stripeSubscription.start_date * 1000),
-        periodEnd: new Date(stripeSubscription.ended_at! * 1000),
+        planId: newPlanId, // 更新计划 ID
+        stripeSubscriptionId: stripeSubscription.id, // 更新为新的订阅 ID
+        periodStart: periodStart,
+        periodEnd: periodEnd,
         cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
         updatedAt: new Date()
       })
-      .where(eq(userSubscription.stripeSubscriptionId, stripeSubscription.id));
+      .where(eq(userSubscription.stripeCustomerId, stripeCustomerId));
 
     return { success: true };
   }
@@ -301,5 +341,20 @@ export class StripeProvider implements PaymentProvider {
       .where(eq(user.id, userId));
 
     return customer;
+  }
+
+  /**
+   * 创建 Stripe 客户门户会话
+   * @param customerId Stripe 客户 ID
+   * @param returnUrl 完成后返回的 URL
+   * @returns 门户会话对象，包含重定向 URL
+   */
+  async createCustomerPortal(customerId: string, returnUrl: string) {
+    const portalSession = await this.stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    });
+    
+    return portalSession;
   }
 } 

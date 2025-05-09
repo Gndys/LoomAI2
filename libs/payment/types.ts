@@ -1,16 +1,12 @@
-import { Stripe } from 'stripe';
+import Stripe from 'stripe';
 
 export interface PaymentParams {
-  orderId: string;
-  userId: string;
   planId: string;
-  amount: number;
-  currency: string;
-  provider: string;
-  metadata?: {
-    clientIp?: string;
-    [key: string]: any;
-  };
+  userId: string;
+  orderId: string;
+  amount?: number;
+  currency?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface PaymentResult {
@@ -27,7 +23,10 @@ export interface WebhookVerification {
 export interface PaymentProvider {
   createPayment(params: PaymentParams): Promise<PaymentResult>;
   handleWebhook(payload: any, signature: string): Promise<WebhookVerification>;
-  queryOrder?(orderId: string): Promise<OrderQueryResult>;
+  // Stripe 实例，用于访问 Stripe API（如客户门户）
+  stripe?: Stripe;
+  // 可选方法：创建客户门户会话（仅 Stripe 提供）
+  createCustomerPortal?(customerId: string, returnUrl: string): Promise<Stripe.BillingPortal.Session>;
 }
 
 export interface OrderQueryResult {

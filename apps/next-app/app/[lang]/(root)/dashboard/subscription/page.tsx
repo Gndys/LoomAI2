@@ -5,15 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import { withSubscription } from "@/hooks/useSubscription";
-import { CalendarIcon, CreditCard, Package, RefreshCw } from "lucide-react";
+import { CalendarIcon, CreditCard, ExternalLink, Package, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import { toast } from "sonner";
+import { config } from "@config";
 
 // 基础页面组件 - 会被 withSubscription 包装
 function SubscriptionDashboardPage() {
-  const { t } = useTranslation();
+  const { t, locale: currentLocale } = useTranslation();
+  const router = useRouter();
+  const pathname = usePathname();
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     async function fetchSubscriptionDetails() {
@@ -32,6 +38,49 @@ function SubscriptionDashboardPage() {
 
     fetchSubscriptionDetails();
   }, []);
+
+  // 打开 Stripe 客户门户
+  const openStripePortal = async () => {
+    try {
+      setRedirecting(true);
+      const returnUrl = `${window.location.origin}/${currentLocale}/dashboard/subscription`;
+      
+      const response = await fetch('/api/subscription/portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ returnUrl }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('无法打开客户门户');
+      }
+      
+      const { url } = await response.json();
+      
+      // 重定向到 Stripe 客户门户
+      window.location.href = url;
+    } catch (error) {
+      console.error('打开 Stripe 客户门户失败:', error);
+      toast.error('无法打开客户门户，请稍后再试');
+      setRedirecting(false);
+    }
+  };
+
+  // 获取计划名称
+  const getPlanName = (planId: string) => {
+    const plan = config.payment.plans[planId as keyof typeof config.payment.plans];
+    if (!plan) return planId; // 如果找不到计划，则返回 planId
+    
+    // 使用当前语言的翻译
+    if (plan.i18n && plan.i18n[currentLocale]) {
+      return plan.i18n[currentLocale].name;
+    }
+    
+    // 如果没有当前语言的翻译，则使用默认名称
+    return plan.name;
+  };
 
   if (loading) {
     return (
@@ -87,6 +136,7 @@ function SubscriptionDashboardPage() {
 
   const isLifetime = subscriptionData.isLifetime;
   const sub = subscriptionData.subscription;
+  const planId = sub?.planId || '';
 
   return (
     <div className="container py-10">
@@ -105,7 +155,9 @@ function SubscriptionDashboardPage() {
                   <Package className="h-5 w-5 mr-2 text-primary" />
                   <span className="font-medium">计划类型</span>
                 </div>
-                <span>{isLifetime ? '终身会员' : '标准订阅'}</span>
+                <span className="font-medium text-primary">
+                  {isLifetime ? '终身会员' : getPlanName(planId)}
+                </span>
               </div>
               
               <div className="flex items-center justify-between">
@@ -167,17 +219,42 @@ function SubscriptionDashboardPage() {
             
             {!isLifetime && (
               <div className="rounded-lg border p-4">
-                <h3 className="font-medium mb-2">续订选项</h3>
+                <h3 className="font-medium mb-2">订阅管理</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  您可以随时更改订阅计划或进行续订。
+                  您可以在 Stripe 客户门户中管理您的订阅、付款方式和账单历史。
                 </p>
                 <div className="flex gap-3">
-                  <Button variant="default" className="flex items-center gap-1">
-                    <RefreshCw className="h-4 w-4" />
-                    续订订阅
+                  <Button 
+                    variant="default" 
+                    className="flex items-center gap-1"
+                    onClick={openStripePortal}
+                    disabled={redirecting}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {redirecting ? '正在跳转...' : '管理订阅'}
                   </Button>
                   <Button variant="outline" asChild>
                     <Link href="/pricing">更改计划</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {isLifetime && (
+              <div className="rounded-lg border p-4">
+                <h3 className="font-medium mb-2">终身会员</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  您已经是我们的终身会员，可以永久享受所有高级功能。
+                </p>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="default" 
+                    className="flex items-center gap-1"
+                    onClick={openStripePortal}
+                    disabled={redirecting}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {redirecting ? '正在跳转...' : '查看账单历史'}
                   </Button>
                 </div>
               </div>

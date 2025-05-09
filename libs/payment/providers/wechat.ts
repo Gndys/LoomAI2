@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import crypto from 'crypto';
+import path from 'path'
 
 // 微信支付回调响应类型
 interface WechatPayNotification {
@@ -65,8 +66,8 @@ export class WechatPayProvider implements PaymentProvider {
     this.mchId = config.payment.providers.wechat.mchId;
     this.apiKey = config.payment.providers.wechat.apiKey;
     this.notifyUrl = config.app.payment.webhookUrls.wechat;
-    this.privateKey = fs.readFileSync(privateKeyPath);
-    this.publicKey = fs.readFileSync(publicKeyPath);
+    this.privateKey = fs.readFileSync(path.resolve(__dirname, '../../cert/apiclient_cert.pem'));
+    this.publicKey = fs.readFileSync(path.resolve(__dirname, '../../cert/apiclient_key.pem'));
   }
 
   private generateNonce() {
@@ -76,7 +77,7 @@ export class WechatPayProvider implements PaymentProvider {
   private generateTimestamp() {
     return Math.floor(Date.now() / 1000).toString();
   }
-
+  // https://pay.weixin.qq.com/doc/v3/merchant/4012365336
   private async sign(method: string, path: string, timestamp: string, nonce: string, body?: string) {
     const message = `${method}\n${path}\n${timestamp}\n${nonce}\n${body || ''}\n`;
     const signature = crypto.createSign('RSA-SHA256')
@@ -123,7 +124,7 @@ export class WechatPayProvider implements PaymentProvider {
         out_trade_no: params.orderId,
         notify_url: this.notifyUrl,
         amount: {
-          total: Math.round(params.amount * 100),
+          total: Math.round(params.amount as number * 100),
           currency: 'CNY'
         },
         scene_info: {

@@ -40,6 +40,14 @@ type BasePlan = {
   amount: number;
   currency: string;
   features: readonly string[];
+  i18n: {
+    [locale: string]: {
+      name: string;
+      description: string;
+      duration: string;
+      features: string[];
+    }
+  };
 };
 
 export type RecurringPlan = BasePlan & {
@@ -50,6 +58,8 @@ export type RecurringPlan = BasePlan & {
 
 export type OneTimePlan = BasePlan & {
   duration: { type: 'one_time'; months: number; description: string };
+  stripePriceId: string | undefined;
+  stripeProductId: string | undefined;
 };
 
 export type Plan = RecurringPlan | OneTimePlan;
@@ -91,7 +101,7 @@ export const config = {
       get webhookUrls() {
         return {
           stripe: `${config.app.baseUrl}/api/payment/webhook/stripe`,
-          wechat: `${config.app.baseUrl}/api/payment/webhook/wechat`
+          wechat: `https://test.vikingship.uk/api/payment/webhook/wechat`
         };
       }
     }
@@ -117,9 +127,6 @@ export const config = {
         },
         get apiKey() {
           return requireEnvForService('WECHAT_PAY_API_KEY', 'WeChat Pay');
-        },
-        get notifyUrl() {
-          return requireEnvForService('WECHAT_PAY_NOTIFY_URL', 'WeChat Pay');
         }
       },
 
@@ -143,11 +150,89 @@ export const config = {
      * Subscription Plans
      */
     plans: {
+      monthlyWechat: {
+        provider: 'wechat',
+        id: 'monthlyWechat',
+        name: '月度订阅',
+        description: '每月订阅，灵活管理',
+        amount: 1,
+        currency: 'CNY',
+        duration: {
+          months: 1,
+          description: '1个月',
+          type: 'one_time'
+        },
+        features: [
+          '所有高级功能',
+          '优先支持'
+        ],
+        i18n: {
+          'en': {
+            name: 'Monthly Plan',
+            description: 'Perfect for short-term projects',
+            duration: 'month',
+            features: [
+              'All premium features',
+              'Priority support'
+            ]
+          },
+          'zh-CN': {
+            name: '月度订阅wechat',
+            description: '每月订阅，灵活管理',
+            duration: '月',
+            features: [
+              '所有高级功能',
+              '优先支持'
+            ]
+          }
+        }
+      },
       monthly: {
+        provider: 'stripe',
         id: 'monthly',
         name: '月度订阅',
         description: '每月订阅，灵活管理',
-        amount: 29,
+        amount: 10,
+        currency: 'CNY',
+        duration: {
+          months: 1,
+          description: '1个月',
+          type: 'recurring'
+        },
+        // 当使用 Stripe 支付时，订阅的时长和价格将由 stripePriceId 决定
+        // 这里的 duration 和 amount 仅用于显示和计算，实际订阅周期和价格以 Stripe 后台配置为准
+        stripePriceId: 'price_1RL2GgDjHLfDWeHDBHjoZaap',
+        features: [
+          '所有高级功能',
+          '优先支持'
+        ],
+        i18n: {
+          'en': {
+            name: 'Monthly Plan',
+            description: 'Perfect for short-term projects',
+            duration: 'month',
+            features: [
+              'All premium features',
+              'Priority support'
+            ]
+          },
+          'zh-CN': {
+            name: '月度订阅',
+            description: '每月订阅，灵活管理',
+            duration: '月',
+            features: [
+              '所有高级功能',
+              '优先支持'
+            ]
+          }
+        }
+      },
+      'monthly-pro': {
+        provider: 'stripe',
+        id: 'monthly-pro',
+        name: '月度专业版',
+        description: '每月订阅，灵活管理',
+        amount: 20,
         currency: 'CNY',
         duration: {
           months: 1,
@@ -156,31 +241,35 @@ export const config = {
         },
         features: [
           '所有高级功能',
-          '优先支持'
-        ],
-        stripePriceId: 'price_1RL2GgDjHLfDWeHDBHjoZaap',
-        stripeProductId: process.env.STRIPE_MONTHLY_PRODUCT_ID
-      },
-      yearly: {
-        id: 'yearly',
-        name: '年度订阅',
-        description: '年付更优惠',
-        amount: 299,
-        currency: 'CNY',
-        duration: {
-          months: 12,
-          description: '12个月',
-          type: 'recurring'
-        },
-        features: [
-          '所有高级功能',
           '优先支持',
-          '两个月免费'
+          '终身免费更新'
         ],
-        stripePriceId: process.env.STRIPE_YEARLY_PRICE_ID,
-        stripeProductId: process.env.STRIPE_YEARLY_PRODUCT_ID
+        stripePriceId: 'price_1RMmc4DjHLfDWeHDp9Xhpn5X',
+        i18n: {
+          'en': {
+            name: 'Monthly Pro Plan',
+            description: 'Enhanced monthly plan with extra features',
+            duration: 'month',
+            features: [
+              'All premium features',
+              'Priority support',
+              'Free lifetime updates'
+            ]
+          },
+          'zh-CN': {
+            name: '月度专业版',
+            description: '每月订阅，专业功能',
+            duration: '月',
+            features: [
+              '所有高级功能',
+              '优先支持',
+              '终身免费更新'
+            ]
+          }
+        }
       },
       lifetime: {
+        provider: 'stripe',
         id: 'lifetime',
         name: '终身会员',
         description: '一次付费，永久使用',
@@ -197,7 +286,28 @@ export const config = {
           '终身免费更新'
         ],
         stripePriceId: 'price_1RL2IcDjHLfDWeHDMCmobkzb',
-        stripeProductId: process.env.STRIPE_YEARLY_PRODUCT_ID
+        i18n: {
+          'en': {
+            name: 'Lifetime',
+            description: 'One-time payment, lifetime access',
+            duration: 'lifetime',
+            features: [
+              'All premium features',
+              'Priority support',
+              'Free lifetime updates'
+            ]
+          },
+          'zh-CN': {
+            name: '终身会员',
+            description: '一次付费，永久使用',
+            duration: '终身',
+            features: [
+              '所有高级功能',
+              '优先支持',
+              '终身免费更新'
+            ]
+          }
+        }
       }
     } as const,
 

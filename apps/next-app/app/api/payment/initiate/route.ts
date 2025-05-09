@@ -53,7 +53,6 @@ export async function POST(req: Request) {
       planId,
       amount: plan.amount,
       currency: plan.currency,
-      provider,
       metadata: {
         clientIp,
         description: `${plan.name} - ${plan.duration.description}`

@@ -97,6 +97,7 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
   if (matchedRoute.requiresSubscription) {
     console.log(`Subscription check for: ${pathname}, User: ${session!.user?.id}`);
     const hasSubscription = await hasValidSubscription(session!.user?.id!);
+    console.log('hasSubscription', hasSubscription);
     
     if (!hasSubscription) {
       console.log(`Subscription check failed for: ${pathname}, User: ${session!.user?.id}`);
