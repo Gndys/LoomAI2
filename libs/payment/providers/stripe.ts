@@ -357,4 +357,14 @@ export class StripeProvider implements PaymentProvider {
     
     return portalSession;
   }
+
+  /**
+   * 关闭订单 (目前Stripe不支持)
+   * @param orderId 订单ID
+   * @returns 是否成功关闭
+   */
+  async closeOrder(orderId: string): Promise<boolean> {
+    console.warn('Stripe does not support canceling orders via API. This is a no-op.');
+    return false;
+  }
 } 

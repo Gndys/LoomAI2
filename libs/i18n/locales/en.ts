@@ -318,22 +318,71 @@ export const en: Locale = {
   payment: {
     result: {
       success: {
-        title: 'Payment Successful',
-        description: 'Thank you for your payment. Your subscription has been activated.',
+        title: "Payment Successful",
+        description: "Your payment has been processed successfully.",
         actions: {
-          viewSubscription: 'View Subscription',
-          backToHome: 'Back to Home'
+          viewSubscription: "View Subscription",
+          backToHome: "Back to Home"
         }
       },
       cancel: {
-        title: 'Payment Cancelled',
-        description: 'Your payment was cancelled. If you have any questions, please contact our support team.',
+        title: "Payment Cancelled",
+        description: "Your payment has been cancelled.",
         actions: {
-          tryAgain: 'Try Again',
-          contactSupport: 'Contact Support',
-          backToHome: 'Back to Home'
+          tryAgain: "Try Again",
+          contactSupport: "Contact Support",
+          backToHome: "Back to Home"
         }
+      },
+      failed: "Payment failed, please try again"
+    },
+    steps: {
+      initiate: "Initialize",
+      initiateDesc: "Prepare payment",
+      scan: "Scan",
+      scanDesc: "Scan QR code",
+      pay: "Pay",
+      payDesc: "Confirm payment"
+    },
+    scanQrCode: "Please scan the QR code with WeChat to complete the payment",
+    confirmCancel: "Your payment is not complete. Are you sure you want to cancel?",
+    orderCanceled: "Your order has been canceled"
+  },
+  subscription: {
+    title: "My Subscription",
+    overview: {
+      title: "Subscription Overview",
+      planType: "Plan Type",
+      status: "Status",
+      active: "Active",
+      startDate: "Start Date",
+      endDate: "End Date",
+      progress: "Subscription Progress"
+    },
+    management: {
+      title: "Subscription Management",
+      help: {
+        title: "Need Help?",
+        description: "If you have any questions about your subscription or need assistance, please contact our support team.",
+        contactSupport: "Contact Support"
+      },
+      stripe: {
+        title: "Subscription Management",
+        description: "You can manage your subscription, payment methods, and billing history in the Stripe customer portal.",
+        manageSubscription: "Manage Subscription",
+        viewBilling: "View Billing History",
+        changePlan: "Change Plan",
+        redirecting: "Redirecting..."
+      },
+      lifetime: {
+        title: "Lifetime Membership",
+        description: "You are a lifetime member and can enjoy all premium features permanently."
       }
+    },
+    noSubscription: {
+      title: "No Active Subscription Found",
+      description: "You currently don't have an active subscription plan.",
+      viewPlans: "View Plans"
     }
   }
 } as const; 

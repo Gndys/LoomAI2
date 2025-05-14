@@ -8,6 +8,7 @@ export const orderStatus = {
   PAID: "paid",
   FAILED: "failed",
   REFUNDED: "refunded",
+  CANCELED: "canceled"
 } as const;
 
 // 支付提供商枚举

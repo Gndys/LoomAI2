@@ -318,22 +318,71 @@ export const zhCN: Locale = {
   payment: {
     result: {
       success: {
-        title: '支付成功',
-        description: '感谢您的付款。您的订阅已经激活。',
+        title: "支付成功",
+        description: "您的支付已成功处理。",
         actions: {
-          viewSubscription: '查看订阅',
-          backToHome: '返回首页'
+          viewSubscription: "查看订阅",
+          backToHome: "返回首页"
         }
       },
       cancel: {
-        title: '支付已取消',
-        description: '您的支付已取消。如有任何问题，请联系我们的支持团队。',
+        title: "支付已取消",
+        description: "您的支付已被取消。",
         actions: {
-          tryAgain: '重新尝试',
-          contactSupport: '联系支持',
-          backToHome: '返回首页'
+          tryAgain: "重试",
+          contactSupport: "联系客服",
+          backToHome: "返回首页"
         }
+      },
+      failed: "支付失败，请重试"
+    },
+    steps: {
+      initiate: "初始化",
+      initiateDesc: "准备支付",
+      scan: "扫码",
+      scanDesc: "请扫描二维码",
+      pay: "支付",
+      payDesc: "确认支付"
+    },
+    scanQrCode: "请使用微信扫描二维码完成支付",
+    confirmCancel: "您的支付尚未完成，确定要取消吗？",
+    orderCanceled: "您的订单已取消"
+  },
+  subscription: {
+    title: "我的订阅",
+    overview: {
+      title: "订阅概览",
+      planType: "计划类型",
+      status: "状态",
+      active: "已激活",
+      startDate: "开始日期",
+      endDate: "结束日期",
+      progress: "订阅进度"
+    },
+    management: {
+      title: "订阅管理",
+      help: {
+        title: "需要帮助？",
+        description: "如果您对订阅有任何问题或需要帮助，请联系我们的客户支持团队。",
+        contactSupport: "联系支持"
+      },
+      stripe: {
+        title: "订阅管理",
+        description: "您可以在 Stripe 客户门户中管理您的订阅、付款方式和账单历史。",
+        manageSubscription: "管理订阅",
+        viewBilling: "查看账单历史",
+        changePlan: "更改计划",
+        redirecting: "正在跳转..."
+      },
+      lifetime: {
+        title: "终身会员",
+        description: "您已经是我们的终身会员，可以永久享受所有高级功能。"
       }
+    },
+    noSubscription: {
+      title: "未找到有效订阅",
+      description: "您当前没有活跃的订阅计划。",
+      viewPlans: "查看订阅计划"
     }
   }
 } as const; 

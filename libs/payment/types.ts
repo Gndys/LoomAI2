@@ -23,6 +23,8 @@ export interface WebhookVerification {
 export interface PaymentProvider {
   createPayment(params: PaymentParams): Promise<PaymentResult>;
   handleWebhook(payload: string | Record<string, any>, signature: string): Promise<WebhookVerification>;
+  // 关闭未支付的订单
+  closeOrder?(orderId: string): Promise<boolean>;
   // Stripe 实例，用于访问 Stripe API（如客户门户）
   stripe?: Stripe;
   // 可选方法：创建客户门户会话（仅 Stripe 提供）

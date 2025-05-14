@@ -12,10 +12,17 @@ export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams.get('session_id');
-  const [isVerifying, setIsVerifying] = useState(true);
-  const [isValid, setIsValid] = useState(false);
+  const provider = searchParams.get('provider');
+  const [isVerifying, setIsVerifying] = useState(provider !== 'wechat');
+  const [isValid, setIsValid] = useState(provider === 'wechat');
 
   useEffect(() => {
+    // 如果是微信支付，已经在前一个页面通过轮询确认过支付状态，直接视为有效
+    if (provider === 'wechat') {
+      return;
+    }
+
+    // 对于其他支付方式（如Stripe），需要验证session
     if (!sessionId) {
       router.replace('/');
       return;
@@ -38,7 +45,7 @@ export default function PaymentSuccessPage() {
     }
 
     verifySession();
-  }, [sessionId, router]);
+  }, [sessionId, router, provider]);
 
   if (isVerifying) {
     return (

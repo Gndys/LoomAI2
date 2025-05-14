@@ -321,6 +321,55 @@ export type Locale = {
           backToHome: string
         }
       }
+      failed: string
+    }
+    steps: {
+      initiate: string
+      initiateDesc: string
+      scan: string
+      scanDesc: string
+      pay: string
+      payDesc: string
+    }
+    scanQrCode: string
+    confirmCancel: string
+    orderCanceled: string
+  }
+  subscription: {
+    title: string
+    overview: {
+      title: string
+      planType: string
+      status: string
+      active: string
+      startDate: string
+      endDate: string
+      progress: string
+    }
+    management: {
+      title: string
+      help: {
+        title: string
+        description: string
+        contactSupport: string
+      }
+      stripe: {
+        title: string
+        description: string
+        manageSubscription: string
+        viewBilling: string
+        changePlan: string
+        redirecting: string
+      }
+      lifetime: {
+        title: string
+        description: string
+      }
+    }
+    noSubscription: {
+      title: string
+      description: string
+      viewPlans: string
     }
   }
 } 

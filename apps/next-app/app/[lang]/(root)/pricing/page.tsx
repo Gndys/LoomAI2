@@ -3,11 +3,18 @@
 import { config } from '@config';
 import { useTranslation } from "@/hooks/use-translation";
 import type { Plan } from '@config';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { authClientReact } from "@libs/auth/authClient";
 import QRCode from 'qrcode';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Steps, Step } from "@/components/ui/steps";
 
 export default function PricingPage() {
   const { t, locale: currentLocale } = useTranslation();
@@ -16,24 +23,62 @@ export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
-  const plans = Object.values(config.payment.plans) as unknown as Plan[];
+  const [currentStep, setCurrentStep] = useState(0);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   
   const { data: session, isPending } = authClientReact.useSession();
   const user = session?.user;
 
+  const plans = Object.values(config.payment.plans) as unknown as Plan[];
+
+  // 清理轮询定时器
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
+
+  const startPolling = (orderId: string) => {
+    // 先清除可能存在的轮询
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/payment/query?orderId=${orderId}&provider=wechat`);
+        const data = await response.json();
+
+        if (data.status === 'paid') {
+          clearInterval(interval);
+          setPollingInterval(null);
+          router.push(`/${currentLocale}/payment-success?provider=wechat`);
+        } else if (data.status === 'failed') {
+          clearInterval(interval);
+          setPollingInterval(null);
+          toast.error(t.payment.result.failed);
+          closeQrCodeModal();
+        }
+      } catch (error) {
+        console.error('Payment polling error:', error);
+      }
+    }, 3000); // 每3秒查询一次
+
+    setPollingInterval(interval);
+  };
+
   const handleSubscribe = async (plan: Plan) => {
     try {
-      // 检查用户是否已登录
       if (!user) {
-        // 保存当前页面路径，以便登录后返回
         const returnPath = encodeURIComponent(pathname);
         router.push(`/${currentLocale}/signin?returnTo=${returnPath}`);
         return;
       }
 
       setLoading(plan.id);
-      
-      // 根据支付方式决定 provider
       const provider = plan.provider || 'stripe';
       setCurrentPlan(plan);
       
@@ -53,22 +98,21 @@ export default function PricingPage() {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to initiate payment');
       }
-      console.log('Payment initiation result:', data);
       
-      // 不同支付方式的处理
       if (provider === 'wechat') {
-        // 微信支付显示二维码
         if (data.paymentUrl) {
           try {
             const qrDataUrl = await QRCode.toDataURL(data.paymentUrl);
             setQrCodeUrl(qrDataUrl);
+            setOrderId(data.providerOrderId);
+            setCurrentStep(1);
+            startPolling(data.providerOrderId);
           } catch (err) {
             console.error('QR code generation error:', err);
             toast.error(t.common.unexpectedError);
           }
         }
       } else {
-        // Stripe 跳转到 Checkout 页面
         if (data.paymentUrl) {
           window.location.href = data.paymentUrl;
         }
@@ -82,9 +126,44 @@ export default function PricingPage() {
   };
 
   const closeQrCodeModal = () => {
+    // 如果当前正在处理支付，提示用户确认是否取消
+    if (currentStep < 2 && orderId) { // 还未完成支付且有订单ID
+      const confirmCancel = window.confirm(t.payment.confirmCancel);
+      if (!confirmCancel) {
+        return; // 用户取消关闭，继续支付流程
+      }
+      
+      // 调用关闭订单API
+      fetch(`/api/payment/cancel?orderId=${orderId}&provider=wechat`, {
+        method: 'POST'
+      }).then(response => {
+        if (response.ok) {
+          toast.info(t.payment.orderCanceled);
+        } else {
+          console.error('Failed to cancel order');
+          toast.error(t.common.unexpectedError);
+        }
+      }).catch(error => {
+        console.error('Cancel order error:', error);
+        toast.error(t.common.unexpectedError);
+      });
+    }
+    
     setQrCodeUrl(null);
     setCurrentPlan(null);
+    setCurrentStep(0);
+    setOrderId(null);
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
   };
+
+  const steps: Step[] = [
+    { title: t.payment.steps.initiate, description: t.payment.steps.initiateDesc },
+    { title: t.payment.steps.scan, description: t.payment.steps.scanDesc },
+    { title: t.payment.steps.pay, description: t.payment.steps.payDesc },
+  ];
 
   return (
     <div className="py-24 sm:py-32">
@@ -97,7 +176,6 @@ export default function PricingPage() {
         </div>
         <div className="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-y-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
           {plans.map((plan) => {
-            // 确保 i18n 存在且可以安全访问
             const i18n = plan.i18n && typeof plan.i18n === 'object' ? plan.i18n[currentLocale] : undefined;
             return (
               <div
@@ -148,45 +226,37 @@ export default function PricingPage() {
         </div>
       </div>
 
-      {/* QR Code Modal for WeChat payment */}
-      {qrCodeUrl && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-sm w-full">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold mb-2">
-                微信支付
-              </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                {currentPlan && (
-                  <span>
-                    {currentPlan.currency === 'CNY' ? '¥' : '$'}{currentPlan.amount} - 
-                    {currentPlan.i18n && 
-                     currentPlan.i18n[currentLocale] && 
-                     currentPlan.i18n[currentLocale].name || currentPlan.name}
-                  </span>
-                )}
-              </p>
-              <div className="flex justify-center mb-4">
+      <Dialog open={!!qrCodeUrl} onOpenChange={(open) => !open && closeQrCodeModal()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              {currentPlan && (
+                <span>
+                  {currentPlan.currency === 'CNY' ? '¥' : '$'}{currentPlan.amount} - 
+                  {currentPlan.i18n && 
+                   currentPlan.i18n[currentLocale] && 
+                   currentPlan.i18n[currentLocale].name || currentPlan.name}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-6">
+            <Steps steps={steps} currentStep={currentStep} />
+            {qrCodeUrl && (
+              <div className="flex flex-col items-center space-y-4">
                 <img 
                   src={qrCodeUrl} 
                   alt="WeChat Pay QR Code" 
                   className="w-64 h-64"
                 />
+                <p className="text-sm text-gray-500">
+                  {t.payment.scanQrCode}
+                </p>
               </div>
-              <p className="text-sm text-gray-500 mb-4">
-                请使用微信扫描二维码完成支付
-              </p>
-              <button
-                type="button"
-                onClick={closeQrCodeModal}
-                className="w-full rounded-md bg-gray-200 px-3 py-2 text-center text-sm font-semibold text-gray-700 hover:bg-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-300"
-              >
-                取消
-              </button>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

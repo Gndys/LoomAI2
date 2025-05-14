@@ -63,7 +63,7 @@ function SubscriptionDashboardPage() {
       window.location.href = url;
     } catch (error) {
       console.error('打开 Stripe 客户门户失败:', error);
-      toast.error('无法打开客户门户，请稍后再试');
+      toast.error(t.common.unexpectedError);
       setRedirecting(false);
     }
   };
@@ -108,7 +108,7 @@ function SubscriptionDashboardPage() {
 
   // 格式化日期
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('zh-CN', {
+    return new Date(dateString).toLocaleDateString(currentLocale === 'zh-CN' ? 'zh-CN' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -121,12 +121,12 @@ function SubscriptionDashboardPage() {
       <div className="container py-10">
         <Card>
           <CardHeader>
-            <CardTitle>未找到有效订阅</CardTitle>
+            <CardTitle>{t.subscription.noSubscription.title}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-4">您当前没有活跃的订阅计划。</p>
+            <p className="mb-4">{t.subscription.noSubscription.description}</p>
             <Button asChild>
-              <Link href="/pricing">查看订阅计划</Link>
+              <Link href="/pricing">{t.subscription.noSubscription.viewPlans}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -140,33 +140,33 @@ function SubscriptionDashboardPage() {
 
   return (
     <div className="container py-10">
-      <h1 className="text-3xl font-bold mb-6">我的订阅</h1>
+      <h1 className="text-3xl font-bold mb-6">{t.subscription.title}</h1>
       
       <div className="grid gap-6 md:grid-cols-2">
         {/* 订阅概览 */}
         <Card>
           <CardHeader>
-            <CardTitle>订阅概览</CardTitle>
+            <CardTitle>{t.subscription.overview.title}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Package className="h-5 w-5 mr-2 text-primary" />
-                  <span className="font-medium">计划类型</span>
+                  <span className="font-medium">{t.subscription.overview.planType}</span>
                 </div>
                 <span className="font-medium text-primary">
-                  {isLifetime ? '终身会员' : getPlanName(planId)}
+                  {isLifetime ? t.subscription.management.lifetime.title : getPlanName(planId)}
                 </span>
               </div>
               
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <CreditCard className="h-5 w-5 mr-2 text-primary" />
-                  <span className="font-medium">状态</span>
+                  <span className="font-medium">{t.subscription.overview.status}</span>
                 </div>
                 <span className="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
-                  已激活
+                  {t.subscription.overview.active}
                 </span>
               </div>
               
@@ -175,7 +175,7 @@ function SubscriptionDashboardPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <CalendarIcon className="h-5 w-5 mr-2 text-primary" />
-                      <span className="font-medium">开始日期</span>
+                      <span className="font-medium">{t.subscription.overview.startDate}</span>
                     </div>
                     <span>{formatDate(sub.periodStart)}</span>
                   </div>
@@ -183,14 +183,14 @@ function SubscriptionDashboardPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <CalendarIcon className="h-5 w-5 mr-2 text-primary" />
-                      <span className="font-medium">结束日期</span>
+                      <span className="font-medium">{t.subscription.overview.endDate}</span>
                     </div>
                     <span>{formatDate(sub.periodEnd)}</span>
                   </div>
                   
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">订阅进度</span>
+                      <span className="font-medium">{t.subscription.overview.progress}</span>
                       <span>{calculateProgress()}%</span>
                     </div>
                     <Progress value={calculateProgress()} className="h-2" />
@@ -204,24 +204,24 @@ function SubscriptionDashboardPage() {
         {/* 订阅管理 */}
         <Card>
           <CardHeader>
-            <CardTitle>订阅管理</CardTitle>
+            <CardTitle>{t.subscription.management.title}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-lg border p-4">
-              <h3 className="font-medium mb-2">需要帮助？</h3>
+              <h3 className="font-medium mb-2">{t.subscription.management.help.title}</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                如果您对订阅有任何问题或需要帮助，请联系我们的客户支持团队。
+                {t.subscription.management.help.description}
               </p>
               <Button variant="outline" asChild>
-                <Link href="/support">联系支持</Link>
+                <Link href="/support">{t.subscription.management.help.contactSupport}</Link>
               </Button>
             </div>
             
-            {!isLifetime && (
+            {!isLifetime && sub && sub.stripeSubscriptionId && (
               <div className="rounded-lg border p-4">
-                <h3 className="font-medium mb-2">订阅管理</h3>
+                <h3 className="font-medium mb-2">{t.subscription.management.stripe.title}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  您可以在 Stripe 客户门户中管理您的订阅、付款方式和账单历史。
+                  {t.subscription.management.stripe.description}
                 </p>
                 <div className="flex gap-3">
                   <Button 
@@ -231,20 +231,21 @@ function SubscriptionDashboardPage() {
                     disabled={redirecting}
                   >
                     <ExternalLink className="h-4 w-4" />
-                    {redirecting ? '正在跳转...' : '管理订阅'}
+                    {redirecting ? t.subscription.management.stripe.redirecting : t.subscription.management.stripe.manageSubscription}
                   </Button>
                   <Button variant="outline" asChild>
-                    <Link href="/pricing">更改计划</Link>
+                    <Link href="/pricing">{t.subscription.management.stripe.changePlan}</Link>
                   </Button>
                 </div>
               </div>
             )}
 
-            {isLifetime && (
+            {/* 为 Stripe 一次性支付用户显示查看账单历史选项 */}
+            {!isLifetime && sub && sub.paymentType === 'one_time' && subscriptionData.user?.stripeCustomerId && (
               <div className="rounded-lg border p-4">
-                <h3 className="font-medium mb-2">终身会员</h3>
+                <h3 className="font-medium mb-2">{t.subscription.management.stripe.title}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  您已经是我们的终身会员，可以永久享受所有高级功能。
+                  {t.subscription.management.stripe.description}
                 </p>
                 <div className="flex gap-3">
                   <Button 
@@ -254,7 +255,30 @@ function SubscriptionDashboardPage() {
                     disabled={redirecting}
                   >
                     <ExternalLink className="h-4 w-4" />
-                    {redirecting ? '正在跳转...' : '查看账单历史'}
+                    {redirecting ? t.subscription.management.stripe.redirecting : t.subscription.management.stripe.viewBilling}
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href="/pricing">{t.subscription.management.stripe.changePlan}</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {isLifetime && subscriptionData.user?.stripeCustomerId && (
+              <div className="rounded-lg border p-4">
+                <h3 className="font-medium mb-2">{t.subscription.management.lifetime.title}</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {t.subscription.management.lifetime.description}
+                </p>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="default" 
+                    className="flex items-center gap-1"
+                    onClick={openStripePortal}
+                    disabled={redirecting}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {redirecting ? t.subscription.management.stripe.redirecting : t.subscription.management.stripe.viewBilling}
                   </Button>
                 </div>
               </div>

@@ -3,7 +3,7 @@ import { config } from '@config';
 import { db } from '@libs/database';
 import { order, orderStatus } from '@libs/database/schema/order';
 import { subscription, subscriptionStatus, paymentTypes } from '@libs/database/schema/subscription';
-import { eq } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -281,7 +281,7 @@ export class WechatPayProvider implements PaymentProvider {
       if (result.code_url) {
         return {
           paymentUrl: result.code_url,
-          providerOrderId: '',
+          providerOrderId: params.orderId,
           metadata: { result }
         };
       } else {
@@ -308,6 +308,44 @@ export class WechatPayProvider implements PaymentProvider {
       return JSON.parse(decoded);
     } catch (e) {
       return decoded as T;
+    }
+  }
+
+  /**
+   * 关闭微信支付订单
+   * @param orderId 商户订单号
+   * @returns 是否成功关闭
+   */
+  async closeOrder(orderId: string): Promise<boolean> {
+    try {
+      // 关闭订单API需要在请求体中包含商户号
+      const data = {
+        mchid: this.mchId
+      };
+      
+      const response = await this.request('POST', `/v3/pay/transactions/out-trade-no/${orderId}/close`, data);
+      
+      // 关闭订单成功时返回204状态码，无响应体
+      // 当使用ofetch时，204状态码会返回空对象 {}
+      console.log('Close order response:', response);
+      
+      // 更新本地订单状态
+      try {
+        await db.update(order)
+          .set({ 
+            status: orderStatus.CANCELED,
+            updatedAt: new Date()
+          })
+          .where(eq(order.id, orderId));
+      } catch (dbError) {
+        console.error('更新订单状态失败:', dbError);
+        // 即使数据库更新失败，只要微信那边关闭成功，我们仍然返回true
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('关闭微信支付订单失败:', error);
+      return false;
     }
   }
 
@@ -365,26 +403,63 @@ export class WechatPayProvider implements PaymentProvider {
         if (orderRecord) {
           const plan = config.payment.plans[orderRecord.planId as keyof typeof config.payment.plans];
           const now = new Date();
-          const periodEnd = new Date();
-          periodEnd.setMonth(periodEnd.getMonth() + plan.duration.months);
-
-          // 创建订阅记录
-          await db.insert(subscription).values({
-            id: randomUUID(),
-            userId: orderRecord.userId,
-            planId: orderRecord.planId,
-            status: subscriptionStatus.ACTIVE,
-            paymentType: paymentTypes.ONE_TIME,
-            periodStart: now,
-            periodEnd: periodEnd,
-            cancelAtPeriodEnd: false,
-            metadata: JSON.stringify({
-              transactionId: decryptedData.transaction_id,
-              tradeState: decryptedData.trade_state,
-              tradeStateDesc: decryptedData.trade_state_desc,
-              successTime: decryptedData.success_time
-            })
+          
+          // 检查用户是否已有有效订阅
+          const existingSubscription = await db.query.subscription.findFirst({
+            where: and(
+              eq(subscription.userId, orderRecord.userId),
+              eq(subscription.planId, orderRecord.planId),
+              eq(subscription.status, subscriptionStatus.ACTIVE)
+            ),
+            orderBy: [desc(subscription.periodEnd)]
           });
+          
+          const newPeriodEnd = new Date();
+          newPeriodEnd.setMonth(newPeriodEnd.getMonth() + plan.duration.months);
+          
+          if (existingSubscription) {
+            // 如果已有订阅，更新现有订阅的结束日期
+            // 如果现有订阅还未过期，则在其基础上延长时间
+            const extensionStart = existingSubscription.periodEnd > now 
+              ? existingSubscription.periodEnd 
+              : now;
+            
+            const extensionEnd = new Date(extensionStart);
+            extensionEnd.setMonth(extensionEnd.getMonth() + plan.duration.months);
+            
+            await db.update(subscription)
+              .set({
+                periodEnd: extensionEnd,
+                updatedAt: now,
+                metadata: JSON.stringify({
+                  ...JSON.parse(existingSubscription.metadata || '{}'),
+                  renewed: true,
+                  lastTransactionId: decryptedData.transaction_id,
+                  lastTradeState: decryptedData.trade_state,
+                  lastTradeStateDesc: decryptedData.trade_state_desc,
+                  lastSuccessTime: decryptedData.success_time
+                })
+              })
+              .where(eq(subscription.id, existingSubscription.id));
+          } else {
+            // 如果没有现有订阅，创建新订阅
+            await db.insert(subscription).values({
+              id: randomUUID(),
+              userId: orderRecord.userId,
+              planId: orderRecord.planId,
+              status: subscriptionStatus.ACTIVE,
+              paymentType: paymentTypes.ONE_TIME,
+              periodStart: now,
+              periodEnd: newPeriodEnd,
+              cancelAtPeriodEnd: false,
+              metadata: JSON.stringify({
+                transactionId: decryptedData.transaction_id,
+                tradeState: decryptedData.trade_state,
+                tradeStateDesc: decryptedData.trade_state_desc,
+                successTime: decryptedData.success_time
+              })
+            });
+          }
         }
         
         return { success: true, orderId };
@@ -402,7 +477,7 @@ export class WechatPayProvider implements PaymentProvider {
     transaction?: WechatPaymentTransaction;
   }> {
     try {
-      const result = await this.request('GET', `/transactions/out-trade-no/${orderId}`);
+      const result = await this.request('GET', `/v3/pay/transactions/out-trade-no/${orderId}?mchid=${this.mchId}`);
 
       if (result) {
         const transaction = result as WechatPaymentTransaction;
