@@ -17,7 +17,14 @@ export const en: Locale = {
     dashboard: "Dashboard",
     orders: "Orders",
     shipments: "Shipments",
-    tracking: "Tracking"
+    tracking: "Tracking",
+    admin: {
+      dashboard: "Dashboard",
+      users: "Users",
+      subscriptions: "Subscriptions",
+      orders: "Orders",
+      application: "Application"
+    }
   },
   actions: {
     save: "Save",
@@ -201,6 +208,46 @@ export const en: Locale = {
     }
   },
   admin: {
+    dashboard: {
+      title: "Admin Dashboard",
+      accessDenied: "Access Denied",
+      noPermission: "You don't have permission to access the admin dashboard",
+      lastUpdated: "Last updated",
+      metrics: {
+        totalRevenue: "Total Revenue",
+        totalRevenueDesc: "Total revenue",
+        newCustomers: "New Customers",
+        newCustomersDesc: "New customers this month",
+        newOrders: "New Orders",
+        newOrdersDesc: "New orders this month"
+      },
+      chart: {
+        monthlyRevenueTrend: "Monthly Revenue Trend",
+        revenue: "Revenue",
+        orders: "Orders"
+      },
+      todayData: {
+        title: "Today's Data",
+        revenue: "Revenue",
+        newUsers: "New Users",
+        orders: "Orders"
+      },
+      monthData: {
+        title: "This Month's Data",
+        revenue: "Revenue",
+        newUsers: "New Users",
+        orders: "Orders"
+      },
+      recentOrders: {
+        title: "Recent Orders",
+        orderId: "Order ID",
+        plan: "Plan",
+        amount: "Amount",
+        provider: "Payment Method",
+        status: "Status",
+        time: "Time"
+      }
+    },
     users: {
       title: "Users",
       createUser: "Create User",
@@ -275,6 +322,89 @@ export const en: Locale = {
           banSuccess: "User banned successfully",
           updateRoleSuccess: "User role updated successfully",
           updateRoleFailed: "Failed to update user role"
+        }
+      }
+    },
+    orders: {
+      title: "Orders",
+      actions: {
+        createOrder: "Create Order"
+      },
+      messages: {
+        fetchError: "Failed to load orders. Please try again."
+      },
+      table: {
+        noResults: "No orders found.",
+        search: {
+          searchBy: "Search by...",
+          searchPlaceholder: "Search by {field}...",
+          filterByStatus: "Filter by status",
+          allStatus: "All Status",
+          filterByProvider: "Payment provider",
+          allProviders: "All Providers",
+          pending: "Pending",
+          paid: "Paid",
+          failed: "Failed",
+          refunded: "Refunded",
+          canceled: "Canceled",
+          stripe: "Stripe",
+          wechat: "WeChat"
+        },
+        columns: {
+          id: "Order ID",
+          user: "User",
+          amount: "Amount",
+          plan: "Plan",
+          status: "Status",
+          provider: "Provider",
+          providerOrderId: "Provider Order ID",
+          createdAt: "Created At",
+          actions: "Actions"
+        },
+        actions: {
+          viewOrder: "View order",
+          refundOrder: "Refund order"
+        }
+      }
+    },
+    subscriptions: {
+      title: "Subscriptions",
+      actions: {
+        createSubscription: "Create Subscription"
+      },
+      messages: {
+        fetchError: "Failed to load subscriptions. Please try again."
+      },
+      table: {
+        noResults: "No subscriptions found.",
+        search: {
+          searchBy: "Search by...",
+          searchPlaceholder: "Search by {field}...",
+          filterByStatus: "Filter by status",
+          allStatus: "All Status",
+          filterByPaymentType: "Payment type",
+          allPaymentTypes: "All Types",
+          active: "Active",
+          canceled: "Canceled",
+          pastDue: "Past Due",
+          unpaid: "Unpaid",
+          trialing: "Trialing",
+          oneTime: "One Time",
+          recurring: "Recurring"
+        },
+        columns: {
+          id: "Subscription ID",
+          user: "User",
+          plan: "Plan",
+          status: "Status",
+          paymentType: "Payment Type",
+          period: "Period",
+          createdAt: "Created At",
+          actions: "Actions"
+        },
+        actions: {
+          viewSubscription: "View subscription",
+          cancelSubscription: "Cancel subscription"
         }
       }
     }

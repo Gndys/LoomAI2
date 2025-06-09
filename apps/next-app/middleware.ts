@@ -34,9 +34,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   runtime: 'nodejs',
-  // Matcher ignoring `/_next/` and `/api/`
+  // Matcher包含API路径以便进行权限检查
   matcher: [
-    // Skip all internal paths (_next)
-    '/((?!_next|api|images|[\\w-]+\\.\\w+).*)',
+    // Skip all internal paths (_next) but include API routes for auth check
+    '/((?!_next|images|[\\w-]+\\.\\w+).*)',
   ],
 };

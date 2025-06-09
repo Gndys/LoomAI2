@@ -47,6 +47,16 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
   },
   {
+    pattern: new RegExp('^/api/admin/subscriptions(\\/.*)?$'),
+    type: 'api',
+    requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
+  },
+  {
+    pattern: new RegExp('^/api/admin/orders(\\/.*)?$'),
+    type: 'api',
+    requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
+  },
+  {
     pattern: new RegExp('^/api/premium(\\/.*)?$'), 
     type: 'api',
     requiresSubscription: true

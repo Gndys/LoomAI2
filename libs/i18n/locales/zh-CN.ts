@@ -17,7 +17,14 @@ export const zhCN: Locale = {
     dashboard: "仪表盘",
     orders: "订单",
     shipments: "发货",
-    tracking: "追踪"
+    tracking: "追踪",
+    admin: {
+      dashboard: "仪表盘",
+      users: "用户管理",
+      subscriptions: "订阅管理",
+      orders: "订单管理",
+      application: "应用程序"
+    }
   },
   actions: {
     save: "保存",
@@ -201,6 +208,46 @@ export const zhCN: Locale = {
     }
   },
   admin: {
+    dashboard: {
+      title: "管理员仪表板",
+      accessDenied: "访问被拒绝",
+      noPermission: "您没有权限访问管理员仪表板",
+      lastUpdated: "最后更新",
+      metrics: {
+        totalRevenue: "总收入",
+        totalRevenueDesc: "总收入",
+        newCustomers: "新客户",
+        newCustomersDesc: "本月新客户",
+        newOrders: "新订单",
+        newOrdersDesc: "本月新订单"
+      },
+      chart: {
+        monthlyRevenueTrend: "月度收入趋势",
+        revenue: "收入",
+        orders: "订单数"
+      },
+      todayData: {
+        title: "今日数据",
+        revenue: "收入",
+        newUsers: "新用户",
+        orders: "订单数"
+      },
+      monthData: {
+        title: "本月数据",
+        revenue: "收入",
+        newUsers: "新用户",
+        orders: "订单数"
+      },
+      recentOrders: {
+        title: "最近订单",
+        orderId: "订单ID",
+        plan: "计划",
+        amount: "金额",
+        provider: "支付方式",
+        status: "状态",
+        time: "时间"
+      }
+    },
     users: {
       title: "用户管理",
       createUser: "创建用户",
@@ -275,6 +322,89 @@ export const zhCN: Locale = {
           banSuccess: "用户封禁成功",
           updateRoleSuccess: "用户角色更新成功",
           updateRoleFailed: "用户角色更新失败"
+        }
+      }
+    },
+    orders: {
+      title: "订单管理",
+      actions: {
+        createOrder: "创建订单"
+      },
+      messages: {
+        fetchError: "加载订单失败，请重试。"
+      },
+      table: {
+        noResults: "未找到订单。",
+        search: {
+          searchBy: "搜索条件...",
+          searchPlaceholder: "按{field}搜索...",
+          filterByStatus: "按状态筛选",
+          allStatus: "所有状态",
+          filterByProvider: "支付方式",
+          allProviders: "所有支付方式",
+          pending: "待支付",
+          paid: "已支付",
+          failed: "支付失败",
+          refunded: "已退款",
+          canceled: "已取消",
+          stripe: "Stripe",
+          wechat: "微信支付"
+        },
+        columns: {
+          id: "订单ID",
+          user: "用户",
+          amount: "金额",
+          plan: "计划",
+          status: "状态",
+          provider: "支付方式",
+          providerOrderId: "支付平台订单ID",
+          createdAt: "创建时间",
+          actions: "操作"
+        },
+        actions: {
+          viewOrder: "查看订单",
+          refundOrder: "退款"
+        }
+      }
+    },
+    subscriptions: {
+      title: "订阅管理",
+      actions: {
+        createSubscription: "创建订阅"
+      },
+      messages: {
+        fetchError: "加载订阅失败，请重试。"
+      },
+      table: {
+        noResults: "未找到订阅。",
+        search: {
+          searchBy: "搜索条件...",
+          searchPlaceholder: "按{field}搜索...",
+          filterByStatus: "按状态筛选",
+          allStatus: "所有状态",
+          filterByPaymentType: "支付类型",
+          allPaymentTypes: "所有类型",
+          active: "活跃",
+          canceled: "已取消",
+          pastDue: "逾期",
+          unpaid: "未支付",
+          trialing: "试用中",
+          oneTime: "一次性",
+          recurring: "循环订阅"
+        },
+        columns: {
+          id: "订阅ID",
+          user: "用户",
+          plan: "计划",
+          status: "状态",
+          paymentType: "支付类型",
+          period: "周期",
+          createdAt: "创建时间",
+          actions: "操作"
+        },
+        actions: {
+          viewSubscription: "查看订阅",
+          cancelSubscription: "取消订阅"
         }
       }
     }

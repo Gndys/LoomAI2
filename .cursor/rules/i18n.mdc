@@ -10,93 +10,300 @@ alwaysApply: false
 ```
 libs/i18n/
 ├── locales/
-│   ├── types.ts       # Type definitions for all translations
-│   ├── en.ts          # English translations
+│   ├── types.ts       # Simplified type definitions (auto-inferred from en.ts)
+│   ├── en.ts          # English translations (source of truth for types)
 │   ├── zh-CN.ts       # Chinese translations
 │   └── index.ts       # Exports all translations
 └── index.ts           # Main i18n configuration
 ```
 
-## Adding New Translations
+## Implementation Methods
 
-1. **Define Types First**
-   - Always start by adding new translation keys to `types.ts`
-   - Group related translations under appropriate namespaces (e.g., `auth`, `common`)
-   - Use descriptive key names that reflect their usage
+This project supports two different implementation methods for internationalization, depending on whether your component is a **Server Component** or **Client Component**.
+
+### 🚀 Server Components (Recommended for Server-Side Rendering)
+
+For Server Components (default in Next.js App Router), directly import and use the translations object:
 
 ```typescript
-// Example structure in types.ts
-export type Locale = {
-  namespace: {
-    feature: {
-      title: string
-      description: string
-      // Add form-related translations
-      form: {
-        labels: { ... }
-        placeholders: { ... }
-        errors: { ... }
-      }
-      // Add action-related translations
-      actions: {
-        submit: string
-        cancel: string
-      }
-    }
-  }
+// Server Component Example
+import { translations } from "@libs/i18n";
+
+export default async function ServerComponent({ params }: { params: { lang: string } }) {
+  // Extract language from URL params
+  const { lang } = await params;
+  
+  // Get translations for the current language
+  const t = translations[lang as keyof typeof translations];
+
+  // Fetch server-side data if needed
+  const data = await fetchSomeData();
+
+  return (
+    <div>
+      <h1>{t.admin.dashboard.title}</h1>
+      <p>{t.admin.dashboard.description}</p>
+      
+      {/* Use locale for date formatting */}
+      <time>
+        {t.admin.dashboard.lastUpdated}: {new Date().toLocaleString(lang === 'zh-CN' ? 'zh-CN' : 'en-US')}
+      </time>
+      
+      {/* Display server data with translations */}
+      <div>
+        <h2>{t.admin.dashboard.metrics.totalRevenue}</h2>
+        <span>¥{data.revenue}</span>
+      </div>
+    </div>
+  );
 }
 ```
 
-2. **Common Patterns**
-   - Form fields: include `label`, `placeholder`, and `error` messages
-   - Buttons: include normal and loading states (e.g., `submit` and `submitting`)
-   - Error messages: group under `errors` object
-   - Terms & Policies: reuse common translations (`common.and`, `auth.termsNotice`, etc.)
+**Key points for Server Components:**
+- Use `const { lang } = await params;` to extract language from URL
+- Import `translations` directly from `@libs/i18n`
+- Access translations with `translations[lang as keyof typeof translations]`
+- Perfect for SEO as content is rendered server-side
+- No JavaScript bundle overhead for translations
 
-3. **Component Implementation**
+### 🎯 Client Components (For Interactive Components)
+
+For Client Components that need interactivity, use the `useTranslation` hook:
+
+```typescript
+'use client';
+
+import { useTranslation } from "@/hooks/use-translation"
+
+export function ClientComponent() {
+  const { t, locale, changeLocale } = useTranslation()
+  
+  const handleSubmit = () => {
+    // Client-side logic with translations
+    alert(t.common.success)
+  }
+  
+  return (
+    <>
+      <h1>{t.newFeature.title}</h1>
+      <p>{t.newFeature.description}</p>
+      
+      {/* Interactive form with translations */}
+      <form onSubmit={handleSubmit}>
+        <label>{t.newFeature.form.labels.name}</label>
+        <input placeholder={t.newFeature.form.placeholders.name} />
+        <button type="submit">{t.newFeature.actions.submit}</button>
+      </form>
+      
+      {/* Language switcher */}
+      <button onClick={() => changeLocale('en')}>English</button>
+      <button onClick={() => changeLocale('zh-CN')}>中文</button>
+    </>
+  )
+}
+```
+
+**Key points for Client Components:**
+- Add `'use client';` directive at the top
+- Use `useTranslation()` hook for reactive translations
+- Access translations with `t.namespace.key`
+- Supports `changeLocale()` for language switching
+- Perfect for interactive features
+
+### 🔄 Hybrid Architecture (Best Practice)
+
+Combine both approaches for optimal performance:
+
+```typescript
+// Server Component (page.tsx)
+import { translations } from "@libs/i18n";
+import ClientInteractiveComponent from "./ClientComponent";
+
+export default async function HybridPage({ params }: { params: { lang: string } }) {
+  const { lang } = await params;
+  const t = translations[lang as keyof typeof translations];
+  
+  // Server-side data fetching
+  const serverData = await fetchData();
+
+  return (
+    <div>
+      {/* Server-rendered content for SEO */}
+      <h1>{t.page.title}</h1>
+      <p>{t.page.description}</p>
+      
+      {/* Static content with server translations */}
+      <section>
+        <h2>{t.page.sections.overview}</h2>
+        <p>{serverData.summary}</p>
+      </section>
+      
+      {/* Interactive client component */}
+      <ClientInteractiveComponent />
+    </div>
+  );
+}
+```
+
+```typescript
+// Client Component (ClientComponent.tsx)
+'use client';
+
+import { useTranslation } from "@/hooks/use-translation";
+
+export default function ClientInteractiveComponent() {
+  const { t } = useTranslation();
+  
+  return (
+    <div>
+      {/* Interactive features */}
+      <button>{t.actions.submit}</button>
+      <form>{/* Interactive form */}</form>
+    </div>
+  );
+}
+```
+
+## When to Use Which Method
+
+### ✅ Use Server Components when:
+- Content needs to be SEO-friendly
+- Page contains mostly static content
+- You need server-side data fetching
+- Performance is critical (no client-side JS for translations)
+- Building admin dashboards, marketing pages, blog posts
+
+### ✅ Use Client Components when:
+- Component needs interactivity (forms, buttons, etc.)
+- You need language switching functionality
+- Component has complex state management
+- Building interactive widgets, forms, real-time features
+
+## Adding New Translations (Simplified Workflow)
+
+### 🎉 New Simple Process
+
+1. **Add to English translations first** (`libs/i18n/locales/en.ts`)
    ```typescript
-   'use client';
-   
-   import { useTranslation } from "@/hooks/use-translation"
-   
-   export function YourComponent() {
-     const { t, locale } = useTranslation()
-     
-     return (
-       <>
-         <h1>{t.namespace.feature.title}</h1>
-         <form>
-           <Label>{t.namespace.feature.form.labels.fieldName}</Label>
-           <Input 
-             placeholder={t.namespace.feature.form.placeholders.fieldName}
-             // ... 
-           />
-           {error && <span>{t.namespace.feature.form.errors.fieldName}</span>}
-         </form>
-       </>
-     )
-   }
+   export const en = {
+     // ... existing translations ...
+     newFeature: {
+       title: "New Feature",
+       description: "This is a new feature",
+       form: {
+         labels: {
+           name: "Name",
+           email: "Email"
+         },
+         placeholders: {
+           name: "Enter your name",
+           email: "Enter your email"
+         },
+         errors: {
+           nameRequired: "Name is required",
+           emailInvalid: "Please enter a valid email"
+         }
+       },
+       actions: {
+         submit: "Submit",
+         submitting: "Submitting...",
+         cancel: "Cancel"
+       }
+     }
+   } as const;
    ```
+
+2. **Add corresponding translations to other languages** (`libs/i18n/locales/zh-CN.ts`)
+   ```typescript
+   export const zhCN = {
+     // ... existing translations ...
+     newFeature: {
+       title: "新功能",
+       description: "这是一个新功能",
+       form: {
+         labels: {
+           name: "姓名",
+           email: "邮箱"
+         },
+         placeholders: {
+           name: "请输入您的姓名",
+           email: "请输入您的邮箱"
+         },
+         errors: {
+           nameRequired: "请输入姓名",
+           emailInvalid: "请输入有效的邮箱地址"
+         }
+       },
+       actions: {
+         submit: "提交",
+         submitting: "提交中...",
+         cancel: "取消"
+       }
+     }
+   } as const;
+   ```
+
+3. **Use in components based on their type** (see Implementation Methods above)
+
+### ❌ No Longer Needed
+
+- ~~Manual type definitions in `types.ts`~~
+- ~~Defining types before adding translations~~
+- ~~Complex type inference setup~~
+- ~~Repetitive type maintenance~~
+
+## Type System
+
+The new system uses TypeScript's automatic type inference:
+
+```typescript
+// types.ts - Now simplified!
+import type { en } from './en'
+
+// Types are automatically inferred from the English translations
+export type Translations = typeof en
+
+// Utility types for advanced use cases (optional)
+export type DeepKeys<T> = T extends object ? {
+  [K in keyof T]: K extends string
+    ? T[K] extends object
+      ? `${K}.${DeepKeys<T[K]>}`
+      : K
+    : never
+}[keyof T] : never
+```
 
 ## Best Practices
 
-1. **Type Organization**
+1. **Translation Organization**
    - Group related translations under meaningful namespaces
    - Keep nesting to a maximum of 4 levels for maintainability
    - Use consistent naming patterns across different features
+   - English translations (`en.ts`) serve as the source of truth for structure
 
-2. **Reusable Translations**
+2. **Common Patterns**
+   - Form fields: include `labels`, `placeholders`, and `errors` objects
+   - Buttons: include normal and loading states (e.g., `submit` and `submitting`)
+   - Error messages: group under `errors` object
+   - Actions: group under `actions` object
+
+3. **Reusable Translations**
    - Put common/shared strings under `common` namespace
    - Use action-related strings under `actions` namespace
    - Keep form-related patterns consistent across features
 
-3. **Error Handling**
+4. **Error Handling**
    - Always include both required and invalid error states
    - Use `common.unexpectedError` for unknown errors
    - Follow the pattern: `namespace.feature.errors.errorType`
 
-4. **Loading States**
+5. **Loading States**
    - Include loading state text for async actions
    - Follow the pattern: `verb` and `verbIng` (e.g., `submit` and `submitting`)
 
+6. **Performance Considerations**
+   - Prefer Server Components for static content (better SEO, no JS overhead)
+   - Use Client Components only when interactivity is needed
+   - Consider hybrid architecture for complex pages
+   - Server Components load faster and are more SEO-friendly
 

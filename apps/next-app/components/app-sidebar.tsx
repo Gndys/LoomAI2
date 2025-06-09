@@ -1,4 +1,7 @@
-import { Calendar, User, Inbox, Search, Settings } from "lucide-react"
+"use client";
+
+import { User, CreditCard, ShoppingCart, LayoutDashboard } from "lucide-react"
+import { useTranslation } from "@/hooks/use-translation";
 
 import {
   Sidebar,
@@ -11,41 +14,57 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-// Menu items.
-const items = [
-  {
-    title: "Users",
-    url: "/admin/users",
-    icon: User,
-  },
-  {
-    title: "Inbox",
-    url: "#",
-    icon: Inbox,
-  },
-  {
-    title: "Calendar",
-    url: "#",
-    icon: Calendar,
-  },
-  {
-    title: "Search",
-    url: "#",
-    icon: Search,
-  },
-  {
-    title: "Settings",
-    url: "#",
-    icon: Settings,
-  },
-]
-
 export function AppSidebar() {
+  const { t } = useTranslation();
+
+  // Admin dashboard item
+  const dashboardItem = {
+    title: t.navigation.admin.dashboard,
+    url: "/admin",
+    icon: LayoutDashboard,
+  }
+
+  // Menu items.
+  const items = [
+    {
+      title: t.navigation.admin.users,
+      url: "/admin/users",
+      icon: User,
+    },
+    {
+      title: t.navigation.admin.subscriptions,
+      url: "/admin/subscriptions",
+      icon: CreditCard,
+    },
+    {
+      title: t.navigation.admin.orders,
+      url: "/admin/orders",
+      icon: ShoppingCart,
+    }
+  ]
+
   return (
     <Sidebar>
       <SidebarContent>
+        {/* Dashboard Section */}
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href={dashboardItem.url}>
+                    <dashboardItem.icon />
+                    <span>{dashboardItem.title}</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        {/* Main Menu Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel>{t.navigation.admin.application}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
