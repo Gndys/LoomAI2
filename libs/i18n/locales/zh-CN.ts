@@ -514,5 +514,127 @@ export const zhCN: Locale = {
       description: "您当前没有活跃的订阅计划。",
       viewPlans: "查看订阅计划"
     }
+  },
+  dashboard: {
+    title: "仪表盘",
+    description: "管理您的账户和订阅",
+    profile: {
+      title: "个人信息",
+      noNameSet: "未设置姓名",
+      role: "角色:",
+      emailVerified: "邮箱已验证",
+      editProfile: "编辑个人资料",
+      updateProfile: "更新个人资料",
+      cancel: "取消",
+      form: {
+        labels: {
+          name: "姓名",
+          image: "头像图片链接"
+        },
+        placeholders: {
+          name: "请输入您的姓名",
+          image: "https://example.com/your-image.jpg"
+        }
+      },
+      updateSuccess: "个人资料更新成功",
+      updateError: "更新个人资料失败，请重试"
+    },
+    subscription: {
+      title: "订阅状态",
+      status: {
+        lifetime: "终身会员",
+        active: "有效",
+        canceled: "已取消",
+        pastDue: "逾期",
+        unknown: "未知",
+        noSubscription: "无订阅"
+      },
+      lifetimeAccess: "您拥有终身访问权限",
+      expires: "到期时间:",
+      noActiveSubscription: "您当前没有有效的订阅",
+      manageSubscription: "管理订阅",
+      viewPlans: "查看套餐"
+    },
+    account: {
+      title: "账户信息",
+      memberSince: "注册时间",
+      phoneNumber: "手机号码"
+    },
+    linkedAccounts: {
+      title: "关联账户",
+      connected: "已连接",
+      connectedAt: "关联时间:",
+      noLinkedAccounts: "暂无关联账户",
+      providers: {
+        credentials: "邮箱密码",
+        google: "Google",
+        github: "GitHub",
+        facebook: "Facebook",
+        apple: "Apple",
+        discord: "Discord",
+        wechat: "微信",
+        phone: "手机号"
+      }
+    },
+    quickActions: {
+      title: "快速操作",
+      editProfile: "编辑资料",
+      accountSettings: "账户设置",
+      subscriptionDetails: "订阅详情",
+      getSupport: "获取帮助",
+      viewDocumentation: "查看文档"
+    },
+    accountManagement: {
+      title: "账户管理",
+      changePassword: {
+        title: "更改密码",
+        description: "更新您的账户密码",
+        oauthDescription: "社交登录账户无法更改密码",
+        button: "更改密码",
+        dialogDescription: "请输入您当前的密码并选择新密码",
+        form: {
+          currentPassword: "当前密码",
+          currentPasswordPlaceholder: "请输入当前密码",
+          newPassword: "新密码",
+          newPasswordPlaceholder: "请输入新密码（至少8个字符）",
+          confirmPassword: "确认新密码",
+          confirmPasswordPlaceholder: "请再次输入新密码",
+          cancel: "取消",
+          submit: "更新密码"
+        },
+        success: "密码更新成功",
+        errors: {
+          required: "请填写所有必填字段",
+          mismatch: "两次输入的新密码不一致",
+          minLength: "密码长度至少为8个字符",
+          failed: "密码更新失败，请重试"
+        }
+      },
+      deleteAccount: {
+        title: "删除账户",
+        description: "永久删除您的账户及所有相关数据",
+        button: "删除账户",
+        confirmTitle: "删除账户",
+        confirmDescription: "您确定要删除您的账户吗？",
+        warning: "⚠️ 此操作无法撤销",
+        consequences: {
+          data: "您的所有个人数据将被永久删除",
+          subscriptions: "活跃订阅将被取消",
+          access: "您将失去所有高级功能的访问权限"
+        },
+        form: {
+          cancel: "取消",
+          confirm: "是的，删除我的账户"
+        },
+        success: "账户删除成功",
+        errors: {
+          failed: "删除账户失败，请重试"
+        }
+      }
+    },
+    roles: {
+      admin: "管理员",
+      user: "普通用户"
+    }
   }
 } as const; 

@@ -514,5 +514,127 @@ export const en: Locale = {
       description: "You currently don't have an active subscription plan.",
       viewPlans: "View Plans"
     }
+  },
+  dashboard: {
+    title: "Dashboard",
+    description: "Manage your account and subscriptions",
+    profile: {
+      title: "Profile Information",
+      noNameSet: "No name set",
+      role: "Role:",
+      emailVerified: "Email verified",
+      editProfile: "Edit Profile",
+      updateProfile: "Update Profile",
+      cancel: "Cancel",
+      form: {
+        labels: {
+          name: "Full Name",
+          image: "Profile Image URL"
+        },
+        placeholders: {
+          name: "Enter your full name",
+          image: "https://example.com/your-image.jpg"
+        }
+      },
+      updateSuccess: "Profile updated successfully",
+      updateError: "Failed to update profile. Please try again."
+    },
+    subscription: {
+      title: "Subscription Status",
+      status: {
+        lifetime: "Lifetime",
+        active: "Active",
+        canceled: "Canceled",
+        pastDue: "Past Due",
+        unknown: "Unknown",
+        noSubscription: "No Subscription"
+      },
+      lifetimeAccess: "You have lifetime access",
+      expires: "Expires:",
+      noActiveSubscription: "You currently have no active subscription",
+      manageSubscription: "Manage Subscription",
+      viewPlans: "View Plans"
+    },
+    account: {
+      title: "Account Details",
+      memberSince: "Member since",
+      phoneNumber: "Phone Number"
+    },
+    linkedAccounts: {
+      title: "Linked Accounts",
+      connected: "Connected",
+      connectedAt: "Connected:",
+      noLinkedAccounts: "No linked accounts",
+      providers: {
+        credentials: "Email & Password",
+        google: "Google",
+        github: "GitHub",
+        facebook: "Facebook",
+        apple: "Apple",
+        discord: "Discord",
+        wechat: "WeChat",
+        phone: "Phone Number"
+      }
+    },
+    quickActions: {
+      title: "Quick Actions",
+      editProfile: "Edit Profile",
+      accountSettings: "Account Settings",
+      subscriptionDetails: "Subscription Details",
+      getSupport: "Get Support",
+      viewDocumentation: "View Documentation"
+    },
+    accountManagement: {
+      title: "Account Management",
+      changePassword: {
+        title: "Change Password",
+        description: "Update your account password",
+        oauthDescription: "Password management is not available for social login accounts",
+        button: "Change Password",
+        dialogDescription: "Please enter your current password and choose a new one",
+        form: {
+          currentPassword: "Current Password",
+          currentPasswordPlaceholder: "Enter your current password",
+          newPassword: "New Password",
+          newPasswordPlaceholder: "Enter new password (minimum 8 characters)",
+          confirmPassword: "Confirm New Password",
+          confirmPasswordPlaceholder: "Confirm your new password",
+          cancel: "Cancel",
+          submit: "Update Password"
+        },
+        success: "Password updated successfully",
+        errors: {
+          required: "Please fill in all required fields",
+          mismatch: "New passwords do not match",
+          minLength: "Password must be at least 8 characters long",
+          failed: "Failed to update password. Please try again."
+        }
+      },
+      deleteAccount: {
+        title: "Delete Account",
+        description: "Permanently delete your account and all associated data",
+        button: "Delete Account",
+        confirmTitle: "Delete Account",
+        confirmDescription: "Are you absolutely sure you want to delete your account?",
+        warning: "⚠️ This action cannot be undone",
+        consequences: {
+          data: "All your personal data will be permanently deleted",
+          subscriptions: "Active subscriptions will be cancelled",
+          access: "You will lose access to all premium features"
+        },
+        form: {
+          cancel: "Cancel",
+          confirm: "Yes, Delete My Account"
+        },
+        success: "Account deleted successfully",
+        errors: {
+          failed: "Failed to delete account. Please try again."
+        }
+      }
+    },
+    roles: {
+      admin: "Administrator",
+      user: "User"
+    }
   }
 } as const; 

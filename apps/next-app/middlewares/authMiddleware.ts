@@ -34,7 +34,7 @@ const protectedRoutes: ProtectedRouteConfig[] = [
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/dashboard(\\/.*)?$`), 
     type: 'page',
-    requiresSubscription: true // 付费区域
+    // requiresSubscription: true // 付费区域
   },
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/premium-features(\\/.*)?$`), 

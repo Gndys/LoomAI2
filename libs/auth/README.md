@@ -133,6 +133,37 @@ await signIn.socialProvider('google');
 
 // 退出登录
 await signOut();
+
+// 获取当前会话
+const { data: session } = await authClientReact.getSession();
+
+// 响应式会话访问
+const { data: session } = authClientReact.useSession();
+
+// 会话管理
+const sessions = await authClientReact.listSessions(); // 获取所有会话
+await authClientReact.revokeSession({ token: "session-token" }); // 撤销指定会话
+await authClientReact.revokeOtherSessions(); // 撤销其他会话
+await authClientReact.revokeSessions(); // 撤销所有会话
+
+// 密码管理
+await authClientReact.changePassword({
+  newPassword: 'newPassword123',
+  currentPassword: 'currentPassword123',
+  revokeOtherSessions: true // 更改密码时撤销其他会话
+});
+
+// 用户信息管理
+await authClientReact.updateUser({
+  name: '新名称',
+  image: 'https://example.com/avatar.jpg'
+});
+
+// 获取关联账户
+const accountsResponse = await authClientReact.listAccounts();
+
+// 删除用户账户
+await authClientReact.deleteUser({});
 ```
 
 ### 客户端（Vue）
@@ -155,6 +186,49 @@ await signIn.socialProvider('google');
 // 退出登录
 await signOut();
 ```
+
+## 高级功能
+
+### 会话管理
+Better Auth 提供完整的会话管理功能，包括会话缓存、会话刷新、会话撤销等。
+
+**相关文档：**
+- [会话管理](https://www.better-auth.com/docs/concepts/session-management)
+- [会话缓存](https://www.better-auth.com/docs/concepts/session-management#session-caching)
+
+### 用户和账户管理
+支持用户信息更新、密码管理、账户删除等功能。
+
+**相关文档：**
+- [用户和账户管理](https://www.better-auth.com/docs/concepts/users-accounts)
+- [更改密码](https://www.better-auth.com/docs/concepts/users-accounts#change-password)
+- [删除用户](https://www.better-auth.com/docs/concepts/users-accounts#delete-user)
+
+### 邮箱验证
+支持邮箱验证功能，可配置自动登录和验证要求。
+
+**相关文档：**
+- [邮箱验证](https://www.better-auth.com/docs/authentication/email-verification)
+
+### 权限控制
+基于角色的访问控制系统，支持管理员权限和自定义角色。
+
+**相关文档：**
+- [管理员插件](https://www.better-auth.com/docs/plugins/admin)
+- [角色和权限](https://www.better-auth.com/docs/concepts/roles-permissions)
+
+### 速率限制
+保护 API 端点免受滥用，限制用户在指定时间内的请求次数。
+
+**相关文档：**
+- [速率限制](https://www.better-auth.com/docs/concepts/rate-limiting)
+
+### 自定义插件
+Better Auth 支持自定义插件开发，可以扩展认证功能。
+
+**相关文档：**
+- [插件开发](https://www.better-auth.com/docs/plugins/custom-plugin)
+- [插件 API](https://www.better-auth.com/docs/plugins/plugin-api)
 
 ## 数据库模型
 

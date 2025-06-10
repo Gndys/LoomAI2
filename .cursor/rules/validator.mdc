@@ -1,0 +1,205 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Validator Development Rules for ShipEasy
+
+## 🎯 Core Principles
+
+When creating or modifying validators in the `libs/validators/` directory, follow these guidelines:
+
+### File Organization
+- Place validators in `libs/validators/` directory
+- Group related validators by domain (e.g., `user.ts`, `subscription.ts`, `payment.ts`)
+- Use descriptive file names that reflect the business domain
+
+### Naming Conventions
+- **Base validators**: `entitySchema` (e.g., `userSchema`, `productSchema`)
+- **Form validators**: `actionFormSchema` (e.g., `signupFormSchema`, `loginFormSchema`)
+- **Operation validators**: `actionSchema` (e.g., `changePasswordSchema`, `resetPasswordSchema`)
+- **Extended validators**: `baseEntityExtendedSchema` (e.g., `updateUserSchema`)
+- **ID validators**: `entityIdSchema` (e.g., `userIdSchema`, `productIdSchema`)
+
+### Import Structure
+```typescript
+import { z } from 'zod';
+import { constantsFromDatabase } from '../database/constants';
+```
+
+### Validator Patterns
+
+#### Base Entity Schema
+```typescript
+export const entitySchema = z.object({
+  // Required fields first
+  name: z.string().min(2).max(50),
+  email: z.string().email(),
+  
+  // Optional fields with proper defaults
+  verified: z.boolean().default(false),
+  image: z.string().url().nullable().optional(),
+  
+  // Enums from constants
+  role: z.enum([constants.ADMIN, constants.USER]).default(constants.USER),
+});
+```
+
+#### Form Schema Extension
+```typescript
+// Extend base schema for forms
+export const createEntityFormSchema = baseEntitySchema.extend({
+  password: z.string().min(8).max(100),
+  confirmPassword: z.string().min(1),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+// Partial for updates
+export const updateEntitySchema = baseEntitySchema.partial();
+```
+
+#### Authentication Schemas
+```typescript
+// Email signup
+export const emailSignUpSchema = z.object({
+  name: z.string().min(2).max(50),
+  email: z.string().email(),
+  password: z.string().min(8).max(100),
+});
+
+// Email signin
+export const emailSignInSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(100),
+});
+
+// Extended with optional fields
+export const signupFormSchema = emailSignUpSchema.extend({
+  image: z.string().url().optional().or(z.literal('')),
+  remember: z.boolean().default(false),
+});
+```
+
+#### Phone Authentication
+```typescript
+// Chinese phone number pattern (11 digits)
+export const phoneSchema = z.string().min(11).max(11);
+export const otpCodeSchema = z.string().length(4);
+
+export const phoneLoginSchema = z.object({
+  phone: phoneSchema,
+});
+
+export const phoneVerifySchema = z.object({
+  phone: phoneSchema,
+  code: otpCodeSchema,
+});
+```
+
+#### Password Operations
+```typescript
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(1, 'Please confirm your password')
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+```
+
+### Validation Rules
+
+#### String Validation
+- Use appropriate min/max lengths: `z.string().min(2).max(50)`
+- Email validation: `z.string().email()`
+- URL validation: `z.string().url()`
+- Phone validation: `z.string().min(11).max(11)` (for Chinese phones)
+
+#### Optional Fields
+- Nullable: `z.string().nullable().optional()`
+- Empty string allowed: `z.string().optional().or(z.literal(''))`
+- With defaults: `z.boolean().default(false)`
+
+#### Enums and Constants
+- Import from database constants: `z.enum([userRoles.ADMIN, userRoles.USER])`
+- Always provide defaults: `.default(userRoles.USER)`
+
+#### Custom Validation
+```typescript
+.refine((data) => customLogic(data), {
+  message: "Custom error message",
+  path: ["fieldName"],
+})
+```
+
+### Error Messages
+- Use clear, actionable error messages
+- Support internationalization (use keys that can be translated)
+- Provide specific field paths for complex validations
+
+### Testing Requirements
+- Create test file: `tests/unit/validators/{domain}.test.ts`
+- Test valid cases
+- Test invalid cases with specific error scenarios
+- Test edge cases (empty strings, null values, boundary conditions)
+
+### TypeScript Integration
+```typescript
+import type { z } from "zod";
+
+// Export inferred types
+export type Entity = z.infer<typeof entitySchema>;
+export type CreateEntityForm = z.infer<typeof createEntityFormSchema>;
+export type UpdateEntity = z.infer<typeof updateEntitySchema>;
+```
+
+### React Hook Form Integration
+```typescript
+// In components
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { entityFormSchema } from "@libs/validators/entity";
+
+type FormData = z.infer<typeof entityFormSchema>;
+
+const form = useForm<FormData>({
+  resolver: zodResolver(entityFormSchema),
+  mode: 'onBlur',
+  defaultValues: {
+    // Provide defaults
+  },
+});
+```
+
+### Documentation
+- Add JSDoc comments for complex validators
+- Update README.md when adding new validator categories
+- Include usage examples for non-standard patterns
+
+### Security Considerations
+- Validate all user inputs
+- Use appropriate length limits
+- Sanitize where necessary
+- Don't expose sensitive validation logic
+
+## 🚫 Don't Do
+
+- Don't create overly complex validators
+- Don't duplicate validation logic
+- Don't hardcode magic numbers (use constants)
+- Don't ignore TypeScript warnings
+- Don't skip tests for validators
+- Don't use any type assertions
+
+## ✅ Do
+
+- Keep validators simple and focused
+- Reuse and extend existing schemas
+- Use descriptive error messages
+- Follow naming conventions
+- Write comprehensive tests
+- Document complex validation logic
+- Use TypeScript properly 

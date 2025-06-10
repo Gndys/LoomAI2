@@ -133,6 +133,37 @@ await signIn.socialProvider('google');
 
 // Sign out
 await signOut();
+
+// Get current session
+const { data: session } = await authClientReact.getSession();
+
+// Reactive session access
+const { data: session } = authClientReact.useSession();
+
+// Session management
+const sessions = await authClientReact.listSessions(); // Get all sessions
+await authClientReact.revokeSession({ token: "session-token" }); // Revoke specific session
+await authClientReact.revokeOtherSessions(); // Revoke other sessions
+await authClientReact.revokeSessions(); // Revoke all sessions
+
+// Password management
+await authClientReact.changePassword({
+  newPassword: 'newPassword123',
+  currentPassword: 'currentPassword123',
+  revokeOtherSessions: true // Revoke other sessions when changing password
+});
+
+// User information management
+await authClientReact.updateUser({
+  name: 'New Name',
+  image: 'https://example.com/avatar.jpg'
+});
+
+// Get linked accounts
+const accountsResponse = await authClientReact.listAccounts();
+
+// Delete user account
+await authClientReact.deleteUser({});
 ```
 
 ### Client-side (Vue)
@@ -155,6 +186,49 @@ await signIn.socialProvider('google');
 // Sign out
 await signOut();
 ```
+
+## Advanced Features
+
+### Session Management
+Better Auth provides comprehensive session management functionality, including session caching, session refresh, and session revocation.
+
+**Related Documentation:**
+- [Session Management](https://www.better-auth.com/docs/concepts/session-management)
+- [Session Caching](https://www.better-auth.com/docs/concepts/session-management#session-caching)
+
+### User and Account Management
+Supports user information updates, password management, account deletion, and more.
+
+**Related Documentation:**
+- [Users and Accounts](https://www.better-auth.com/docs/concepts/users-accounts)
+- [Change Password](https://www.better-auth.com/docs/concepts/users-accounts#change-password)
+- [Delete User](https://www.better-auth.com/docs/concepts/users-accounts#delete-user)
+
+### Email Verification
+Supports email verification functionality with configurable auto-login and verification requirements.
+
+**Related Documentation:**
+- [Email Verification](https://www.better-auth.com/docs/authentication/email-verification)
+
+### Access Control
+Role-based access control system supporting admin permissions and custom roles.
+
+**Related Documentation:**
+- [Admin Plugin](https://www.better-auth.com/docs/plugins/admin)
+- [Roles and Permissions](https://www.better-auth.com/docs/concepts/roles-permissions)
+
+### Rate Limiting
+Protects API endpoints from abuse by limiting the number of requests users can make within a specified time period.
+
+**Related Documentation:**
+- [Rate Limiting](https://www.better-auth.com/docs/concepts/rate-limiting)
+
+### Custom Plugins
+Better Auth supports custom plugin development to extend authentication functionality.
+
+**Related Documentation:**
+- [Plugin Development](https://www.better-auth.com/docs/plugins/custom-plugin)
+- [Plugin API](https://www.better-auth.com/docs/plugins/plugin-api)
 
 ## Database Models
 

@@ -1,31 +1,43 @@
 'use client';
 
 import { useTranslation } from "@/hooks/use-translation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import { authClientReact } from "@libs/auth/authClient";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   User, 
-  Crown, 
-  CreditCard, 
-  Calendar, 
   Shield,
-  ExternalLink,
   CheckCircle,
-  XCircle,
-  Clock
+  Edit,
+  Save,
+  X
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { ChangePasswordDialog } from "./components/change-password-dialog";
+import { DeleteAccountDialog } from "./components/delete-account-dialog";
+import { SubscriptionCard } from "./components/subscription-card";
+import { LinkedAccountsCard } from "./components/linked-accounts-card";
 
 export default function DashboardPage() {
   const { t, locale: currentLocale } = useTranslation();
   const router = useRouter();
-  const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    image: ''
+  });
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
 
   const { 
     data: session, 
@@ -35,26 +47,16 @@ export default function DashboardPage() {
   const user = session?.user;
 
   useEffect(() => {
-    async function fetchSubscriptionDetails() {
-      try {
-        const response = await fetch('/api/subscription/status');
-        if (response.ok) {
-          const data = await response.json();
-          setSubscriptionData(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch subscription details', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     if (user) {
-      fetchSubscriptionDetails();
-    } else {
+      setEditForm({
+        name: user.name || '',
+        image: user.image || ''
+      });
+      setLoading(false);
+    } else if (!isPending) {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, refreshKey, isPending]);
 
   // 格式化日期
   const formatDate = (dateString: string | Date) => {
@@ -70,9 +72,9 @@ export default function DashboardPage() {
   const getRoleDisplayName = (role: string) => {
     switch (role) {
       case 'admin':
-        return currentLocale === 'zh-CN' ? '管理员' : 'Administrator';
+        return t.dashboard.roles.admin;
       case 'user':
-        return currentLocale === 'zh-CN' ? '普通用户' : 'User';
+        return t.dashboard.roles.user;
       default:
         return role;
     }
@@ -90,53 +92,47 @@ export default function DashboardPage() {
     }
   };
 
-  // 获取订阅状态显示
-  const getSubscriptionStatus = () => {
-    if (!subscriptionData) return null;
+  // 处理用户信息更新
+  const handleUpdateProfile = async () => {
+    if (!user) return;
     
-    if (subscriptionData.isLifetime) {
-      return {
-        text: currentLocale === 'zh-CN' ? '终身会员' : 'Lifetime',
-        variant: 'default' as const,
-        icon: Crown
-      };
+    setUpdateLoading(true);
+    try {
+      await authClientReact.updateUser({
+        name: editForm.name.trim() || undefined,
+        image: editForm.image.trim() || undefined,
+      });
+      
+      setIsEditing(false);
+      toast.success(t.dashboard.profile.updateSuccess);
+      
+      // 强制刷新组件状态以确保显示最新数据
+      setRefreshKey(prev => prev + 1);
+      
+      // 主动获取最新会话数据
+      setTimeout(async () => {
+        try {
+          await authClientReact.getSession();
+        } catch (error) {
+          console.error('Failed to refresh session:', error);
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      toast.error(t.dashboard.profile.updateError);
+    } finally {
+      setUpdateLoading(false);
     }
-    
-    if (subscriptionData.hasSubscription) {
-      const status = subscriptionData.subscription?.status;
-      switch (status) {
-        case 'active':
-          return {
-            text: currentLocale === 'zh-CN' ? '有效' : 'Active',
-            variant: 'default' as const,
-            icon: CheckCircle
-          };
-        case 'canceled':
-          return {
-            text: currentLocale === 'zh-CN' ? '已取消' : 'Canceled',
-            variant: 'secondary' as const,
-            icon: XCircle
-          };
-        case 'past_due':
-          return {
-            text: currentLocale === 'zh-CN' ? '逾期' : 'Past Due',
-            variant: 'destructive' as const,
-            icon: Clock
-          };
-        default:
-          return {
-            text: status || (currentLocale === 'zh-CN' ? '未知' : 'Unknown'),
-            variant: 'outline' as const,
-            icon: CreditCard
-          };
-      }
-    }
-    
-    return {
-      text: currentLocale === 'zh-CN' ? '无订阅' : 'No Subscription',
-      variant: 'outline' as const,
-      icon: CreditCard
-    };
+  };
+
+  // 取消编辑
+  const handleCancelEdit = () => {
+    setEditForm({
+      name: user?.name || '',
+      image: user?.image || ''
+    });
+    setIsEditing(false);
   };
 
   if (isPending || loading) {
@@ -154,211 +150,226 @@ export default function DashboardPage() {
     return null;
   }
 
-  const subscriptionStatus = getSubscriptionStatus();
-
   return (
     <div className="container py-8">
-      <div className="space-y-8">
+      <div className="max-w-2xl mx-auto space-y-6">
         {/* 页面标题 */}
-        <div>
+        <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight">
-            {currentLocale === 'zh-CN' ? '仪表盘' : 'Dashboard'}
+            {t.dashboard.title}
           </h1>
-          <p className="text-muted-foreground">
-            {currentLocale === 'zh-CN' ? '管理您的账户和订阅' : 'Manage your account and subscriptions'}
+          <p className="text-muted-foreground mt-2">
+            {t.dashboard.description}
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* 用户信息卡片 */}
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                {currentLocale === 'zh-CN' ? '个人信息' : 'Profile Information'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+        {/* 统一信息卡片 */}
+        <Card>
+          <CardContent className="p-8">
+            <div className="space-y-8">
+              {/* 用户信息区域 */}
               <div className="flex items-start space-x-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={user.image || ""} alt={user.name || user.email || "User"} />
-                  <AvatarFallback className="text-lg">
-                    {user.name?.charAt(0) || user.email?.charAt(0) || "U"}
+                <Avatar className="h-20 w-20">
+                  <AvatarImage 
+                    src={isEditing ? editForm.image || user.image || "" : user.image || ""} 
+                    alt={user.name || user.email || "User"} 
+                  />
+                  <AvatarFallback className="text-xl">
+                    {(isEditing ? editForm.name || user.name : user.name)?.charAt(0) || user.email?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
-                <div className="space-y-3 flex-1">
-                  <div>
-                    <h3 className="text-lg font-semibold">{user.name || (currentLocale === 'zh-CN' ? '未设置姓名' : 'No name set')}</h3>
-                    <p className="text-muted-foreground">{user.email}</p>
-                  </div>
-                  
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {currentLocale === 'zh-CN' ? '角色:' : 'Role:'}
-                      </span>
-                      <Badge variant={getRoleBadgeVariant(user.role || 'user')}>
-                        {getRoleDisplayName(user.role || 'user')}
-                      </Badge>
+                <div className="flex-1 space-y-4">
+                  {isEditing ? (
+                    // 编辑模式
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">{t.dashboard.profile.form.labels.name}</Label>
+                        <Input
+                          id="name"
+                          value={editForm.name}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder={t.dashboard.profile.form.placeholders.name}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="image">{t.dashboard.profile.form.labels.image}</Label>
+                        <Input
+                          id="image"
+                          value={editForm.image}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, image: e.target.value }))}
+                          placeholder={t.dashboard.profile.form.placeholders.image}
+                        />
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={handleUpdateProfile} 
+                          disabled={updateLoading}
+                          size="sm"
+                        >
+                          {updateLoading ? (
+                            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mr-2" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          {t.dashboard.profile.updateProfile}
+                        </Button>
+                        
+                        <Button 
+                          variant="outline" 
+                          onClick={handleCancelEdit}
+                          disabled={updateLoading}
+                          size="sm"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          {t.dashboard.profile.cancel}
+                        </Button>
+                      </div>
                     </div>
-                    
-                    {user.emailVerified && (
-                      <div className="flex items-center gap-1 text-sm text-green-600">
-                        <CheckCircle className="h-4 w-4" />
-                        {currentLocale === 'zh-CN' ? '邮箱已验证' : 'Email verified'}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-2">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/${currentLocale}/profile`}>
-                        {currentLocale === 'zh-CN' ? '编辑资料' : 'Edit Profile'}
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 订阅状态卡片 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                {currentLocale === 'zh-CN' ? '订阅状态' : 'Subscription Status'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {subscriptionStatus && (
-                  <div className="flex items-center gap-2">
-                    <subscriptionStatus.icon className="h-4 w-4" />
-                    <Badge variant={subscriptionStatus.variant}>
-                      {subscriptionStatus.text}
-                    </Badge>
-                  </div>
-                )}
-
-                {subscriptionData?.isLifetime ? (
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      {currentLocale === 'zh-CN' ? '您拥有终身访问权限' : 'You have lifetime access'}
-                    </p>
-                  </div>
-                ) : subscriptionData?.hasSubscription ? (
-                  <div className="space-y-2">
-                    {subscriptionData.subscription?.periodEnd && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          {currentLocale === 'zh-CN' ? '到期时间:' : 'Expires:'}
-                        </span>
-                        <span>{formatDate(subscriptionData.subscription.periodEnd)}</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {currentLocale === 'zh-CN' ? '您当前没有有效的订阅' : 'You currently have no active subscription'}
-                  </p>
-                )}
-
-                <div className="pt-2">
-                  {subscriptionData?.hasSubscription || subscriptionData?.isLifetime ? (
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/${currentLocale}/dashboard/subscription`}>
-                        {currentLocale === 'zh-CN' ? '管理订阅' : 'Manage Subscription'}
-                        <ExternalLink className="ml-2 h-3 w-3" />
-                      </Link>
-                    </Button>
                   ) : (
-                    <Button size="sm" asChild>
-                      <Link href={`/${currentLocale}/pricing`}>
-                        {currentLocale === 'zh-CN' ? '查看套餐' : 'View Plans'}
-                      </Link>
-                    </Button>
+                    // 查看模式
+                    <div>
+                      <div className="flex items-center gap-3 mb-4">
+                        <div>
+                          <h2 className="text-2xl font-semibold">{user.name || t.dashboard.profile.noNameSet}</h2>
+                          <p className="text-muted-foreground text-lg">{user.email}</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setIsEditing(true)}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          {t.dashboard.profile.editProfile}
+                        </Button>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">
+                            {t.dashboard.profile.role}
+                          </span>
+                          <Badge variant={getRoleBadgeVariant(user.role || 'user')}>
+                            {getRoleDisplayName(user.role || 'user')}
+                          </Badge>
+                        </div>
+                        
+                        {user.emailVerified && (
+                          <div className="flex items-center gap-1 text-sm text-green-600">
+                            <CheckCircle className="h-4 w-4" />
+                            {t.dashboard.profile.emailVerified}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 账户详情信息 - 仅在查看模式显示 */}
+                  {!isEditing && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">
+                          {t.dashboard.account.memberSince}
+                        </span>
+                        <span className="text-sm font-medium">
+                          {user.createdAt ? formatDate(user.createdAt) : 'N/A'}
+                        </span>
+                      </div>
+                      
+                      {user.phoneNumber && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">
+                            {t.dashboard.account.phoneNumber}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{user.phoneNumber}</span>
+                            {user.phoneNumberVerified && (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* 账户统计卡片 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                {currentLocale === 'zh-CN' ? '账户信息' : 'Account Details'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    {currentLocale === 'zh-CN' ? '注册时间' : 'Member since'}
-                  </span>
-                  <span className="text-sm font-medium">
-                    {user.createdAt ? formatDate(user.createdAt) : 'N/A'}
-                  </span>
-                </div>
-                
-                {user.phoneNumber && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
-                      {currentLocale === 'zh-CN' ? '手机号码' : 'Phone Number'}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{user.phoneNumber}</span>
-                      {user.phoneNumberVerified && (
-                        <CheckCircle className="h-3 w-3 text-green-600" />
-                      )}
+              {/* 分隔线 */}
+              <hr className="border-border" />
+
+              {/* 订阅状态区域 */}
+              <SubscriptionCard />
+
+              {/* 分隔线 */}
+              <hr className="border-border" />
+
+              {/* 关联账户区域 */}
+              <LinkedAccountsCard />
+
+              {/* 分隔线 */}
+              <hr className="border-border" />
+
+              {/* 账户管理区域 */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">
+                  {t.dashboard.accountManagement.title}
+                </h3>
+                <div className="space-y-4">
+                  {/* 密码管理 */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">{t.dashboard.accountManagement.changePassword.title}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {t.dashboard.accountManagement.changePassword.description}
+                        </p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowChangePasswordDialog(true)}
+                      >
+                        {t.dashboard.accountManagement.changePassword.button}
+                      </Button>
                     </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* 快速操作卡片 */}
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>{currentLocale === 'zh-CN' ? '快速操作' : 'Quick Actions'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Button variant="outline" asChild>
-                  <Link href={`/${currentLocale}/settings`}>
-                    {currentLocale === 'zh-CN' ? '账户设置' : 'Account Settings'}
-                  </Link>
-                </Button>
-                
-                {subscriptionData?.hasSubscription && (
-                  <Button variant="outline" asChild>
-                    <Link href={`/${currentLocale}/dashboard/subscription`}>
-                      {currentLocale === 'zh-CN' ? '订阅详情' : 'Subscription Details'}
-                    </Link>
-                  </Button>
-                )}
-                
-                <Button variant="outline" asChild>
-                  <Link href={`/${currentLocale}/support`}>
-                    {currentLocale === 'zh-CN' ? '获取帮助' : 'Get Support'}
-                  </Link>
-                </Button>
-                
-                <Button variant="outline" asChild>
-                  <Link href={`/${currentLocale}/docs`}>
-                    {currentLocale === 'zh-CN' ? '查看文档' : 'View Documentation'}
-                  </Link>
-                </Button>
+                  {/* 账户删除 */}
+                  <div className="border rounded-lg p-4 border-destructive/20">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-destructive">{t.dashboard.accountManagement.deleteAccount.title}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {t.dashboard.accountManagement.deleteAccount.description}
+                        </p>
+                      </div>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => setShowDeleteAccountDialog(true)}
+                      >
+                        {t.dashboard.accountManagement.deleteAccount.button}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* 更改密码对话框 */}
+      <ChangePasswordDialog
+        open={showChangePasswordDialog}
+        onOpenChange={setShowChangePasswordDialog}
+      />
+
+      {/* 删除账户确认对话框 */}
+      <DeleteAccountDialog
+        open={showDeleteAccountDialog}
+        onOpenChange={setShowDeleteAccountDialog}
+      />
     </div>
   );
 } 

@@ -50,6 +50,12 @@ export const auth = betterAuth({
       verification
     }
   }),
+  // https://www.better-auth.com/docs/concepts/users-accounts#delete-user
+  user: {
+    deleteUser: {
+      enabled: true
+    }
+  },
   // https://www.better-auth.com/docs/concepts/email
   emailAndPassword: {
     enabled: true,
