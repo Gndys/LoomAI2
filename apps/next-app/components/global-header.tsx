@@ -97,17 +97,14 @@ export default function Header({ className }: HeaderProps) {
 
           {/* Desktop navigation */}
           <nav className="hidden md:flex md:space-x-8">
-            <Link href={`/${currentLocale}/features`} className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
-              功能特性
+            <Link href={`/${currentLocale}/ai`} className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+              {t.header.navigation.ai}
             </Link>
-            <Link href={`/${currentLocale}/docs`} className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
-              开发文档
+            <Link href={`/${currentLocale}/premium-features`} className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+              {t.header.navigation.premiumFeatures}
             </Link>
-            <Link href={`/${currentLocale}/examples`} className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
-              示例项目
-            </Link>
-            <Link href={`/${currentLocale}/community`} className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
-              社区
+            <Link href={`/${currentLocale}/pricing`} className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+              {t.header.navigation.pricing}
             </Link>
           </nav>
 
@@ -143,7 +140,7 @@ export default function Header({ className }: HeaderProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
-                  {currentLocale === 'en' ? 'English' : '中文'}
+                  {currentLocale === 'en' ? t.header.language.english : t.header.language.chinese}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="dark:bg-slate-800 dark:border-slate-700">
@@ -153,7 +150,7 @@ export default function Header({ className }: HeaderProps) {
                     onClick={() => handleLanguageChange(locale)}
                     className="dark:text-slate-300 dark:hover:bg-slate-700"
                   >
-                    {locale === 'en' ? 'English' : '中文'}
+                    {locale === 'en' ? t.header.language.english : t.header.language.chinese}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -186,30 +183,10 @@ export default function Header({ className }: HeaderProps) {
                     <DropdownMenuItem asChild>
                       <Link href={`/${currentLocale}/dashboard`} className="flex items-center dark:text-slate-300 dark:hover:bg-slate-700">
                         <svg className="mr-2 h-4 w-4 text-slate-500 dark:text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="7" height="7"></rect>
-                          <rect x="14" y="3" width="7" height="7"></rect>
-                          <rect x="14" y="14" width="7" height="7"></rect>
-                          <rect x="3" y="14" width="7" height="7"></rect>
-                        </svg>
-                        控制台
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href={`/${currentLocale}/profile`} className="flex items-center dark:text-slate-300 dark:hover:bg-slate-700">
-                        <svg className="mr-2 h-4 w-4 text-slate-500 dark:text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                        个人资料
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href={`/${currentLocale}/settings`} className="flex items-center dark:text-slate-300 dark:hover:bg-slate-700">
-                        <svg className="mr-2 h-4 w-4 text-slate-500 dark:text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
                           <circle cx="12" cy="12" r="3"></circle>
                         </svg>
-                        设置
+                        {t.header.userMenu.personalSettings}
                       </Link>
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
@@ -220,7 +197,7 @@ export default function Header({ className }: HeaderProps) {
                       <polyline points="16 17 21 12 16 7"></polyline>
                       <line x1="21" y1="12" x2="9" y2="12"></line>
                     </svg>
-                    退出登录
+                    {t.header.auth.signOut}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -228,12 +205,12 @@ export default function Header({ className }: HeaderProps) {
               <>
                 <Link href={`/${currentLocale}/signin`}>
                   <Button variant="ghost" className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
-                    登录
+                    {t.header.auth.signIn}
                   </Button>
                 </Link>
                 <Link href={`/${currentLocale}/signup`}>
                   <Button variant="default" className="text-sm font-medium bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 border-0 rounded-full">
-                    开始使用
+                    {t.header.auth.getStarted}
                   </Button>
                 </Link>
               </>
@@ -266,17 +243,14 @@ export default function Header({ className }: HeaderProps) {
       {isMenuOpen && (
         <div className="md:hidden bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <Link href={`/${currentLocale}/features`} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
-              功能特性
+            <Link href={`/${currentLocale}/ai`} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
+              {t.header.navigation.ai}
             </Link>
-            <Link href={`/${currentLocale}/docs`} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
-              开发文档
+            <Link href={`/${currentLocale}/premium-features`} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
+              {t.header.navigation.premiumFeatures}
             </Link>
-            <Link href={`/${currentLocale}/examples`} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
-              示例项目
-            </Link>
-            <Link href={`/${currentLocale}/community`} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
-              社区
+            <Link href={`/${currentLocale}/pricing`} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
+              {t.header.navigation.pricing}
             </Link>
           </div>
           <div className="pt-4 pb-3 border-t border-slate-100 dark:border-slate-700">
@@ -296,32 +270,26 @@ export default function Header({ className }: HeaderProps) {
                     <div className="text-sm font-medium text-slate-500 dark:text-slate-400">{user.email}</div>
                   </div>
                 </div>
-                <Link href={`/${currentLocale}/dashboard`} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
-                  控制台
-                </Link>
-                <Link href={`/${currentLocale}/profile`} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
-                  个人资料
-                </Link>
                 <Link href={`/${currentLocale}/settings`} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800">
-                  设置
+                  {t.header.userMenu.personalSettings}
                 </Link>
                 <button
                   onClick={handleSignOut}
                   className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-slate-800"
                 >
-                  退出登录
+                  {t.header.auth.signOut}
                 </button>
               </div>
             ) : (
               <div className="flex items-center justify-center space-x-4 px-4 py-2">
                 <Link href={`/${currentLocale}/signin`} className="w-1/2">
                   <Button variant="outline" className="w-full text-sm font-medium border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
-                    登录
+                    {t.header.auth.signIn}
                   </Button>
                 </Link>
                 <Link href={`/${currentLocale}/signup`} className="w-1/2">
                   <Button variant="default" className="w-full text-sm font-medium bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200 border-0 rounded-full text-white dark:text-slate-900">
-                    开始使用
+                    {t.header.auth.getStarted}
                   </Button>
                 </Link>
               </div>

@@ -4,6 +4,7 @@ import "../globals.css";
 import { i18n } from '../i18n-config';
 import { use } from 'react';
 import { Toaster } from "@/components/ui/sonner"
+import { translations } from "@libs/i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,11 +16,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "ShipEasy - Simplify Your Shipping Logistics",
-  description: "Modern shipping and logistics platform for businesses of all sizes",
-  keywords: ["shipping", "logistics", "ecommerce", "delivery", "tracking"],
-};
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params;
+  const t = translations[lang as keyof typeof translations];
+  
+  return {
+    title: t.home.metadata.title,
+    description: t.home.metadata.description,
+    keywords: t.home.metadata.keywords,
+  };
+}
 
 export async function generateStaticParams() {
   return i18n.locales.map((locale) => ({ lang: locale }));

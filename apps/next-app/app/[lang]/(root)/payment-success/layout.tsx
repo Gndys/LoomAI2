@@ -6,16 +6,16 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const t = translations[lang as keyof typeof translations];
   
   return {
-    title: t.auth.metadata.resetPassword.title,
-    description: t.auth.metadata.resetPassword.description,
-    keywords: t.auth.metadata.resetPassword.keywords,
+    title: t.payment.metadata.success.title,
+    description: t.payment.metadata.success.description,
+    keywords: t.payment.metadata.success.keywords,
   };
 }
 
-export default function ResetPasswordLayout({
+export default function PaymentSuccessLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <>{children}</>;
 } 

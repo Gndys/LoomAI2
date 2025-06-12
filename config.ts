@@ -41,6 +41,7 @@ type BasePlan = {
   amount: number;
   currency: string;
   features: readonly string[];
+  recommended?: boolean;
   i18n: {
     [locale: string]: {
       name: string;
@@ -276,6 +277,7 @@ export const config = {
         description: '一次付费，永久使用',
         amount: 999,
         currency: 'CNY',
+        recommended: true,
         duration: {
           months: 999999,
           description: '终身',
