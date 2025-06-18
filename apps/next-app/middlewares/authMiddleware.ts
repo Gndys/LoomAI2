@@ -96,7 +96,7 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
     console.log(`Authentication failed for: ${pathname}`);
     if (matchedRoute.type === 'page') {
       const currentLocale = pathname.split('/')[1]; 
-      const loginUrl = new URL(`/${currentLocale}/login`, request.url);
+      const loginUrl = new URL(`/${currentLocale}/signin`, request.url);
       return NextResponse.redirect(loginUrl);
     } else if (matchedRoute.type === 'api') {
       return new NextResponse('Unauthorized', { status: 401 });

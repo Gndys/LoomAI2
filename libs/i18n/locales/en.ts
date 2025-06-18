@@ -278,11 +278,13 @@ export const en: Locale = {
       recentOrders: {
         title: "Recent Orders",
         orderId: "Order ID",
+        customer: "Customer",
         plan: "Plan",
         amount: "Amount",
         provider: "Payment Method",
         status: "Status",
-        time: "Time"
+        time: "Time",
+        total: "Total"
       }
     },
     users: {
@@ -593,12 +595,15 @@ export const en: Locale = {
       form: {
         labels: {
           name: "Full Name",
+          email: "Email Address",
           image: "Profile Image URL"
         },
         placeholders: {
           name: "Enter your full name",
+          email: "Email address",
           image: "https://example.com/your-image.jpg"
-        }
+        },
+        emailReadonly: "Email address cannot be modified"
       },
       updateSuccess: "Profile updated successfully",
       updateError: "Failed to update profile. Please try again."
@@ -624,6 +629,41 @@ export const en: Locale = {
       memberSince: "Member since",
       phoneNumber: "Phone Number"
     },
+    orders: {
+      title: "Order History",
+      status: {
+        pending: "Pending",
+        paid: "Paid",
+        failed: "Failed",
+        refunded: "Refunded",
+        canceled: "Canceled"
+      },
+      provider: {
+        stripe: "Stripe",
+        wechat: "WeChat Pay"
+      },
+      noOrders: "No orders found",
+      noOrdersDescription: "You haven't placed any orders yet",
+      viewAllOrders: "View All Orders",
+      orderDetails: {
+        orderId: "Order ID",
+        amount: "Amount",
+        plan: "Plan",
+        status: "Status",
+        provider: "Payment Method",
+        createdAt: "Created"
+      },
+      recent: {
+        title: "Recent Orders",
+        showingRecent: "Showing {count} most recent orders"
+      },
+      page: {
+        title: "All Orders",
+        description: "View and manage all your orders",
+        backToDashboard: "Back to Dashboard",
+        totalOrders: "Total {count} orders"
+      }
+    },
     linkedAccounts: {
       title: "Linked Accounts",
       connected: "Connected",
@@ -638,6 +678,52 @@ export const en: Locale = {
         discord: "Discord",
         wechat: "WeChat",
         phone: "Phone Number"
+      }
+    },
+    tabs: {
+      profile: {
+        title: "Profile",
+        description: "Manage your personal information and avatar"
+      },
+      account: {
+        title: "Account Management",
+        description: "Password changes, linked accounts and security"
+      },
+      security: {
+        title: "Security",
+        description: "Password and security settings"
+      },
+      subscription: {
+        description: "Manage your subscription plan and features"
+      },
+      orders: {
+        description: "View your order history and transactions"
+      },
+      content: {
+        profile: {
+          title: "Profile",
+          subtitle: "This is how others will see you on the site.",
+          username: {
+            label: "Username",
+            value: "shadcn",
+            description: "This is your public display name. It can be your real name or a pseudonym. You can only change this once every 30 days."
+          },
+          email: {
+            label: "Email",
+            placeholder: "Select a verified email to display",
+            description: "You can manage verified email addresses in your email settings."
+          }
+        },
+        account: {
+          title: "Account Settings",
+          subtitle: "Manage your account settings and preferences.",
+          placeholder: "Account settings content..."
+        },
+        security: {
+          title: "Security Settings",
+          subtitle: "Manage your password and security settings.",
+          placeholder: "Security settings content..."
+        }
       }
     },
     quickActions: {
@@ -737,7 +823,8 @@ export const en: Locale = {
       dashboard: "Dashboard",
       profile: "Profile",
       settings: "Settings",
-      personalSettings: "Personal Settings"
+      personalSettings: "Personal Settings",
+      adminPanel: "Admin Panel"
     },
     language: {
       english: "English",

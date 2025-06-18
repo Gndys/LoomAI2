@@ -278,11 +278,13 @@ export const zhCN: Locale = {
       recentOrders: {
         title: "最近订单",
         orderId: "订单ID",
+        customer: "客户",
         plan: "计划",
         amount: "金额",
         provider: "支付方式",
         status: "状态",
-        time: "时间"
+        time: "时间",
+        total: "总计"
       }
     },
     users: {
@@ -593,12 +595,15 @@ export const zhCN: Locale = {
       form: {
         labels: {
           name: "姓名",
+          email: "邮箱地址",
           image: "头像图片链接"
         },
         placeholders: {
           name: "请输入您的姓名",
+          email: "邮箱地址",
           image: "https://example.com/your-image.jpg"
-        }
+        },
+        emailReadonly: "邮箱地址无法修改"
       },
       updateSuccess: "个人资料更新成功",
       updateError: "更新个人资料失败，请重试"
@@ -624,6 +629,41 @@ export const zhCN: Locale = {
       memberSince: "注册时间",
       phoneNumber: "手机号码"
     },
+    orders: {
+      title: "订单历史",
+      status: {
+        pending: "待支付",
+        paid: "已支付",
+        failed: "支付失败",
+        refunded: "已退款",
+        canceled: "已取消"
+      },
+      provider: {
+        stripe: "Stripe",
+        wechat: "微信支付"
+      },
+      noOrders: "没有找到订单",
+      noOrdersDescription: "您还没有下过任何订单",
+      viewAllOrders: "查看所有订单",
+      orderDetails: {
+        orderId: "订单ID",
+        amount: "金额",
+        plan: "计划",
+        status: "状态",
+        provider: "支付方式",
+        createdAt: "创建时间"
+      },
+      recent: {
+        title: "最近订单",
+        showingRecent: "显示最近 {count} 个订单"
+      },
+      page: {
+        title: "所有订单",
+        description: "查看和管理您的所有订单",
+        backToDashboard: "返回仪表盘",
+        totalOrders: "共 {count} 个订单"
+      }
+    },
     linkedAccounts: {
       title: "关联账户",
       connected: "已连接",
@@ -638,6 +678,52 @@ export const zhCN: Locale = {
         discord: "Discord",
         wechat: "微信",
         phone: "手机号"
+      }
+    },
+    tabs: {
+      profile: {
+        title: "个人资料",
+        description: "管理您的个人信息和头像"
+      },
+      account: {
+        title: "账户管理",
+        description: "密码修改、关联账户和账户安全"
+      },
+      security: {
+        title: "安全设置",
+        description: "密码和安全设置"
+      },
+      subscription: {
+        description: "管理您的订阅计划和付费功能"
+      },
+      orders: {
+        description: "查看您的订单历史和交易记录"
+      },
+      content: {
+        profile: {
+          title: "个人资料",
+          subtitle: "这是您在网站上向其他人展示的信息。",
+          username: {
+            label: "用户名",
+            value: "shadcn",
+            description: "这是您的公开显示名称。可以是您的真实姓名或昵称。您只能每30天更改一次。"
+          },
+          email: {
+            label: "邮箱",
+            placeholder: "选择要显示的已验证邮箱",
+            description: "您可以在邮箱设置中管理已验证的邮箱地址。"
+          }
+        },
+        account: {
+          title: "账户设置",
+          subtitle: "管理您的账户设置和偏好。",
+          placeholder: "账户设置内容..."
+        },
+        security: {
+          title: "安全设置",
+          subtitle: "管理您的密码和安全设置。",
+          placeholder: "安全设置内容..."
+        }
       }
     },
     quickActions: {
@@ -737,7 +823,8 @@ export const zhCN: Locale = {
       dashboard: "控制台",
       profile: "个人资料",
       settings: "设置",
-      personalSettings: "个人设置"
+      personalSettings: "个人设置",
+      adminPanel: "管理后台"
     },
     language: {
       english: "English",

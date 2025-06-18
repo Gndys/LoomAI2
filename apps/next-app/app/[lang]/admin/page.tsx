@@ -28,6 +28,7 @@ import { config } from "@config";
 import dynamic from 'next/dynamic';
 import { translations } from "@libs/i18n";
 import { DollarSign, Users, ShoppingBag } from "lucide-react";
+import { AdminOrdersCard } from "./components/admin-orders-card";
 
 // 定义图表数据类型
 interface ChartData {
@@ -227,22 +228,7 @@ async function getAdminStats(): Promise<AdminStats> {
   };
 }
 
-// 获取最近5个订单
-async function getRecentOrders() {
-  const recentOrders = await db.select({
-    id: order.id,
-    userId: order.userId,
-    amount: order.amount,
-    status: order.status,
-    planId: order.planId,
-    provider: order.provider,
-    createdAt: order.createdAt,
-  }).from(order)
-    .orderBy(desc(order.createdAt))
-    .limit(5);
 
-  return recentOrders;
-}
 
 // 格式化数字显示
 function formatNumber(num: number): string {
@@ -274,11 +260,8 @@ export default async function AdminDashboard({ params }: { params: { lang: strin
     );
   }
 
-  // 获取统计数据和最近订单
-  const [stats, recentOrders] = await Promise.all([
-    getAdminStats(),
-    getRecentOrders()
-  ]);
+  // 获取统计数据
+  const stats = await getAdminStats();
 
   // 🔄 线上环境切换到真实数据的方法：
   // 1. 取消下面一行的注释，获取真实的月度数据
@@ -404,59 +387,7 @@ export default async function AdminDashboard({ params }: { params: { lang: strin
         </div>
 
         {/* 最近订单 */}
-        <div className="bg-card rounded-lg shadow-sm border border-border">
-          <div className="p-6 border-b border-border">
-            <h3 className="text-lg font-semibold text-card-foreground">{t.admin.dashboard.recentOrders.title}</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.admin.dashboard.recentOrders.orderId}</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.admin.dashboard.recentOrders.plan}</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.admin.dashboard.recentOrders.amount}</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.admin.dashboard.recentOrders.provider}</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.admin.dashboard.recentOrders.status}</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.admin.dashboard.recentOrders.time}</th>
-                </tr>
-              </thead>
-              <tbody className="bg-card divide-y divide-border">
-                {recentOrders.map((order) => {
-                  const plan = config.payment.plans[order.planId as keyof typeof config.payment.plans];
-                  return (
-                    <tr key={order.id} className="hover:bg-muted/50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-card-foreground">
-                        #{order.id.slice(-8)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {plan?.name || order.planId}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-card-foreground">
-                        ¥{Number(order.amount).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground capitalize">
-                        {order.provider}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          order.status === orderStatus.PAID ? 'bg-chart-2 text-white' :
-                          order.status === orderStatus.PENDING ? 'bg-chart-4 text-white' :
-                          order.status === orderStatus.FAILED ? 'bg-chart-5 text-white' :
-                          'bg-muted text-muted-foreground'
-                        }`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {order.createdAt ? new Date(order.createdAt).toLocaleString(lang === 'zh-CN' ? 'zh-CN' : 'en-US') : ''}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <AdminOrdersCard limit={10} />
       </div>
     </div>
   );
