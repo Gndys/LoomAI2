@@ -397,7 +397,7 @@ export const config = {
         return getEnvForService('ALIYUN_ACCESS_KEY_SECRET', 'Aliyun SMS');
       },
       endpoint: 'dysmsapi.aliyuncs.com',
-      signName: 'Your Sign Name',
+      signName: '上海挚箴技术服务中心',
     },
 
     /**
@@ -463,6 +463,49 @@ export const config = {
         return getEnvForService('SMTP_PASSWORD', 'SMTP Email');
       },
       secure: true,
+    }
+  },
+
+  /**
+   * Captcha Service Configuration
+   */
+  captcha: {
+    /**
+     * Enable/Disable Captcha Verification
+     */
+    enabled: true,
+
+    /**
+     * Default Captcha Provider
+     */
+    defaultProvider: 'cloudflare-turnstile',
+
+    /**
+     * Cloudflare Turnstile Configuration
+     */
+    cloudflare: {
+      // 服务端使用的 secret key（用于 better-auth）
+      get secretKey() {
+        // 开发环境fallback到测试key
+        if (process.env.NODE_ENV === 'development') {
+          return '1x0000000000000000000000000000000AA'; // 测试用的 siteKey
+        }
+        return getEnvForService('TURNSTILE_SECRET_KEY', 'Cloudflare Turnstile');
+      },
+      // 客户端使用的 site key（使用 NEXT_PUBLIC_ 前缀）
+      get siteKey() {
+
+        // 开发环境fallback到测试key
+        if (process.env.NODE_ENV === 'development') {
+          return '1x00000000000000000000AA'; // 测试用的 siteKey
+        }
+        // 直接访问 process.env，不通过 getEnv 函数（因为客户端环境下 dotenv 不工作）
+        const publicKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+        if (publicKey) return publicKey;
+        
+        // 生产环境必须配置
+        return getEnvForService('TURNSTILE_SITE_KEY', 'Cloudflare Turnstile');
+      }
     }
   },
 

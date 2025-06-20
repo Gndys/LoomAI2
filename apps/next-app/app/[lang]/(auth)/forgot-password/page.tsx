@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormError } from "@/components/ui/form-error";
+import { Turnstile } from "@/components/ui/turnstile";
 import { Loader2 } from "lucide-react";
 import { forgetPasswordSchema } from "@libs/validators/user";
 import { authClientReact } from '@libs/auth/authClient';
 import type { z } from "zod";
-import { useTranslation } from "@/hooks/use-translation"
+import { useTranslation } from "@/hooks/use-translation";
+import { config } from "@config";
 
 type FormData = z.infer<typeof forgetPasswordSchema>;
 
@@ -24,6 +26,8 @@ export default function ForgetPasswordPage() {
   const [error, setError] = useState<{ code?: string; message: string } | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [sentEmail, setSentEmail] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0); // 用于强制重新渲染 Turnstile
 
   const {
     register,
@@ -37,6 +41,15 @@ export default function ForgetPasswordPage() {
   });
 
   const onSubmit = async (data: FormData) => {
+    // 如果启用了 captcha 但没有 token，则提示用户
+    if (config.captcha.enabled && !turnstileToken) {
+      setError({
+        code: "CAPTCHA_REQUIRED",
+        message: t.auth.forgetPassword.errors.captchaRequired,
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -45,7 +58,10 @@ export default function ForgetPasswordPage() {
         redirectTo: '/reset-password',
         fetchOptions: {
           headers: {
-            'X-Locale': locale
+            'X-Locale': locale,
+            ...(config.captcha.enabled && turnstileToken ? {
+              "x-captcha-response": turnstileToken,
+            } : {})
           }
         }
       });
@@ -56,6 +72,11 @@ export default function ForgetPasswordPage() {
         code: err.code || "UNKNOWN_ERROR",
         message: err.message || t.common.unexpectedError,
       });
+      // 如果验证失败，重置 turnstile token 并强制重新渲染
+      if (config.captcha.enabled) {
+        setTurnstileToken(null);
+        setTurnstileKey(prev => prev + 1); // 强制重新渲染 Turnstile 组件
+      }
     } finally {
       setLoading(false);
     }
@@ -95,7 +116,16 @@ export default function ForgetPasswordPage() {
                     </p>
                   )}
                 </div>
-                <Button disabled={loading}>
+
+                {/* Cloudflare Turnstile 验证码 */}
+                <Turnstile
+                  key={turnstileKey}
+                  onSuccess={(token: string) => setTurnstileToken(token)}
+                  onError={() => setTurnstileToken(null)}
+                  onExpire={() => setTurnstileToken(null)}
+                />
+
+                <Button disabled={loading || (config.captcha.enabled && !turnstileToken)}>
                   {loading && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}

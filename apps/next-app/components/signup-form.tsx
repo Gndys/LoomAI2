@@ -13,8 +13,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FormError } from "@/components/ui/form-error"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Turnstile } from "@/components/ui/turnstile"
 import { Inbox } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
+import { config } from "@config"
 import Link from "next/link"
 
 type FormData = z.infer<typeof signupFormSchema>;
@@ -30,6 +32,8 @@ export function SignupForm({
   const [errorCode, setErrorCode] = useState('');
   const [isVerificationEmailSent, setIsVerificationEmailSent] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0); // 用于强制重新渲染 Turnstile
 
   const {
     register,
@@ -47,6 +51,12 @@ export function SignupForm({
   });
 
   const onSubmit = async (formData: FormData) => {
+    // 如果启用了 captcha 但没有 token，则提示用户
+    if (config.captcha.enabled && !turnstileToken) {
+      setErrorMessage(t.auth.signup.errors.captchaRequired);
+      return;
+    }
+
     setLoading(true);
     setErrorMessage('');
     setErrorCode('');
@@ -57,7 +67,12 @@ export function SignupForm({
         password: formData.password,
         name: formData.name,
         image: formData.image || undefined,
-      }
+      },
+      config.captcha.enabled && turnstileToken ? {
+        headers: {
+          "x-captcha-response": turnstileToken,
+        },
+      } : undefined
     );
 
     if (error) {
@@ -67,6 +82,11 @@ export function SignupForm({
       } else {
         setErrorMessage(t.common.unexpectedError);
         setErrorCode('UNKNOWN_ERROR');
+      }
+      // 如果验证失败，重置 turnstile token 并强制重新渲染
+      if (config.captcha.enabled) {
+        setTurnstileToken(null);
+        setTurnstileKey(prev => prev + 1); // 强制重新渲染 Turnstile 组件
       }
       setLoading(false);
       return;
@@ -189,7 +209,20 @@ export function SignupForm({
               )}
             </div>
           </div>
-          <Button type="submit" className="w-full" disabled={loading || isSubmitting}>
+
+          {/* Cloudflare Turnstile 验证码 */}
+          <Turnstile
+            key={turnstileKey}
+            onSuccess={(token: string) => setTurnstileToken(token)}
+            onError={() => setTurnstileToken(null)}
+            onExpire={() => setTurnstileToken(null)}
+          />
+
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={loading || isSubmitting || (config.captcha.enabled && !turnstileToken)}
+          >
             {loading ? t.auth.signup.submitting : t.auth.signup.submit}
           </Button>
         </div>

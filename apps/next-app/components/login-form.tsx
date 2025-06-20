@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FormError } from "@/components/ui/form-error"
+import { Turnstile } from "@/components/ui/turnstile"
 import { useTranslation } from "@/hooks/use-translation";
+import { config } from "@config";
 import Link from "next/link";
 
 type FormData = z.infer<typeof loginFormSchema>;
@@ -26,7 +28,8 @@ export function LoginForm({
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorCode, setErrorCode] = useState('');
-
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0); // 用于强制重新渲染 Turnstile
   const {
     register,
     handleSubmit,
@@ -42,18 +45,29 @@ export function LoginForm({
   });
 
   const onSubmit = async (data: FormData) => {
+    // 如果启用了 captcha 但没有 token，则提示用户
+    if (config.captcha.enabled && !turnstileToken) {
+      setErrorMessage(t.auth.signin.errors.captchaRequired);
+      return;
+    }
+
     setLoading(true);
     setErrorMessage('');
     setErrorCode('');
 
-    const { error } = await authClientReact.signIn.email(
-      {
-        email: data.email,
-        password: data.password,
-        callbackURL: `/${locale}`,
-        ...(data.remember ? { rememberMe: true } : {}),
-      }
-    );
+    const { error } = await authClientReact.signIn.email({
+      email: data.email,
+      password: data.password,
+      callbackURL: `/${locale}`,
+      ...(data.remember ? { rememberMe: true } : {}),
+      ...(config.captcha.enabled && turnstileToken ? {
+        fetchOptions: {
+          headers: {
+            "x-captcha-response": turnstileToken,
+          },
+        }
+      } : {})
+    });
 
     if (error) {
       if (error.code && error.message) {
@@ -62,6 +76,11 @@ export function LoginForm({
       } else {
         setErrorMessage(t.auth.signin.errors.invalidCredentials);
         setErrorCode('UNKNOWN_ERROR');
+      }
+      // 如果验证失败，重置 turnstile token 并强制重新渲染
+      if (config.captcha.enabled) {
+        setTurnstileToken(null);
+        setTurnstileKey(prev => prev + 1); // 强制重新渲染 Turnstile 组件
       }
     }
 
@@ -118,6 +137,15 @@ export function LoginForm({
               )}
             </div>
           </div>
+
+          {/* Cloudflare Turnstile 验证码 */}
+          <Turnstile
+            key={turnstileKey}
+            onSuccess={(token: string) => setTurnstileToken(token)}
+            onError={() => setTurnstileToken(null)}
+            onExpire={() => setTurnstileToken(null)}
+          />
+
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
@@ -129,7 +157,11 @@ export function LoginForm({
               {t.auth.signin.rememberMe}
             </label>
           </div>
-          <Button type="submit" className="w-full" disabled={loading || isSubmitting}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={loading || isSubmitting || (config.captcha.enabled && !turnstileToken)}
+          >
             {loading ? t.auth.signin.submitting : t.auth.signin.submit}
           </Button>
         </div>

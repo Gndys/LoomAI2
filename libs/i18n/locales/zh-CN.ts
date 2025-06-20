@@ -39,7 +39,9 @@ export const zhCN: Locale = {
     backToList: "返回用户列表",
     saveChanges: "保存更改",
     createUser: "创建用户",
-    deleteUser: "删除用户"
+    deleteUser: "删除用户",
+    back: "返回",
+    resendCode: "重新发送"
   },
   email: {
     verification: {
@@ -128,7 +130,8 @@ export const zhCN: Locale = {
         invalidEmail: "请输入有效的邮箱地址",
         requiredEmail: "请输入邮箱",
         requiredPassword: "请输入密码",
-        invalidCredentials: "邮箱或密码错误"
+        invalidCredentials: "邮箱或密码错误",
+        captchaRequired: "请完成验证码验证"
       }
     },
     signup: {
@@ -165,7 +168,8 @@ export const zhCN: Locale = {
         requiredEmail: "请输入邮箱",
         invalidPassword: "请输入有效的密码",
         requiredPassword: "请输入密码",
-        invalidImage: "请输入有效的图片链接"
+        invalidImage: "请输入有效的图片链接",
+        captchaRequired: "请完成验证码验证"
       }
     },
     phone: {
@@ -173,17 +177,22 @@ export const zhCN: Locale = {
       description: "输入您的手机号以接收验证码",
       phoneNumber: "手机号",
       phoneNumberPlaceholder: "请输入您的手机号",
+      countryCode: "国家/地区",
       verificationCode: "验证码",
       sendingCode: "发送验证码中...",
       verifying: "验证中...",
+      codeSentTo: "已发送验证码到",
+      resendCountdown: "秒后可重新发送",
       termsNotice: "点击继续即表示您同意我们的",
       termsOfService: "服务条款",
       privacyPolicy: "隐私政策",
       errors: {
         invalidPhone: "请输入有效的手机号",
         requiredPhone: "请输入手机号",
+        requiredCountryCode: "请选择国家/地区",
         invalidCode: "请输入有效的验证码",
-        requiredCode: "请输入验证码"
+        requiredCode: "请输入验证码",
+        captchaRequired: "请完成验证码验证"
       }
     },
     forgetPassword: {
@@ -203,7 +212,8 @@ export const zhCN: Locale = {
       },
       errors: {
         invalidEmail: "请输入有效的邮箱地址",
-        requiredEmail: "请输入邮箱"
+        requiredEmail: "请输入邮箱",
+        captchaRequired: "请完成验证码验证"
       }
     },
     resetPassword: {

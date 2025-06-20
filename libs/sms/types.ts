@@ -8,11 +8,27 @@ export type SMSProvider = 'aliyun' | 'twilio';
  */
 export interface SMSOptions {
   to: string;               // 接收短信的手机号码
-  message: string;          // 短信内容
+  message?: string;         // 短信内容（Twilio等直接发送内容的服务商需要）
   from?: string;           // 发送方号码（某些服务商需要）
-  templateCode?: string;    // 模板代码（如果使用模板）
-  templateParams?: Record<string, string>; // 模板参数
+  templateCode?: string;    // 模板代码（阿里云等模板服务商需要）
+  templateParams?: Record<string, string>; // 模板参数（用于填充模板中的变量）
   provider?: SMSProvider;  // 服务提供商，默认为 aliyun
+}
+
+/**
+ * 阿里云短信特定选项（使用模板机制）
+ */
+export interface AliyunSMSOptions extends Omit<SMSOptions, 'message'> {
+  templateCode: string;    // 阿里云模板代码（必须）
+  templateParams?: Record<string, string>; // 模板参数
+}
+
+/**
+ * Twilio短信特定选项（直接发送内容）
+ */
+export interface TwilioSMSOptions extends Omit<SMSOptions, 'templateCode' | 'templateParams'> {
+  message: string;         // 短信内容（必须）
+  from?: string;          // 发送方号码
 }
 
 /**

@@ -39,7 +39,9 @@ export const en: Locale = {
     backToList: "Back to Users",
     saveChanges: "Save Changes",
     createUser: "Create User",
-    deleteUser: "Delete User"
+    deleteUser: "Delete User",
+    back: "Back",
+    resendCode: "Resend Code"
   },
   email: {
     verification: {
@@ -128,7 +130,8 @@ export const en: Locale = {
         invalidEmail: "Please enter a valid email",
         requiredEmail: "Email is required",
         requiredPassword: "Password is required",
-        invalidCredentials: "Invalid email or password"
+        invalidCredentials: "Invalid email or password",
+        captchaRequired: "Please complete the captcha verification"
       }
     },
     signup: {
@@ -165,7 +168,8 @@ export const en: Locale = {
         requiredEmail: "Email is required",
         invalidPassword: "Please enter a valid password",
         requiredPassword: "Password is required",
-        invalidImage: "Please enter a valid image URL"
+        invalidImage: "Please enter a valid image URL",
+        captchaRequired: "Please complete the captcha verification"
       }
     },
     phone: {
@@ -173,17 +177,22 @@ export const en: Locale = {
       description: "Enter your phone number to receive a verification code",
       phoneNumber: "Phone Number",
       phoneNumberPlaceholder: "Enter your phone number",
+      countryCode: "Country/Region",
       verificationCode: "Verification Code",
       sendingCode: "Sending code...",
       verifying: "Verifying...",
+      codeSentTo: "Verification code sent to",
+      resendCountdown: "seconds remaining",
       termsNotice: "By clicking continue, you agree to our",
       termsOfService: "Terms of Service",
       privacyPolicy: "Privacy Policy",
       errors: {
         invalidPhone: "Please enter a valid phone number",
         requiredPhone: "Phone number is required",
+        requiredCountryCode: "Please select country/region",
         invalidCode: "Please enter a valid verification code",
-        requiredCode: "Verification code is required"
+        requiredCode: "Verification code is required",
+        captchaRequired: "Please complete the captcha verification"
       }
     },
     forgetPassword: {
@@ -203,7 +212,8 @@ export const en: Locale = {
       },
       errors: {
         invalidEmail: "Please enter a valid email",
-        requiredEmail: "Email is required"
+        requiredEmail: "Email is required",
+        captchaRequired: "Please complete the captcha verification"
       }
     },
     resetPassword: {

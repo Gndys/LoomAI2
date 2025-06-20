@@ -1,10 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { phoneNumber, admin } from "better-auth/plugins"
+import { phoneNumber, admin, captcha } from "better-auth/plugins"
 import { validator, StandardAdapter } from "validation-better-auth"
 
 import { db, user, account, session, verification } from '@libs/database'
-// import { sendSMSByAliyun } from '@libs/sms/aliyun'
+import { sendSMS } from '@libs/sms';
 import { emailSignInSchema, emailSignUpSchema } from '@libs/validators/user'
 import { wechatPlugin } from './plugins/wechat'
 import { sendVerificationEmail, sendResetPasswordEmail } from '@libs/email'
@@ -134,6 +134,15 @@ export const auth = betterAuth({
       adminRoles: ["admin"],
     }),
 
+    // 根据配置决定是否添加验证码插件
+    ...(config.captcha.enabled ? [
+      captcha({
+        provider: "cloudflare-turnstile",
+        secretKey: config.captcha.cloudflare.secretKey!,
+        endpoints: ["/sign-up/email", "/sign-in/email", "/forget-password", '/phone-number/send-otp']
+      })
+    ] : []),
+
     // 添加微信登录插件
     wechatPlugin({
       appId: config.auth.socialProviders.wechat.appId!,
@@ -144,27 +153,45 @@ export const auth = betterAuth({
     phoneNumber({
       //otpLength: 4,
       sendOTP: async ({ phoneNumber, code }, request) => { 
-        try {
-          // Implement sending OTP code via SMS
-          // await sendSMSByAliyun({
-          //   phoneNumber,
-          //   signName: '阿里云短信测试',
-          //   templateCode: 'SMS_154950105',
-          //   templateParam: { code }
-          // })
-          console.log(`OTP ${code} sent to ${phoneNumber}`);
-        } catch (error) {
-          console.error('Failed to send OTP:', error);
-          throw error;
-        }
+        console.log(`Attempting to send OTP to ${phoneNumber} with code ${code}`);
+        
+        // try {
+        //   // Implement sending OTP code via SMS
+        //   const result = await sendSMS({
+        //     to: phoneNumber,
+        //     templateCode: 'SMS_235815655',
+        //     templateParams: {
+        //       code
+        //     },
+        //     provider: 'aliyun'
+        //   });
+          
+        //   console.log('SMS send result:', result);
+          
+        //   if (!result.success) {
+        //     const errorMessage = result.error?.message || 'Failed to send SMS';
+        //     console.error('SMS sending failed:', errorMessage);
+        //     throw new Error(errorMessage);
+        //   }
+          
+        //   console.log(`OTP ${code} sent successfully to ${phoneNumber}`);
+        //   // 成功时不需要返回值，better-auth会自动处理
+        // } catch (error) {
+        //   console.error('Failed to send OTP:', error);
+        //   // 重新抛出异常，确保better-auth能捕获到
+        //   throw new Error(`SMS sending failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // }
       },
       signUpOnVerification: {
         getTempEmail: (phoneNumber) => {
-            return `${phoneNumber}@test.com`
+            return `${phoneNumber}@tinyship.co`
         },
         //optionally, you can also pass `getTempName` function to generate a temporary name for the user
         getTempName: (phoneNumber) => {
-          return phoneNumber //by default, it will use the phone number as the name
+          // 提取手机号的后4位作为临时用户名
+          const cleanPhone = phoneNumber.replace(/\D/g, ''); // 移除非数字字符
+          const suffix = cleanPhone.slice(-4); // 取后4位
+          return suffix;
         }
       }
     }),
