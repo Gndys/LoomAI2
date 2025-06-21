@@ -1,14 +1,15 @@
 # Payment Service
 
 ## Overview
-A flexible payment service implementation supporting WeChat Pay and Stripe payment methods, with support for both one-time payments and subscriptions. The service provides a simple factory function to create payment provider instances.
+A flexible payment service implementation supporting WeChat Pay, Stripe, and Creem payment methods, with support for both one-time payments and subscriptions. The service provides a simple factory function to create payment provider instances.
 
 ## Structure
 ```
 libs/payment/
 ├── providers/           # Payment provider implementations
 │   ├── wechat.ts       # WeChat Pay implementation (Native QR code)
-│   └── stripe.ts       # Stripe implementation (Checkout Session)
+│   ├── stripe.ts       # Stripe implementation (Checkout Session)
+│   └── creem.ts        # Creem implementation (Checkout Session)
 ├── types.ts            # Shared types and interfaces
 └── index.ts            # Factory function and type exports
 ```
@@ -45,7 +46,7 @@ interface PaymentProvider {
 }
 
 // Factory Function
-function createPaymentProvider(provider: 'stripe' | 'wechat'): PaymentProvider;
+function createPaymentProvider(provider: 'stripe' | 'wechat' | 'creem'): PaymentProvider;
 ```
 
 ## Implementation Notes
@@ -75,9 +76,10 @@ function createPaymentProvider(provider: 'stripe' | 'wechat'): PaymentProvider;
 ```typescript
 // Create a payment provider instance
 const stripeProvider = createPaymentProvider('stripe');
+const creemProvider = createPaymentProvider('creem');
 
-// Initialize payment
-const result = await stripeProvider.createPayment({
+// Initialize payment with Stripe
+const stripeResult = await stripeProvider.createPayment({
   orderId: 'order_123',
   userId: 'user_123',
   planId: 'plan_123',
@@ -89,12 +91,35 @@ const result = await stripeProvider.createPayment({
   }
 });
 
-// Handle webhook
+// Initialize payment with Creem
+const creemResult = await creemProvider.createPayment({
+  orderId: 'order_456',
+  userId: 'user_123',
+  planId: 'monthlyCreem',
+  amount: 10,
+  currency: 'USD',
+  provider: 'creem',
+  metadata: {
+    clientIp: '127.0.0.1'
+  }
+});
+
+// Handle Stripe webhook
 app.post('/api/webhook/stripe', async (req, res) => {
   const provider = createPaymentProvider('stripe');
   const result = await provider.handleWebhook(
     req.body,
     req.headers['stripe-signature']
+  );
+  res.status(200).json(result);
+});
+
+// Handle Creem webhook
+app.post('/api/webhook/creem', async (req, res) => {
+  const provider = createPaymentProvider('creem');
+  const result = await provider.handleWebhook(
+    req.body,
+    '' // Creem doesn't use signature verification
   );
   res.status(200).json(result);
 });

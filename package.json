@@ -56,6 +56,7 @@
     "@types/negotiator": "0.6.3",
     "ai": "4.3.4",
     "better-auth": "1.2.4",
+    "creem": "0.3.37",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.40.1",
     "formidable": "1.2.6",

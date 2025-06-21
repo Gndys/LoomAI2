@@ -20,6 +20,7 @@ export const user = pgTable("user", {
 
   // 支付相关
   stripeCustomerId: text("stripe_customer_id"),
+  creemCustomerId: text("creem_customer_id"),
   // better-auth admin  https://www.better-auth.com/docs/plugins/admin#schema
   banned: boolean('banned').default(false),
   banReason: text('ban_reason'),

@@ -5,9 +5,11 @@ import { user } from "./user";
 export const subscriptionStatus = {
   ACTIVE: "active",
   CANCELED: "canceled",
+  CANCELLED: "canceled", // Alias for compatibility
   PAST_DUE: "past_due",
   UNPAID: "unpaid",
-  TRIALING: "trialing"
+  TRIALING: "trialing",
+  INACTIVE: "inactive"
 } as const;
 
 // 支付类型枚举
@@ -27,6 +29,10 @@ export const subscription = pgTable("subscription", {
   // Stripe 相关字段
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  
+  // Creem 相关字段
+  creemCustomerId: text("creem_customer_id"),
+  creemSubscriptionId: text("creem_subscription_id"),
   
   // 订阅周期
   periodStart: timestamp("period_start").notNull(),

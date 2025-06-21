@@ -54,14 +54,16 @@ type BasePlan = {
 
 export type RecurringPlan = BasePlan & {
   duration: { type: 'recurring'; months: number; description: string };
-  stripePriceId: string | undefined;
-  stripeProductId: string | undefined;
+  stripePriceId?: string | undefined;
+  stripeProductId?: string | undefined;
+  creemProductId?: string | undefined;
 };
 
 export type OneTimePlan = BasePlan & {
   duration: { type: 'one_time'; months: number; description: string };
-  stripePriceId: string | undefined;
-  stripeProductId: string | undefined;
+  stripePriceId?: string | undefined;
+  stripeProductId?: string | undefined;
+  creemProductId?: string | undefined;
 };
 
 export type Plan = RecurringPlan | OneTimePlan;
@@ -103,7 +105,8 @@ export const config = {
       get webhookUrls() {
         return {
           stripe: `${config.app.baseUrl}/api/payment/webhook/stripe`,
-          wechat: `https://test.vikingship.uk/api/payment/webhook/wechat`
+          wechat: `https://test.vikingship.uk/api/payment/webhook/wechat`,
+          creem: `${config.app.baseUrl}/api/payment/webhook/creem`
         };
       }
     }
@@ -144,6 +147,18 @@ export const config = {
         },
         get webhookSecret() {
           return requireEnvForService('STRIPE_WEBHOOK_SECRET', 'Stripe');
+        }
+      },
+
+      /**
+       * Creem Configuration
+       */
+      creem: {
+        get apiKey() {
+          return requireEnvForService('CREEM_API_KEY', 'Creem');
+        },
+        get serverUrl() {
+          return getEnvForService('CREEM_SERVER_URL', 'Creem') || 'https://api.creem.io';
         }
       }
     },
@@ -311,23 +326,46 @@ export const config = {
             ]
           }
         }
+      },
+      monthlyCreem: {
+        provider: 'creem',
+        id: 'monthlyCreem',
+        name: '月度订阅',
+        description: '每月订阅，灵活管理',
+        amount: 10,
+        currency: 'USD',
+        duration: {
+          months: 1,
+          description: '1个月',
+          type: 'recurring'
+        },
+        creemProductId: undefined, // Will be set after creating product in Creem
+        features: [
+          '所有高级功能',
+          '优先支持'
+        ],
+        i18n: {
+          'en': {
+            name: 'Monthly Plan (Creem)',
+            description: 'Perfect for short-term projects via Creem',
+            duration: 'month',
+            features: [
+              'All premium features',
+              'Priority support'
+            ]
+          },
+          'zh-CN': {
+            name: '月度订阅 (Creem)',
+            description: '每月订阅，通过Creem支付',
+            duration: '月',
+            features: [
+              '所有高级功能',
+              '优先支持'
+            ]
+          }
+        }
       }
     } as const,
-
-    // 测试环境的密钥
-    testKeys: {
-      stripe: {
-        secretKey: 'sk_test_...',
-        publicKey: 'pk_test_...',
-        webhookSecret: 'whsec_test_...'
-      },
-      wechat: {
-        appId: 'wx_test_...',
-        mchId: 'test_mch_id',
-        apiKey: 'test_api_key',
-        notifyUrl: 'http://localhost:3000/api/payment/wechat/notify'
-      }
-    }
   },
 
   /**
