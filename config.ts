@@ -158,7 +158,10 @@ export const config = {
           return requireEnvForService('CREEM_API_KEY', 'Creem');
         },
         get serverUrl() {
-          return getEnvForService('CREEM_SERVER_URL', 'Creem') || 'https://api.creem.io';
+          return getEnvForService('CREEM_SERVER_URL', 'Creem') || 'https://test-api.creem.io';
+        },
+        get webhookSecret() {
+          return requireEnvForService('CREEM_WEBHOOK_SECRET', 'Creem');
         }
       }
     },
@@ -339,7 +342,7 @@ export const config = {
           description: '1个月',
           type: 'recurring'
         },
-        creemProductId: undefined, // Will be set after creating product in Creem
+        creemProductId: 'prod_1M1c4ktVmvLgrNtpVB9oQf', // Will be set after creating product in Creem
         features: [
           '所有高级功能',
           '优先支持'

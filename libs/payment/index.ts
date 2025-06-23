@@ -28,4 +28,5 @@ export function createPaymentProvider<T extends PaymentProviderType>(
 
 // 导出类型和提供商实现，方便使用
 export * from './types';
-export { StripeProvider, WechatPayProvider, CreemProvider }; 
+export { StripeProvider, WechatPayProvider, CreemProvider };
+export type { CreemRedirectParams, ReturnUrlVerification } from './providers/creem'; 

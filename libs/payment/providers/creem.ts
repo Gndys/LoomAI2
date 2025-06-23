@@ -17,6 +17,7 @@ import { order, orderStatus } from '@libs/database/schema/order';
 import { user } from '@libs/database/schema/user';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import crypto from 'crypto';
 
 // 添加一个简单的支付计划接口，只包含我们需要的属性
 interface PaymentPlan {
@@ -29,26 +30,125 @@ interface PaymentPlan {
   amount: number;
 }
 
+// Creem Return URL 参数接口
+export interface CreemRedirectParams {
+  request_id?: string | null;
+  checkout_id?: string | null;
+  order_id?: string | null;
+  customer_id?: string | null;
+  subscription_id?: string | null;
+  product_id?: string | null;
+  signature?: string | null;
+}
+
+// Return URL 验证结果
+export interface ReturnUrlVerification {
+  isValid: boolean;
+  params?: CreemRedirectParams;
+  error?: string;
+}
+
+// Creem Webhook 数据类型定义
+export interface CreemWebhookEvent {
+  id: string;
+  eventType: 'checkout.completed' | 'subscription.active' | 'subscription.paid' | 'subscription.canceled' | 'subscription.expired' | 'subscription.update' | 'subscription.trialing' | 'refund.created';
+  created_at: number;
+  object: CreemWebhookObject;
+}
+
+export interface CreemWebhookObject {
+  id: string;
+  object: 'checkout';
+  request_id?: string;
+  order?: CreemOrder;
+  product?: CreemProduct;
+  customer?: CreemCustomer;
+  subscription?: CreemSubscription;
+  custom_fields?: any[];
+  status: 'completed' | 'pending' | 'failed';
+  metadata?: {
+    orderId?: string;
+    userId?: string;
+    planId?: string;
+    [key: string]: any;
+  };
+  mode: 'test' | 'live' | 'local';
+}
+
+export interface CreemOrder {
+  id: string;
+  customer: string;
+  product: string;
+  amount: number;
+  currency: string;
+  status: 'paid' | 'pending' | 'failed';
+  type: 'recurring' | 'one_time';
+  created_at: string;
+  updated_at: string;
+  mode: 'test' | 'live' | 'local';
+}
+
+export interface CreemProduct {
+  id: string;
+  name: string;
+  description: string;
+  image_url?: string;
+  price: number;
+  currency: string;
+  billing_type: 'recurring' | 'one_time';
+  billing_period?: string;
+  status: 'active' | 'inactive';
+  tax_mode: 'inclusive' | 'exclusive';
+  tax_category: string;
+  default_success_url: string;
+  created_at: string;
+  updated_at: string;
+  mode: 'test' | 'live' | 'local';
+}
+
+export interface CreemCustomer {
+  id: string;
+  object: 'customer';
+  email: string;
+  name?: string;
+  country?: string;
+  created_at: string;
+  updated_at: string;
+  mode: 'test' | 'live' | 'local';
+}
+
+export interface CreemSubscription {
+  id: string;
+  object: 'subscription';
+  product: string;
+  customer: string;
+  collection_method: 'charge_automatically';
+  status: 'active' | 'canceled' | 'past_due' | 'unpaid';
+  canceled_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  metadata?: {
+    [key: string]: any;
+  };
+  mode: 'test' | 'live' | 'local';
+}
+
 export class CreemProvider implements PaymentProvider {
   private creem: Creem;
   private apiKey: string;
+  private webhookSecret: string;
 
   constructor() {
     this.apiKey = config.payment.providers.creem.apiKey;
-    
-    // 根据配置选择服务器环境
-    const isTestMode = config.payment.providers.creem.serverUrl?.includes('test-api');
+    this.webhookSecret = config.payment.providers.creem.webhookSecret;
     
     this.creem = new Creem({
-      serverIdx: isTestMode ? 1 : 0, // 0: production, 1: test-mode
-      // 或者直接使用 serverURL
       serverURL: config.payment.providers.creem.serverUrl
     });
   }
 
   async createPayment(params: PaymentParams): Promise<PaymentResult> {
     const plan = config.payment.plans[params.planId as keyof typeof config.payment.plans] as PaymentPlan;
-    
     if (!plan.creemProductId) {
       throw new Error(`Creem product ID not configured for plan: ${params.planId}`);
     }
@@ -59,21 +159,22 @@ export class CreemProvider implements PaymentProvider {
     try {
       // 使用官方 Creem SDK 创建 checkout
       // 基于 MCP 工具的结构，使用正确的参数格式
+      // 注意：Creem API 不允许同时指定 customer.id 和 customer.email
       const checkoutData = {
         productId: plan.creemProductId,
         customer: customer.customerId ? {
-          id: customer.customerId,
-          email: customer.email
+          id: customer.customerId
         } : {
           email: customer.email
         },
-        success_url: `${config.app.payment.successUrl}?session_id={CHECKOUT_ID}`,
+        successUrl: `${config.app.payment.successUrl}?provider=creem`,
         metadata: {
           orderId: params.orderId,
           userId: params.userId,
           planId: params.planId
         }
       };
+
 
       const checkoutResult = await this.creem.createCheckout({
         xApiKey: this.apiKey,
@@ -84,13 +185,15 @@ export class CreemProvider implements PaymentProvider {
       if (!checkoutResult?.checkoutUrl) {
         throw new Error('Failed to create Creem checkout session: No URL returned');
       }
-
       return {
         paymentUrl: checkoutResult.checkoutUrl,
-        providerOrderId: checkoutResult.order?.id as string,
+        providerOrderId: checkoutResult.id, // 使用 checkout ID 作为 provider order ID
         metadata: {
           customerId: customer.customerId,
-          checkoutId: checkoutResult.id
+          checkoutId: checkoutResult.id,
+          productId: checkoutResult.product,
+          units: checkoutResult.units,
+          mode: checkoutResult.mode
         }
       };
     } catch (error) {
@@ -101,25 +204,46 @@ export class CreemProvider implements PaymentProvider {
 
   async handleWebhook(payload: string | Record<string, any>, signature: string): Promise<WebhookVerification> {
     try {
-      // Creem 不使用签名验证，而是通过API查询来验证事件
-      const webhookData = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      // 将 payload 转换为字符串进行签名验证
+      const payloadString = typeof payload === 'string' ? payload : JSON.stringify(payload);
       
-      // 基于事件类型处理
-      switch (webhookData.event_type) {
+      // 验证 webhook 签名
+      if (!this.verifyWebhookSignature(payloadString, signature)) {
+        console.error('Invalid Creem webhook signature');
+        return { success: false };
+      }
+
+      const webhookData: CreemWebhookEvent = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      
+      // 基于事件类型处理 - 采用 Stripe 的简洁模式
+      switch (webhookData.eventType) {
         case 'checkout.completed': {
+          // 主要事件：处理所有新订单/订阅创建逻辑
           return this.handleCheckoutCompleted(webhookData);
         }
-        case 'subscription.created': {
-          return this.handleSubscriptionCreated(webhookData);
+        case 'subscription.paid': {
+          // 续费事件：处理订阅续费（非首次付款）
+          return this.handleSubscriptionRenewal(webhookData);
         }
-        case 'subscription.updated': {
-          return this.handleSubscriptionUpdated(webhookData);
+        case 'subscription.update': {
+          // 订阅变更：处理计划升级/降级等
+          return this.handleSubscriptionUpdate(webhookData);
         }
-        case 'subscription.cancelled': {
-          return this.handleSubscriptionCancelled(webhookData);
+        case 'subscription.canceled': {
+          // 订阅取消
+          return this.handleSubscriptionCanceled(webhookData);
+        }
+        case 'subscription.expired': {
+          // 订阅过期
+          return this.handleSubscriptionExpired(webhookData);
+        }
+        case 'subscription.active': {
+          // 仅用于同步，不进行业务逻辑处理
+          console.log('Subscription activated (sync only):', webhookData.object.id);
+          return { success: true };
         }
         default:
-          console.log(`Unhandled Creem webhook event: ${webhookData.event_type}`);
+          console.log(`Unhandled Creem webhook event: ${webhookData.eventType}`);
           return { success: true };
       }
     } catch (error) {
@@ -128,17 +252,31 @@ export class CreemProvider implements PaymentProvider {
     }
   }
 
-  private async handleCheckoutCompleted(webhookData: any): Promise<WebhookVerification> {
-    if (!webhookData.data?.metadata?.orderId) {
+  private async handleCheckoutCompleted(webhookData: CreemWebhookEvent): Promise<WebhookVerification> {
+    
+    // 修正数据结构：实际结构是 webhookData.object.metadata，不是 webhookData.data.metadata
+    if (!webhookData.object?.metadata?.orderId) {
+      console.error('Missing orderId in webhook metadata');
       return { success: false };
     }
 
-    const { orderId, userId, planId } = webhookData.data.metadata;
+    const { orderId, userId, planId } = webhookData.object.metadata;
+    
+    if (!orderId || !userId || !planId) {
+      console.error('Missing required metadata in webhook:', { orderId, userId, planId });
+      return { success: false };
+    }
+    
     const plan = config.payment.plans[planId as keyof typeof config.payment.plans] as PaymentPlan;
     
-    // 更新订单状态
+    // Webhook 是权威的订单状态更新源，直接更新
     await db.update(order)
-      .set({ status: orderStatus.PAID })
+      .set({ 
+        status: orderStatus.PAID,
+        metadata: JSON.stringify({
+          checkoutId: webhookData.object.id
+        })
+      })
       .where(eq(order.id, orderId));
 
     if (plan.duration.type === 'recurring') {
@@ -147,21 +285,22 @@ export class CreemProvider implements PaymentProvider {
       const periodEnd = new Date(now);
       periodEnd.setMonth(periodEnd.getMonth() + plan.duration.months);
 
-      await db.insert(userSubscription).values({
+      const subscriptionData = {
         id: randomUUID(),
         userId: userId,
         planId: planId,
         status: subscriptionStatus.ACTIVE,
         paymentType: paymentTypes.RECURRING,
-        creemCustomerId: webhookData.data.customer?.id,
-        creemSubscriptionId: webhookData.data.subscription?.id,
+        creemCustomerId: webhookData.object.customer?.id || null,
+        creemSubscriptionId: webhookData.object.subscription?.id || null,
         periodStart: now,
         periodEnd: periodEnd,
         cancelAtPeriodEnd: false,
         metadata: JSON.stringify({
-          checkoutId: webhookData.data.id
+          checkoutId: webhookData.object.id
         })
-      });
+      };
+      await db.insert(userSubscription).values(subscriptionData);
     } else {
       // 处理一次性支付
       const now = new Date();
@@ -176,90 +315,167 @@ export class CreemProvider implements PaymentProvider {
         periodEnd.setMonth(periodEnd.getMonth() + plan.duration.months);
       }
 
-      await db.insert(userSubscription).values({
+      const oneTimeSubscriptionData = {
         id: randomUUID(),
         userId: userId,
         planId: planId,
         status: subscriptionStatus.ACTIVE,
         paymentType: paymentTypes.ONE_TIME,
-        creemCustomerId: webhookData.data.customer?.id,
+        creemCustomerId: webhookData.object.customer?.id || null,
         periodStart: now,
         periodEnd: periodEnd,
         cancelAtPeriodEnd: false,
         metadata: JSON.stringify({
-          checkoutId: webhookData.data.id
+          checkoutId: webhookData.object.id,
+          isLifetime: isLifetime
         })
-      });
+      };
+      await db.insert(userSubscription).values(oneTimeSubscriptionData);
     }
 
     return { success: true, orderId };
   }
 
-  private async handleSubscriptionCreated(webhookData: any): Promise<WebhookVerification> {
-    // 订阅创建事件通常在checkout完成时已经处理
-    return { success: true };
-  }
 
-  private async handleSubscriptionUpdated(webhookData: any): Promise<WebhookVerification> {
+
+  private async handleSubscriptionRenewal(webhookData: CreemWebhookEvent): Promise<WebhookVerification> {
+    // subscription.paid: 订阅续费成功（非首次付款）
+    // 只处理续费，首次付款在 checkout.completed 中处理
     try {
-      const subscriptionId = webhookData.data.id;
+      const subscriptionId = webhookData.object.id;
+      
+      if (!subscriptionId) {
+        console.warn('No subscription ID found in webhook data');
+        return { success: false };
+      }
       
       // 根据Creem订阅ID查找本地订阅记录
-      const existingSubscriptions = await db.select()
-        .from(userSubscription)
-        .where(eq(userSubscription.creemSubscriptionId, subscriptionId));
+      const subscription = await db.query.subscription.findFirst({
+        where: eq(userSubscription.creemSubscriptionId, subscriptionId)
+      });
 
-      if (existingSubscriptions.length === 0) {
+      if (!subscription) {
+        console.warn(`No local subscription found for Creem subscription ${subscriptionId} - this might be a first payment, will be handled by checkout.completed`);
+        return { success: true }; // 不报错，可能是首次付款
+      }
+      
+      // 更新订阅状态为 ACTIVE（续费成功）
+      await db.update(userSubscription)
+        .set({
+          status: subscriptionStatus.ACTIVE,
+          updatedAt: new Date()
+        })
+        .where(eq(userSubscription.id, subscription.id));
+
+      console.log(`Subscription renewal successful for ${subscriptionId}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error handling subscription renewal:', error);
+      return { success: false };
+    }
+  }
+
+  private async handleSubscriptionUpdate(webhookData: CreemWebhookEvent): Promise<WebhookVerification> {
+    try {
+      // 根据文档，subscription 对象直接在 webhookData.object 中
+      const subscriptionId = webhookData.object.id;
+      
+      if (!subscriptionId) {
+        console.warn('No subscription ID found in webhook data');
+        return { success: false };
+      }
+      
+      // 根据Creem订阅ID查找本地订阅记录
+      const subscription = await db.query.subscription.findFirst({
+        where: eq(userSubscription.creemSubscriptionId, subscriptionId)
+      });
+
+      if (!subscription) {
         console.warn(`No local subscription found for Creem subscription ${subscriptionId}`);
         return { success: false };
       }
-
-      const subscription = existingSubscriptions[0];
       
       // 更新订阅状态和周期
       await db.update(userSubscription)
         .set({
-          status: this.mapCreemStatus(webhookData.data.status),
-          periodStart: webhookData.data.current_period_start ? new Date(webhookData.data.current_period_start * 1000) : subscription.periodStart,
-          periodEnd: webhookData.data.current_period_end ? new Date(webhookData.data.current_period_end * 1000) : subscription.periodEnd,
-          cancelAtPeriodEnd: webhookData.data.cancel_at_period_end || false
+          status: this.mapCreemStatus(webhookData.object.status || 'active'),
+          // cancelAtPeriodEnd: 根据具体的 webhook 数据结构决定
+          updatedAt: new Date()
         })
         .where(eq(userSubscription.id, subscription.id));
 
       return { success: true };
     } catch (error) {
-      console.error('Error handling Creem subscription update:', error);
+      console.error('Error handling subscription update:', error);
       return { success: false };
     }
   }
 
-  private async handleSubscriptionCancelled(webhookData: any): Promise<WebhookVerification> {
+  private async handleSubscriptionCanceled(webhookData: CreemWebhookEvent): Promise<WebhookVerification> {
     try {
-      const subscriptionId = webhookData.data.id;
+      const subscriptionId = webhookData.object.id;
+      
+      if (!subscriptionId) {
+        console.warn('No subscription ID found in webhook data');
+        return { success: false };
+      }
       
       // 根据Creem订阅ID查找本地订阅记录
-      const existingSubscriptions = await db.select()
-        .from(userSubscription)
-        .where(eq(userSubscription.creemSubscriptionId, subscriptionId));
+      const subscription = await db.query.subscription.findFirst({
+        where: eq(userSubscription.creemSubscriptionId, subscriptionId)
+      });
 
-      if (existingSubscriptions.length === 0) {
+      if (!subscription) {
         console.warn(`No local subscription found for Creem subscription ${subscriptionId}`);
         return { success: false };
       }
-
-      const subscription = existingSubscriptions[0];
       
       // 更新订阅状态为取消
       await db.update(userSubscription)
         .set({
           status: subscriptionStatus.CANCELLED,
-          cancelAtPeriodEnd: true
+          cancelAtPeriodEnd: true,
+          updatedAt: new Date()
         })
         .where(eq(userSubscription.id, subscription.id));
 
       return { success: true };
     } catch (error) {
-      console.error('Error handling Creem subscription cancellation:', error);
+      console.error('Error handling subscription cancellation:', error);
+      return { success: false };
+    }
+  }
+
+  private async handleSubscriptionExpired(webhookData: CreemWebhookEvent): Promise<WebhookVerification> {
+    try {
+      const subscriptionId = webhookData.object.id;
+      
+      if (!subscriptionId) {
+        console.warn('No subscription ID found in webhook data');
+        return { success: false };
+      }
+      
+      // 根据Creem订阅ID查找本地订阅记录
+      const subscription = await db.query.subscription.findFirst({
+        where: eq(userSubscription.creemSubscriptionId, subscriptionId)
+      });
+
+      if (!subscription) {
+        console.warn(`No local subscription found for Creem subscription ${subscriptionId}`);
+        return { success: false };
+      }
+      
+      // 更新订阅状态为过期
+      await db.update(userSubscription)
+        .set({
+          status: subscriptionStatus.CANCELLED, // 使用 CANCELLED 作为过期状态
+          updatedAt: new Date()
+        })
+        .where(eq(userSubscription.id, subscription.id));
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error handling subscription expiration:', error);
       return { success: false };
     }
   }
@@ -269,7 +485,6 @@ export class CreemProvider implements PaymentProvider {
       case 'active':
         return subscriptionStatus.ACTIVE;
       case 'canceled':
-      case 'cancelled':
         return subscriptionStatus.CANCELLED;
       case 'past_due':
         return subscriptionStatus.PAST_DUE;
@@ -281,26 +496,25 @@ export class CreemProvider implements PaymentProvider {
   }
 
   private async getOrCreateCustomer(userId: string): Promise<{ customerId: string; email: string }> {
-    // 从用户表获取用户信息
-    const users = await db.select()
-      .from(user)
-      .where(eq(user.id, userId));
+    // 从用户表获取用户信息 - 使用与 Stripe 一致的查询方式
+    const userRecord = await db.query.user.findFirst({
+      where: eq(user.id, userId)
+    });
 
-    if (users.length === 0) {
+    if (!userRecord) {
       throw new Error(`User not found: ${userId}`);
     }
 
-    const userData = users[0];
-    const email = userData.email;
+    const email = userRecord.email;
 
     if (!email) {
       throw new Error(`User email not found for user: ${userId}`);
     }
 
     // 检查是否已有Creem客户记录
-    if (userData.creemCustomerId) {
+    if (userRecord.creemCustomerId) {
       return {
-        customerId: userData.creemCustomerId,
+        customerId: userRecord.creemCustomerId,
         email: email
       };
     }
@@ -315,7 +529,10 @@ export class CreemProvider implements PaymentProvider {
       if (customerResult?.id) {
         // 更新用户表中的Creem客户ID
         await db.update(user)
-          .set({ creemCustomerId: customerResult.id })
+          .set({ 
+            creemCustomerId: customerResult.id,
+            updatedAt: new Date()
+          })
           .where(eq(user.id, userId));
 
         return {
@@ -392,6 +609,165 @@ export class CreemProvider implements PaymentProvider {
     } catch (error) {
       console.error('Error creating Creem customer portal:', error);
       throw error;
+    }
+  }
+
+  /**
+   * 验证 Creem Return URL 的签名
+   * 根据 Creem 文档：https://docs.creem.io/learn/checkout-session/return-url
+   */
+  verifyReturnUrl(urlString: string): ReturnUrlVerification {
+    try {
+      const url = new URL(urlString);
+      const params: CreemRedirectParams = {
+        request_id: url.searchParams.get('request_id'),
+        checkout_id: url.searchParams.get('checkout_id'),
+        order_id: url.searchParams.get('order_id'),
+        customer_id: url.searchParams.get('customer_id'),
+        subscription_id: url.searchParams.get('subscription_id'),
+        product_id: url.searchParams.get('product_id'),
+        signature: url.searchParams.get('signature')
+      };
+
+      console.log('Verifying Creem return URL params:', params);
+
+      // 检查必需的参数
+      if (!params.signature) {
+        return {
+          isValid: false,
+          error: 'Missing signature parameter'
+        };
+      }
+
+      if (!params.checkout_id || !params.order_id) {
+        return {
+          isValid: false,
+          error: 'Missing required parameters (checkout_id or order_id)'
+        };
+      }
+
+      // 生成预期的签名
+      const expectedSignature = this.generateSignature(params);
+      console.log('Expected signature:', expectedSignature);
+      console.log('Provided signature:', params.signature);
+
+      // 验证签名
+      const isValid = params.signature === expectedSignature;
+
+      if (!isValid) {
+        console.error('Signature verification failed for Creem return URL');
+      }
+
+      return {
+        isValid,
+        params: isValid ? params : undefined,
+        error: isValid ? undefined : 'Invalid signature'
+      };
+    } catch (error) {
+      console.error('Error parsing Creem return URL:', error);
+      return {
+        isValid: false,
+        error: `Failed to parse URL: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  /**
+   * 根据 Creem 文档生成签名
+   * 按照官方文档：https://docs.creem.io/learn/checkout-session/return-url
+   * 直接使用文档中的方法
+   */
+  private generateSignature(params: CreemRedirectParams): string {
+    // 按照文档示例，但需要排除 signature 参数和 null 值
+    const data = Object.entries(params)
+      .filter(([key, value]) => key !== 'signature' && value !== null && value !== undefined)
+      .map(([key, value]) => `${key}=${value}`)
+      .concat(`salt=${this.apiKey}`)
+      .join('|');
+    
+    console.log('Creem signature data to hash:', data);
+    console.log('API key (first 8 chars):', this.apiKey.substring(0, 8) + '...');
+    
+    // 生成 SHA256 哈希
+    const signature = crypto.createHash('sha256').update(data).digest('hex');
+    console.log('Generated Creem signature:', signature);
+    
+    return signature;
+  }
+
+  /**
+   * 验证 Creem webhook 签名
+   * 根据文档：https://docs.creem.io/learn/webhooks/verify-webhook-requests
+   */
+  private verifyWebhookSignature(payload: string, signature: string): boolean {
+    try {
+      // 使用 HMAC-SHA256 算法验证签名
+      const computedSignature = crypto
+        .createHmac('sha256', this.webhookSecret)
+        .update(payload)
+        .digest('hex');
+      
+      // 比较签名
+      return signature === computedSignature;
+    } catch (error) {
+      console.error('Error verifying webhook signature:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 处理成功支付后的重定向
+   * 纯粹用于验证签名和用户体验，不处理任何业务逻辑
+   * 所有订单状态更新完全由 webhook 处理
+   */
+  async handleSuccessRedirect(urlString: string): Promise<{
+    success: boolean;
+    params?: CreemRedirectParams;
+    error?: string;
+  }> {
+    // 验证 Return URL 签名
+    const verification = this.verifyReturnUrl(urlString);
+    
+    if (!verification.isValid) {
+      console.error('Invalid return URL signature:', verification.error);
+      return {
+        success: false,
+        error: verification.error
+      };
+    }
+
+    const params = verification.params!;
+
+    try {
+      // 可选：通过 Creem API 验证订单状态（仅用于用户体验）
+      if (params.checkout_id) {
+        const checkout = await this.creem.retrieveCheckout({
+          xApiKey: this.apiKey,
+          checkoutId: params.checkout_id
+        });
+
+        // 检查 checkout 状态
+        if (checkout?.status !== 'completed') {
+          return {
+            success: false,
+            error: 'Checkout not completed'
+          };
+        }
+      }
+
+      // 不进行任何数据库操作，完全依赖 webhook 处理
+      console.log('Return URL verified successfully, waiting for webhook to process order');
+
+      return {
+        success: true,
+        params
+      };
+    } catch (error) {
+      console.error('Error handling success redirect:', error);
+      return {
+        success: false,
+        error: `Failed to process redirect: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
     }
   }
 } 

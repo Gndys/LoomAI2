@@ -5,8 +5,13 @@ export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.text();
     
-    // Creem 不使用签名，但我们可以传递空字符串作为占位符
-    const signature = '';
+    // 从请求头中提取 Creem 签名
+    const signature = request.headers.get('creem-signature') || '';
+    
+    if (!signature) {
+      console.error('Missing creem-signature header');
+      return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+    }
     
     const provider = createPaymentProvider('creem');
     const result = await provider.handleWebhook(rawBody, signature);

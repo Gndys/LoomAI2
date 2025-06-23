@@ -39,8 +39,8 @@ function SubscriptionDashboardPage() {
     fetchSubscriptionDetails();
   }, []);
 
-  // 打开 Stripe 客户门户
-  const openStripePortal = async () => {
+  // 打开客户门户（支持多个支付提供商）
+  const openCustomerPortal = async (provider?: string) => {
     try {
       setRedirecting(true);
       const returnUrl = `${window.location.origin}/${currentLocale}/dashboard/subscription`;
@@ -50,23 +50,33 @@ function SubscriptionDashboardPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ returnUrl }),
+        body: JSON.stringify({ 
+          returnUrl,
+          provider // 可选：指定支付提供商，如果不指定则自动检测
+        }),
       });
       
       if (!response.ok) {
-        throw new Error('无法打开客户门户');
+        const errorData = await response.json();
+        throw new Error(errorData.error || '无法打开客户门户');
       }
       
       const { url } = await response.json();
       
-      // 重定向到 Stripe 客户门户
+      // 重定向到客户门户
       window.location.href = url;
     } catch (error) {
-      console.error('打开 Stripe 客户门户失败:', error);
+      console.error('打开客户门户失败:', error);
       toast.error(t.common.unexpectedError);
       setRedirecting(false);
     }
   };
+
+  // 兼容性：保留原来的 Stripe 方法名
+  const openStripePortal = () => openCustomerPortal('stripe');
+  
+  // 新增：Creem 客户门户方法
+  const openCreemPortal = () => openCustomerPortal('creem');
 
   // 获取计划名称
   const getPlanName = (planId: string) => {
@@ -217,6 +227,7 @@ function SubscriptionDashboardPage() {
               </Button>
             </div>
             
+            {/* Stripe 订阅管理 */}
             {!isLifetime && sub && sub.stripeSubscriptionId && (
               <div className="rounded-lg border p-4">
                 <h3 className="font-medium mb-2">{t.subscription.management.stripe.title}</h3>
@@ -240,7 +251,31 @@ function SubscriptionDashboardPage() {
               </div>
             )}
 
-            {/* 为 Stripe 一次性支付用户显示查看账单历史选项 */}
+            {/* Creem 订阅管理 */}
+            {!isLifetime && sub && sub.creemSubscriptionId && (
+              <div className="rounded-lg border p-4">
+                <h3 className="font-medium mb-2">Creem 订阅管理</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  通过 Creem 客户门户管理您的订阅、查看账单历史和更新付款方式。
+                </p>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="default" 
+                    className="flex items-center gap-1"
+                    onClick={openCreemPortal}
+                    disabled={redirecting}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {redirecting ? '正在跳转...' : '管理订阅'}
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href="/pricing">更换计划</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Stripe 一次性支付用户显示查看账单历史选项 */}
             {!isLifetime && sub && sub.paymentType === 'one_time' && subscriptionData.user?.stripeCustomerId && (
               <div className="rounded-lg border p-4">
                 <h3 className="font-medium mb-2">{t.subscription.management.stripe.title}</h3>
@@ -264,6 +299,31 @@ function SubscriptionDashboardPage() {
               </div>
             )}
 
+            {/* Creem 一次性支付用户显示查看账单历史选项 */}
+            {!isLifetime && sub && sub.paymentType === 'one_time' && subscriptionData.user?.creemCustomerId && (
+              <div className="rounded-lg border p-4">
+                <h3 className="font-medium mb-2">Creem 账单管理</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  查看您的购买历史和下载收据。
+                </p>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="default" 
+                    className="flex items-center gap-1"
+                    onClick={openCreemPortal}
+                    disabled={redirecting}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {redirecting ? '正在跳转...' : '查看账单'}
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href="/pricing">更换计划</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Stripe 终身用户账单历史 */}
             {isLifetime && subscriptionData.user?.stripeCustomerId && (
               <div className="rounded-lg border p-4">
                 <h3 className="font-medium mb-2">{t.subscription.management.lifetime.title}</h3>
@@ -279,6 +339,27 @@ function SubscriptionDashboardPage() {
                   >
                     <ExternalLink className="h-4 w-4" />
                     {redirecting ? t.subscription.management.stripe.redirecting : t.subscription.management.stripe.viewBilling}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Creem 终身用户账单历史 */}
+            {isLifetime && subscriptionData.user?.creemCustomerId && (
+              <div className="rounded-lg border p-4">
+                <h3 className="font-medium mb-2">终身许可证</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  您拥有终身访问权限。查看您的购买记录和下载收据。
+                </p>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="default" 
+                    className="flex items-center gap-1"
+                    onClick={openCreemPortal}
+                    disabled={redirecting}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {redirecting ? '正在跳转...' : '查看账单'}
                   </Button>
                 </div>
               </div>

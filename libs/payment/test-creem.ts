@@ -23,8 +23,12 @@ async function testCreemProvider() {
     if (!config.payment.providers.creem.apiKey) {
       throw new Error('CREEM_API_KEY environment variable not set');
     }
+    if (!config.payment.providers.creem.webhookSecret) {
+      throw new Error('CREEM_WEBHOOK_SECRET environment variable not set');
+    }
     console.log('✅ Configuration found');
     console.log(`   API Key: ${config.payment.providers.creem.apiKey.substring(0, 8)}...`);
+    console.log(`   Webhook Secret: ${config.payment.providers.creem.webhookSecret.substring(0, 8)}...`);
     console.log(`   Server URL: ${config.payment.providers.creem.serverUrl}\n`);
 
     // Create provider instance
@@ -55,6 +59,13 @@ async function testCreemProvider() {
     const webhookResult = await creemProvider.handleWebhook(testWebhookData, '');
     console.log('✅ Webhook handling completed:', webhookResult);
     console.log('   Note: Unhandled events return success: true\n');
+
+    // Test Return URL verification (safe operation with test data)
+    console.log('5. Testing Return URL verification...');
+    const testReturnUrl = 'https://example.com/success?checkout_id=ch_test123&order_id=ord_test456&customer_id=cust_test789&signature=invalid_signature';
+    const verificationResult = creemProvider.verifyReturnUrl(testReturnUrl);
+    console.log('✅ Return URL verification completed:', verificationResult);
+    console.log('   Note: This should return invalid signature for test data\n');
 
     console.log('🎉 All tests passed! Creem provider is ready to use.');
     console.log('\nNext steps:');

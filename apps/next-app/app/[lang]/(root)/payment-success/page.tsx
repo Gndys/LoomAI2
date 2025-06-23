@@ -22,15 +22,28 @@ export default function PaymentSuccessPage() {
       return;
     }
 
-    // 对于其他支付方式（如Stripe），需要验证session
-    if (!sessionId) {
+    // 对于其他支付方式（如 Stripe、Creem），需要验证 session
+    // 对于 Creem，我们需要验证完整的 URL（包含签名）
+    if (!sessionId && provider !== 'creem') {
       router.replace('/');
       return;
     }
 
     async function verifySession() {
       try {
-        const response = await fetch(`/api/payment/verify?session_id=${sessionId}`);
+        // 根据 provider 确定验证端点
+        let verifyUrl;
+        if (provider === 'stripe') {
+          verifyUrl = `/api/payment/verify/stripe?session_id=${sessionId}`;
+        } else if (provider === 'creem') {
+          // Creem 验证需要传递完整的 URL 以进行签名验证
+          verifyUrl = `/api/payment/verify/creem${window.location.search}`;
+        } else {
+          // 默认使用 Stripe 验证（向后兼容）
+          verifyUrl = `/api/payment/verify/stripe?session_id=${sessionId}`;
+        }
+
+        const response = await fetch(verifyUrl);
         if (!response.ok) {
           throw new Error('Invalid session');
         }
