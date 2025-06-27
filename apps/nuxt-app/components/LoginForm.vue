@@ -1,11 +1,11 @@
 <template>
   <div :class="cn('flex flex-col gap-4', className)">
-    <!-- 显示错误信息 -->
+    <!-- Display error message -->
     <FormError v-if="errorMessage" :message="errorMessage" :code="errorCode" />
     
     <form @submit="onSubmit" class="flex flex-col gap-4">
       <div class="grid gap-6">
-        <!-- 邮箱输入 -->
+        <!-- Email input -->
         <div class="grid gap-2">
           <Label for="email">{{ t('auth.signin.email') }}</Label>
           <div class="relative">
@@ -25,7 +25,7 @@
           </div>
         </div>
 
-        <!-- 密码输入 -->
+        <!-- Password input -->
         <div class="grid gap-2">
           <div class="flex items-center">
             <Label for="password">{{ t('auth.signin.password') }}</Label>
@@ -52,7 +52,7 @@
           </div>
         </div>
 
-        <!-- Captcha 组件 (如果启用) -->
+        <!-- Captcha component (if enabled) -->
         <div v-if="captchaEnabled" class="grid gap-2">
           <VueTurnstile
             ref="turnstileRef"
@@ -68,7 +68,7 @@
           </span>
         </div>
 
-        <!-- 记住我选项 -->
+        <!-- Remember me option -->
         <div class="flex items-center space-x-2">
           <input
             id="remember"
@@ -82,7 +82,7 @@
           </Label>
         </div>
 
-        <!-- 提交按钮 -->
+        <!-- Submit button -->
         <Button 
           type="submit" 
           class="w-full" 
@@ -92,7 +92,7 @@
         </Button>
       </div>
 
-      <!-- 注册链接 -->
+      <!-- Registration link -->
       <div class="text-center text-sm">
         {{ t('auth.signin.noAccount') }}
         <NuxtLink :to="localePath('/signup')" class="underline underline-offset-4">
@@ -119,39 +119,39 @@ const props = withDefaults(defineProps<Props>(), {
   className: ''
 })
 
-// 国际化和导航
+// Initialize internationalization and navigation
 const { t } = useI18n()
 const localePath = useLocalePath()
 const { locale } = useI18n()
 
-// 状态管理
+// State management
 const loading = ref(false)
 const errorMessage = ref('')
 const errorCode = ref('')
 
-// 获取运行时配置
+// Get runtime configuration
 const runtimeConfig = useRuntimeConfig()
 
-// Captcha 相关状态
+// Captcha related state
 const captchaEnabled = computed(() => {
-  // 使用环境变量或默认为 true
+  // Use environment variable or default to true
   return runtimeConfig.public.captchaEnabled !== 'false'
 })
 
 const captchaSiteKey = computed(() => {
-  // 使用 Nuxt 的公共环境变量
+  // Use Nuxt's public environment variables
   const siteKey = runtimeConfig.public.turnstileSiteKey as string | undefined
-  return siteKey || '1x00000000000000000000AA' // 测试用 key
+  return siteKey || '1x00000000000000000000AA' // Test key
 })
 
 const turnstileToken = ref('')
 const turnstileError = ref('')
 const turnstileRef = ref()
 
-// 主题检测 (简化版本)
+// Theme detection (simplified version)
 const isDark = ref(false)
 
-// Turnstile 事件处理
+// Turnstile event handlers
 const onTurnstileError = () => {
   turnstileError.value = t('auth.signin.captchaError')
   turnstileToken.value = ''
@@ -162,10 +162,10 @@ const onTurnstileExpired = () => {
   turnstileToken.value = ''
 }
 
-// 创建国际化验证器
+// Create internationalized validators
 const { loginFormSchema } = createValidators(t)
 
-// 表单验证
+// Form validation
 const { handleSubmit, errors, defineField, isSubmitting } = useForm({
   validationSchema: toTypedSchema(loginFormSchema),
   initialValues: {
@@ -175,7 +175,7 @@ const { handleSubmit, errors, defineField, isSubmitting } = useForm({
   }
 })
 
-// 定义表单字段
+// Define form fields
 const [email, emailAttrs] = defineField('email', {
   validateOnBlur: true
 })
@@ -184,14 +184,14 @@ const [password, passwordAttrs] = defineField('password', {
 })
 const [remember, rememberAttrs] = defineField('remember')
 
-// 处理表单提交
+// Handle form submission
 const onSubmit = handleSubmit(async (values) => {
   loading.value = true
   errorMessage.value = ''
   errorCode.value = ''
   turnstileError.value = ''
 
-  // 验证 captcha (如果启用)
+  // Validate captcha (if enabled)
   if (captchaEnabled.value && !turnstileToken.value) {
     turnstileError.value = t('auth.signin.captchaRequired')
     loading.value = false
@@ -201,7 +201,7 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     const fetchOptions: any = {}
     
-    // 如果启用了 captcha，添加 captcha token 到请求头
+    // If captcha is enabled, add captcha token to request headers
     if (captchaEnabled.value && turnstileToken.value) {
       fetchOptions.headers = {
         'x-captcha-response': turnstileToken.value
@@ -216,7 +216,7 @@ const onSubmit = handleSubmit(async (values) => {
       fetchOptions
     })
 
-    // 检查是否有错误
+    // Check for errors
     if (result && 'error' in result && result.error) {
       const error = result.error
       if (error.code && error.message) {
@@ -227,10 +227,10 @@ const onSubmit = handleSubmit(async (values) => {
         errorCode.value = 'UNKNOWN_ERROR'
       }
     } else if (result && 'user' in result) {
-      // 登录成功，重定向到仪表盘
+      // Login successful, redirect to dashboard
       await navigateTo(localePath('/dashboard'))
     } else {
-      // 未知响应格式
+      // Unknown response format
       errorMessage.value = t('auth.signin.errors.invalidCredentials')
       errorCode.value = 'UNEXPECTED_RESPONSE'
     }

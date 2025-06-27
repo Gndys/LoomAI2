@@ -24,10 +24,10 @@ const props = withDefaults(defineProps<Props>(), {
   providers: () => ['google', 'github', 'wechat', 'phone']
 })
 
-// 导航
+// Navigation
 const localePath = useLocalePath()
 
-// 处理提供商点击
+// Handle provider click
 const handleProviderClick = async (provider: SocialProvider) => {
   switch (provider) {
     case 'wechat':
@@ -37,7 +37,7 @@ const handleProviderClick = async (provider: SocialProvider) => {
       await navigateTo(localePath('/cellphone'))
       break
     default:
-      // 其他提供商使用默认的social登录流程
+      // Other providers use default social login flow
       await authClientVue.signIn.social({
         provider,
       })

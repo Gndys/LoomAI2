@@ -74,32 +74,32 @@ export const en: Locale = {
       signin: {
         title: "TinyShip - Sign In",
         description: "Sign in to your TinyShip account to access your dashboard, manage subscriptions, and use premium features.",
-        keywords: ["sign in", "login", "authentication", "account access", "dashboard"]
+        keywords: "sign in, login, authentication, account access, dashboard"
       },
       signup: {
         title: "TinyShip - Create Account",
         description: "Create your TinyShip account and start building amazing SaaS applications with our comprehensive starter kit.",
-        keywords: ["sign up", "register", "create account", "new user", "get started"]
+        keywords: "sign up, register, create account, new user, get started"
       },
       forgotPassword: {
         title: "TinyShip - Reset Password",
         description: "Reset your TinyShip account password securely. Enter your email to receive password reset instructions.",
-        keywords: ["forgot password", "reset password", "password recovery", "account recovery"]
+        keywords: "forgot password, reset password, password recovery, account recovery"
       },
       resetPassword: {
         title: "TinyShip - Create New Password",
         description: "Create a new secure password for your TinyShip account. Choose a strong password to protect your account.",
-        keywords: ["new password", "password reset", "secure password", "account security"]
+        keywords: "new password, password reset, secure password, account security"
       },
       phone: {
         title: "TinyShip - Phone Login",
         description: "Sign in to TinyShip using your phone number. Quick and secure authentication with SMS verification.",
-        keywords: ["phone login", "SMS verification", "mobile authentication", "phone number"]
+        keywords: "phone login, SMS verification, mobile authentication, phone number"
       },
       wechat: {
         title: "TinyShip - WeChat Login",
         description: "Sign in to TinyShip using your WeChat account. Convenient authentication for Chinese users.",
-        keywords: ["WeChat login", "微信登录", "social login", "Chinese authentication"]
+        keywords: "WeChat login, 微信登录, social login, Chinese authentication"
       }
     },
     signin: {
@@ -169,7 +169,9 @@ export const en: Locale = {
         invalidPassword: "Please enter a valid password",
         requiredPassword: "Password is required",
         invalidImage: "Please enter a valid image URL",
-        captchaRequired: "Please complete the captcha verification"
+        captchaRequired: "Please complete the captcha verification",
+        captchaError: "Captcha verification failed, please try again",
+        captchaExpired: "Captcha verification expired, please try again"
       }
     },
     phone: {
@@ -253,7 +255,7 @@ export const en: Locale = {
     metadata: {
       title: "TinyShip - Admin Dashboard",
       description: "Comprehensive admin dashboard for managing users, subscriptions, orders, and system analytics in your SaaS application.",
-      keywords: ["admin", "dashboard", "management", "SaaS", "analytics", "users", "subscriptions", "orders"]
+      keywords: "admin, dashboard, management, SaaS, analytics, users, subscriptions, orders"
     },
     dashboard: {
       title: "Admin Dashboard",
@@ -462,7 +464,7 @@ export const en: Locale = {
     metadata: {
       title: "TinyShip - Pricing Plans",
       description: "Choose the perfect plan for your needs. Flexible pricing options including monthly, yearly, and lifetime subscriptions with premium features.",
-      keywords: ["pricing", "plans", "subscription", "monthly", "yearly", "lifetime", "premium", "features"]
+      keywords: "pricing, plans, subscription, monthly, yearly, lifetime, premium, features"
     },
     title: "Pricing",
     subtitle: "Choose the plan that's right for you",
@@ -504,12 +506,12 @@ export const en: Locale = {
       success: {
         title: "TinyShip - Payment Successful",
         description: "Your payment has been processed successfully. Thank you for your subscription and welcome to our premium features.",
-        keywords: ["payment", "success", "subscription", "confirmation", "premium"]
+        keywords: "payment, success, subscription, confirmation, premium"
       },
       cancel: {
         title: "TinyShip - Payment Cancelled",
         description: "Your payment was cancelled. You can retry the payment or contact our support team for assistance.",
-        keywords: ["payment", "cancelled", "retry", "support", "subscription"]
+        keywords: "payment, cancelled, retry, support, subscription"
       }
     },
     result: {
@@ -548,7 +550,7 @@ export const en: Locale = {
     metadata: {
       title: "TinyShip - My Subscription",
       description: "Manage your subscription plan, view billing history, and update payment methods in your subscription dashboard.",
-      keywords: ["subscription", "billing", "payment", "plan", "management", "dashboard"]
+      keywords: "subscription, billing, payment, plan, management, dashboard"
     },
     title: "My Subscription",
     overview: {
@@ -590,7 +592,7 @@ export const en: Locale = {
     metadata: {
       title: "TinyShip - Dashboard",
       description: "Manage your account, subscriptions, and profile settings in your personalized dashboard.",
-      keywords: ["dashboard", "account", "profile", "subscription", "settings", "management"]
+      keywords: "dashboard, account, profile, subscription, settings, management"
     },
     title: "Dashboard",
     description: "Manage your account and subscriptions",
@@ -801,21 +803,21 @@ export const en: Locale = {
     metadata: {
       title: "TinyShip - Modern Full-Stack SaaS Development Starter",
       description: "A modern, full-featured monorepo starter kit for building SaaS applications with support for both domestic (China) and international markets. Built with Next.js/Nuxt.js, TypeScript, and comprehensive authentication.",
-      keywords: ["SaaS", "monorepo", "starter kit", "Next.js", "Nuxt.js", "TypeScript", "authentication", "i18n", "China market", "international"]
+      keywords: "SaaS, monorepo, starter kit, Next.js, Nuxt.js, TypeScript, authentication, i18n, China market, international"
     }
   },
   ai: {
     metadata: {
       title: "TinyShip - AI Assistant",
       description: "Interact with powerful AI models including GPT-4, Qwen, and DeepSeek. Get AI assistance for coding, writing, and problem-solving.",
-      keywords: ["AI", "assistant", "chatbot", "GPT-4", "artificial intelligence", "machine learning", "conversation"]
+      keywords: "AI, assistant, chatbot, GPT-4, artificial intelligence, machine learning, conversation"
     }
   },
   premiumFeatures: {
     metadata: {
       title: "TinyShip - Premium Features",
       description: "Explore all the premium features available with your subscription. Access advanced tools, AI assistance, and enhanced functionality.",
-      keywords: ["premium", "features", "advanced", "tools", "subscription", "benefits", "enhanced"]
+      keywords: "premium, features, advanced, tools, subscription, benefits, enhanced"
     }
   },
   validators: {

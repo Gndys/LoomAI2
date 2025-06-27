@@ -10,6 +10,6 @@
 </template>
 
 <script setup lang="ts">
-// 导入国际化
+// Import internationalization
 const localePath = useLocalePath()
 </script> 

@@ -74,32 +74,32 @@ export const zhCN: Locale = {
       signin: {
         title: "TinyShip - 登录",
         description: "登录您的 TinyShip 账户，访问仪表板、管理订阅并使用高级功能。",
-        keywords: ["登录", "账户登录", "身份验证", "访问账户", "仪表板"]
+        keywords: "登录, 账户登录, 身份验证, 访问账户, 仪表板"
       },
       signup: {
         title: "TinyShip - 创建账户",
         description: "创建您的 TinyShip 账户，开始使用我们全面的脚手架构建出色的 SaaS 应用程序。",
-        keywords: ["注册", "创建账户", "新用户", "开始使用", "账户注册"]
+        keywords: "注册, 创建账户, 新用户, 开始使用, 账户注册"
       },
       forgotPassword: {
         title: "TinyShip - 重置密码",
         description: "安全地重置您的 TinyShip 账户密码。输入您的邮箱以接收密码重置说明。",
-        keywords: ["忘记密码", "重置密码", "密码恢复", "账户恢复"]
+        keywords: "忘记密码, 重置密码, 密码恢复, 账户恢复"
       },
       resetPassword: {
         title: "TinyShip - 创建新密码",
         description: "为您的 TinyShip 账户创建新的安全密码。选择强密码来保护您的账户。",
-        keywords: ["新密码", "密码重置", "安全密码", "账户安全"]
+        keywords: "新密码, 密码重置, 安全密码, 账户安全"
       },
       phone: {
         title: "TinyShip - 手机登录",
         description: "使用手机号登录 TinyShip。通过短信验证进行快速安全的身份验证。",
-        keywords: ["手机登录", "短信验证", "移动端认证", "手机号码"]
+        keywords: "手机登录, 短信验证, 移动端认证, 手机号码"
       },
       wechat: {
         title: "TinyShip - 微信登录",
         description: "使用微信账户登录 TinyShip。为中国用户提供便捷的身份验证。",
-        keywords: ["微信登录", "WeChat登录", "社交登录", "中国认证"]
+        keywords: "微信登录, WeChat登录, 社交登录, 中国认证"
       }
     },
     signin: {
@@ -169,7 +169,9 @@ export const zhCN: Locale = {
         invalidPassword: "请输入有效的密码",
         requiredPassword: "请输入密码",
         invalidImage: "请输入有效的图片链接",
-        captchaRequired: "请完成验证码验证"
+        captchaRequired: "请完成验证码验证",
+        captchaError: "验证码验证失败，请重试",
+        captchaExpired: "验证码已过期，请重新验证"
       }
     },
     phone: {
@@ -253,7 +255,7 @@ export const zhCN: Locale = {
     metadata: {
       title: "TinyShip - 管理员仪表板",
       description: "全面的管理员仪表板，用于管理 SaaS 应用程序中的用户、订阅、订单和系统分析。",
-      keywords: ["管理员", "仪表板", "管理", "SaaS", "分析", "用户", "订阅", "订单"]
+              keywords: "管理员, 仪表板, 管理, SaaS, 分析, 用户, 订阅, 订单"
     },
     dashboard: {
       title: "管理员仪表板",
@@ -462,7 +464,7 @@ export const zhCN: Locale = {
     metadata: {
       title: "TinyShip - 定价方案",
       description: "选择最适合您需求的完美方案。灵活的定价选项包括月度、年度和终身订阅，享受高级功能。",
-      keywords: ["定价", "方案", "订阅", "月度", "年度", "终身", "高级", "功能"]
+              keywords: "定价, 方案, 订阅, 月度, 年度, 终身, 高级, 功能"
     },
     title: "定价",
     subtitle: "选择最适合您的方案",
@@ -504,12 +506,12 @@ export const zhCN: Locale = {
       success: {
         title: "TinyShip - 支付成功",
         description: "您的支付已成功处理。感谢您的订阅，欢迎使用我们的高级功能。",
-        keywords: ["支付", "成功", "订阅", "确认", "高级功能"]
+        keywords: "支付, 成功, 订阅, 确认, 高级功能"
       },
       cancel: {
         title: "TinyShip - 支付已取消",
         description: "您的支付已被取消。您可以重新尝试支付或联系我们的客服团队获取帮助。",
-        keywords: ["支付", "取消", "重试", "客服", "订阅"]
+        keywords: "支付, 取消, 重试, 客服, 订阅"
       }
     },
     result: {
@@ -548,7 +550,7 @@ export const zhCN: Locale = {
     metadata: {
       title: "TinyShip - 我的订阅",
       description: "在您的订阅仪表板中管理订阅计划、查看账单历史和更新付款方式。",
-      keywords: ["订阅", "账单", "支付", "计划", "管理", "仪表板"]
+              keywords: "订阅, 账单, 支付, 计划, 管理, 仪表板"
     },
     title: "我的订阅",
     overview: {
@@ -590,7 +592,7 @@ export const zhCN: Locale = {
     metadata: {
       title: "TinyShip - 仪表盘",
       description: "在您的个性化仪表盘中管理账户、订阅和个人资料设置。",
-      keywords: ["仪表盘", "账户", "个人资料", "订阅", "设置", "管理"]
+              keywords: "仪表盘, 账户, 个人资料, 订阅, 设置, 管理"
     },
     title: "仪表盘",
     description: "管理您的账户和订阅",
@@ -801,21 +803,21 @@ export const zhCN: Locale = {
     metadata: {
       title: "TinyShip - 高级功能",
       description: "探索您的订阅包含的所有高级功能。访问高级工具、AI 助手和增强功能。",
-      keywords: ["高级功能", "功能", "高级", "工具", "订阅", "权益", "增强"]
+              keywords: "高级功能, 功能, 高级, 工具, 订阅, 权益, 增强"
     }
   },
   ai: {
     metadata: {
       title: "TinyShip - AI 助手",
       description: "与强大的 AI 模型互动，包括 GPT-4、通义千问和 DeepSeek。获得编程、写作和问题解决的 AI 帮助。",
-      keywords: ["AI", "助手", "聊天机器人", "GPT-4", "人工智能", "机器学习", "对话"]
+              keywords: "AI, 助手, 聊天机器人, GPT-4, 人工智能, 机器学习, 对话"
     }
   },
   home: {
     metadata: {
       title: "TinyShip - 现代全栈 SaaS 开发脚手架",
       description: "现代化的全功能 Monorepo 脚手架，用于构建支持国内（中国）和国际市场的 SaaS 应用程序。采用 Next.js/Nuxt.js、TypeScript 和完整的身份验证系统构建。",
-      keywords: ["SaaS", "monorepo", "脚手架", "Next.js", "Nuxt.js", "TypeScript", "身份验证", "国际化", "中国市场", "国际市场"]
+              keywords: "SaaS, monorepo, 脚手架, Next.js, Nuxt.js, TypeScript, 身份验证, 国际化, 中国市场, 国际市场"
     }
   },
   validators: {

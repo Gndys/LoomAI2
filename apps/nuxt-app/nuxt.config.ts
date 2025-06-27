@@ -5,7 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import svgLoader from 'vite-svg-loader';
 
 
-// 加载根目录的环境变量
+// Load environment variables from root directory
 const rootEnv = loadEnv('', resolve(__dirname, '../..'), '')
 
 export default defineNuxtConfig({
@@ -17,14 +17,14 @@ export default defineNuxtConfig({
     plugins: [
       tailwindcss(),
       svgLoader({
-        defaultImport: 'component', // 默认导入为 Vue 组件
+        defaultImport: 'component', // Default import as Vue component
         svgoConfig: {
           plugins: [
             {
               name: 'preset-default',
               params: {
                 overrides: {
-                  removeViewBox: false, // 保留 viewBox 属性
+                  removeViewBox: false, // Keep viewBox attribute
                 },
               },
             },
@@ -37,7 +37,7 @@ export default defineNuxtConfig({
     }
   },
 
-  // 配置Nitro以支持CommonJS模块
+  // Configure Nitro to support CommonJS modules
   nitro: {
     rootDir: resolve(__dirname, '../..'),
     experimental: {
@@ -48,37 +48,37 @@ export default defineNuxtConfig({
     }
   },
 
-  // 配置环境变量
+  // Configure environment variables
   runtimeConfig: {
-    // 服务端环境变量
+    // Server-side environment variables
     databaseUrl: rootEnv.DATABASE_URL,
     betterAuthSecret: rootEnv.BETTER_AUTH_SECRET,
     
-    // 公共环境变量（客户端可访问）
+    // Public environment variables (accessible on client)
     public: {
       betterAuthUrl: rootEnv.BETTER_AUTH_URL,
       apiBaseUrl: rootEnv.API_BASE_URL,
-      // Captcha 配置
+      // Captcha configuration
       captchaEnabled: rootEnv.CAPTCHA_ENABLED || 'true',
       turnstileSiteKey: rootEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY || rootEnv.TURNSTILE_SITE_KEY || '1x00000000000000000000AA'
     }
   },
 
-  // 配置路径别名
+  // Configure path aliases
   alias: {
     "@": resolve(__dirname, '.'),
     "@libs": resolve(__dirname, '../../libs'),
     "@config": resolve(__dirname, '../../config.ts'),
   },
 
-  // 配置构建选项以支持CommonJS
+  // Configure build options to support CommonJS
   build: {
     transpile: ['pg', 'drizzle-orm']
   },
 
   modules: ['shadcn-nuxt', '@pinia/nuxt', '@nuxtjs/i18n'],
   
-  // 国际化配置
+  // Internationalization configuration
   i18n: {
     locales: [
       {

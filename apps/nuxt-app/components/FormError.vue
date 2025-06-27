@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-// 导入图标组件 (使用 lucide-vue-next)
+// Import icon component (using lucide-vue-next)
 import { AlertTriangle as ExclamationTriangleIcon } from 'lucide-vue-next'
 
 interface Props {

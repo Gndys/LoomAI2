@@ -1,170 +1,43 @@
 <template>
-  <div class="signup-container">
-    <h2>Sign Up</h2>
-    <form @submit.prevent="handleSignUp" class="signup-form">
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input
-          type="email"
-          id="email"
-          v-model="form.email"
-          required
-          placeholder="Enter your email"
-          autocomplete="email"
-        />
+  <Card class="w-[380px]">
+    <CardHeader class="text-center">
+      <CardTitle class="text-xl">{{ t('auth.signup.createAccount') }}</CardTitle>
+      <CardDescription>
+        {{ t('auth.signup.socialSignup') }}
+      </CardDescription>
+    </CardHeader>
+    <CardContent class="flex flex-col gap-6">
+      <SocialAuth />
+      <div class="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
+        <span class="bg-card relative z-10 px-2 text-muted-foreground">
+          {{ t('auth.signup.continueWith') }}
+        </span>
       </div>
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          v-model="form.password"
-          required
-          placeholder="Enter your password"
-          autocomplete="new-password"
-        />
+      <div class="flex flex-col gap-4">
+        <SignupForm />
       </div>
-      <div class="form-group">
-        <label for="name">Name</label>
-        <input
-          type="text"
-          id="name"
-          v-model="form.name"
-          required
-          placeholder="Enter your name"
-          autocomplete="name"
-        />
+      <div class="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
+        {{ t('auth.signup.termsNotice') }} <a href="#">{{ t('auth.signup.termsOfService') }}</a>
+        {{ t('common.and') }} <a href="#">{{ t('auth.signup.privacyPolicy') }}</a>.
       </div>
-      <div class="form-group">
-        <label for="image">Profile Image URL (Optional)</label>
-        <input
-          type="url"
-          id="image"
-          v-model="form.image"
-          placeholder="Enter image URL"
-        />
-      </div>
-      <button type="submit" :disabled="loading">
-        {{ loading ? 'Signing Up...' : 'Sign Up' }}
-      </button>
-    </form>
-    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-  </div>
+    </CardContent>
+  </Card>
 </template>
 
 <script setup lang="ts">
-import { authClientVue } from "@libs/auth/authClient"
-
-// 国际化
+// Initialize internationalization
 const { t } = useI18n()
 
-// 设置页面标题和meta
-const keywords = t('auth.metadata.signup.keywords')
+// Set layout
+definePageMeta({
+  layout: 'auth'
+})
+
+// Set page title and meta tags
 useSeoMeta({
   title: t('auth.metadata.signup.title'),
   description: t('auth.metadata.signup.description'),
-  keywords: Array.isArray(keywords) ? keywords.join(', ') : keywords
+  keywords: t('auth.metadata.signup.keywords')
 })
-
-// 表单数据
-const form = reactive({
-  email: '',
-  password: '',
-  name: '',
-  image: ''
-});
-
-// 状态管理
-const loading = ref(false);
-const errorMessage = ref('');
-
-// 提交处理函数
-async function handleSignUp() {
-  loading.value = true;
-  errorMessage.value = '';
-
-  try {
-    const { data, error } = await authClientVue.signUp.email(
-      {
-        email: form.email,
-        password: form.password,
-        name: form.name,
-        image: form.image || undefined, // 如果为空则传 undefined
-        callbackURL: '/dashboard'
-      },
-      {
-        onRequest: (ctx) => {
-          console.log('Request started');
-        },
-        onSuccess: (ctx) => {
-          console.log('Sign up successful', ctx);
-          // 重定向到 dashboard（可以用 Nuxt 的 navigateTo）
-          navigateTo('/dashboard');
-        },
-        onError: (ctx) => {
-          errorMessage.value = ctx.error.message;
-          console.error('Sign up failed:', ctx.error.message);
-        }
-      }
-    );
-
-    // 如果有错误，手动抛出（视 authClient 实现而定）
-    if (error) {
-      throw new Error(error.message);
-    }
-  } catch (err) {
-    errorMessage.value = 'An unexpected error occurred';
-  } finally {
-    loading.value = false;
-  }
-}
 </script>
 
-<style scoped>
-.signup-container {
-  max-width: 400px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.signup-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-label {
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-input {
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-button {
-  padding: 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
-.error {
-  color: red;
-  margin-top: 10px;
-}
-</style>

@@ -14,7 +14,7 @@
 import { cn } from '@/lib/utils'
 import type { SocialProvider } from '@/types/auth'
 
-// 导入SVG图标作为 Vue 组件
+// Import SVG icons as Vue components
 import GoogleIcon from '@libs/ui/icons/google.svg'
 import GithubIcon from '@libs/ui/icons/github.svg'
 import AppleIcon from '@libs/ui/icons/apple.svg'
@@ -30,15 +30,15 @@ const props = withDefaults(defineProps<Props>(), {
   className: ''
 })
 
-// 定义事件
+// Define events
 defineEmits<{
   click: []
 }>()
 
-// 国际化
+// Internationalization
 const { t } = useI18n()
 
-// 创建图标映射
+// Create icon mapping
 const providerIcons = {
   google: GoogleIcon,
   github: GithubIcon,
@@ -47,10 +47,10 @@ const providerIcons = {
   phone: PhoneIcon,
 } as const
 
-// 获取当前图标组件
+// Get current icon component
 const currentIcon = computed(() => providerIcons[props.provider])
 
-// 创建提供商名称映射
+// Create provider name mapping
 const providerNames = computed(() => ({
   google: t('auth.signin.socialProviders.google'),
   github: t('auth.signin.socialProviders.github'),

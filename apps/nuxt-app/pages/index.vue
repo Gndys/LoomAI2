@@ -2,7 +2,7 @@
   <div class="container mx-auto px-4 py-8">
     <h1 class="text-3xl font-bold mb-6">{{ $t('common.welcome') }}</h1>
     
-    <!-- 导航链接示例 - 使用 $localePath -->
+    <!-- Navigation links example - using $localePath -->
     <div class="mb-6">
       <h2 class="text-xl font-semibold mb-3">{{ $t('navigation.dashboard') }}</h2>
       <nav class="space-x-4">
@@ -17,7 +17,7 @@
       </nav>
     </div>
     
-    <!-- 操作按钮示例 -->
+          <!-- Action button examples -->
     <div class="mb-6">
       <h2 class="text-xl font-semibold mb-3">Actions</h2>
       <div class="space-x-4">
@@ -30,7 +30,7 @@
       </div>
     </div>
     
-    <!-- 认证相关按钮 -->
+          <!-- Authentication related buttons -->
     <div class="mb-6">
       <h2 class="text-xl font-semibold mb-3">Authentication</h2>
       <div class="space-x-4">
@@ -43,7 +43,7 @@
       </div>
     </div>
     
-    <!-- 语言切换 - 使用 $switchLocalePath -->
+          <!-- Language switching - using $switchLocalePath -->
     <div class="mb-6">
       <h2 class="text-xl font-semibold mb-3">Language / 语言</h2>
       <div class="space-x-4">
@@ -64,7 +64,7 @@
       </div>
     </div>
     
-    <!-- 调试信息 -->
+          <!-- Debug information -->
     <div class="mt-8 p-4 bg-gray-100 rounded">
       <h3 class="font-semibold mb-2">Debug Info:</h3>
       <p><strong>Current Locale:</strong> {{ locale }}</p>
@@ -77,12 +77,12 @@
 </template>
 
 <script setup lang="ts">
-// 使用 @nuxtjs/i18n 提供的标准 composables
+    // Use standard composables provided by @nuxtjs/i18n
 const { t, locale, availableLocales, defaultLocale } = useI18n()
 const localePath = useLocalePath()
 const switchLocalePath = useSwitchLocalePath()
 
-// 设置页面标题
+// Set page title
 useHead({
   title: computed(() => `${t('common.welcome')} - ShipEasy`),
   meta: [

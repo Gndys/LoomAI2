@@ -25,20 +25,19 @@
 </template>
 
 <script setup lang="ts">
-// 国际化
+// Initialize internationalization
 const { t } = useI18n()
 
-// 设置布局
+// Set layout
 definePageMeta({
   layout: 'auth'
 })
 
-// 设置页面标题和meta
-const keywords = t('auth.metadata.signin.keywords')
+// Set page title and meta tags
 useSeoMeta({
   title: t('auth.metadata.signin.title'),
   description: t('auth.metadata.signin.description'),
-  keywords: Array.isArray(keywords) ? keywords.join(', ') : keywords
+  keywords: t('auth.metadata.signin.keywords')
 })
 </script>
 
