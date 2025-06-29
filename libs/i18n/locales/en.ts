@@ -181,9 +181,13 @@ export const en: Locale = {
       phoneNumberPlaceholder: "Enter your phone number",
       countryCode: "Country/Region",
       verificationCode: "Verification Code",
+      enterCode: "Enter Verification Code",
       sendingCode: "Sending code...",
       verifying: "Verifying...",
       codeSentTo: "Verification code sent to",
+      resendIn: "Resend in",
+      seconds: "seconds",
+      resendCode: "Resend Code",
       resendCountdown: "seconds remaining",
       termsNotice: "By clicking continue, you agree to our",
       termsOfService: "Terms of Service",
@@ -245,6 +249,9 @@ export const en: Locale = {
       scanQRCode: "Please scan the QR code with WeChat",
       orUseOtherMethods: "Or use other login methods",
       loadingQRCode: "Loading QR code...",
+      termsNotice: "By clicking continue, you agree to our",
+      termsOfService: "Terms of Service",
+      privacyPolicy: "Privacy Policy",
       errors: {
         loadingFailed: "Failed to load WeChat QR code",
         networkError: "Network error, please try again"

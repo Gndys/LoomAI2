@@ -181,9 +181,13 @@ export const zhCN: Locale = {
       phoneNumberPlaceholder: "请输入您的手机号",
       countryCode: "国家/地区",
       verificationCode: "验证码",
+      enterCode: "输入验证码",
       sendingCode: "发送验证码中...",
       verifying: "验证中...",
       codeSentTo: "已发送验证码到",
+      resendIn: "重新发送",
+      seconds: "秒",
+      resendCode: "重新发送",
       resendCountdown: "秒后可重新发送",
       termsNotice: "点击继续即表示您同意我们的",
       termsOfService: "服务条款",
@@ -245,6 +249,9 @@ export const zhCN: Locale = {
       scanQRCode: "请使用微信扫描二维码",
       orUseOtherMethods: "或使用其他登录方式",
       loadingQRCode: "正在加载二维码...",
+      termsNotice: "点击继续即表示您同意我们的",
+      termsOfService: "服务条款",
+      privacyPolicy: "隐私政策",
       errors: {
         loadingFailed: "微信二维码加载失败",
         networkError: "网络错误，请重试"

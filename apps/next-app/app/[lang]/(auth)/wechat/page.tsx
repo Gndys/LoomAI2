@@ -2,9 +2,11 @@
 
 import { useEffect } from 'react';
 import Script from 'next/script';
+import Link from 'next/link';
 import { useTranslation } from '@/hooks/use-translation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { nanoid } from 'nanoid'
+
 declare global {
   interface Window {
     WxLogin: any;
@@ -12,8 +14,9 @@ declare global {
 }
 
 export default function WeixinLoginPage() {
-  const { t } = useTranslation();
-
+  const { t, locale } = useTranslation();
+  console.log('process.env.NEXT_PUBLIC_WECHAT_APP_ID', process.env.NEXT_PUBLIC_WECHAT_APP_ID)
+  console.log('process.env.NEXT_PUBLIC_WECHAT_REDIRECT_URI', process.env.NEXT_PUBLIC_WECHAT_REDIRECT_URI)
   useEffect(() => {
 
     const initWxLogin = () => {
@@ -61,15 +64,18 @@ export default function WeixinLoginPage() {
                 </div>
               </div>
             </div>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  {t.auth.wechat.orUseOtherMethods}
-                </span>
-              </div>
+            <div className="text-muted-foreground text-center text-xs text-balance [&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:text-primary">
+              {t.auth.wechat.termsNotice} <a href="#">{t.auth.wechat.termsOfService}</a>
+              {" "}{t.common.and} <a href="#">{t.auth.wechat.privacyPolicy}</a>.
+            </div>
+            <div className="flex justify-center gap-4 text-sm">
+              <Link href={`/${locale}/signin`} className="text-primary hover:underline">
+                {t.auth.signin.title}
+              </Link>
+              <span className="text-muted-foreground">|</span>
+              <Link href={`/${locale}/signup`} className="text-primary hover:underline">
+                {t.auth.signup.createAccount}
+              </Link>
             </div>
           </div>
         </CardContent>

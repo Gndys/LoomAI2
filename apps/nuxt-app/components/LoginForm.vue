@@ -141,6 +141,7 @@ const captchaEnabled = computed(() => {
 const captchaSiteKey = computed(() => {
   // Use Nuxt's public environment variables
   const siteKey = runtimeConfig.public.turnstileSiteKey as string | undefined
+  console.log('siteKey', siteKey)
   return siteKey || '1x00000000000000000000AA' // Test key
 })
 
@@ -207,6 +208,7 @@ const onSubmit = handleSubmit(async (values) => {
         'x-captcha-response': turnstileToken.value
       }
     }
+    console.log('turnstileToken.value', turnstileToken.value)
 
     const result = await authClientVue.signIn.email({
       email: values.email,

@@ -1,16 +1,22 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { resolve } from 'path';
-import { loadEnv } from 'vite'
+import { loadEnv } from 'vite';
 import tailwindcss from "@tailwindcss/vite";
 import svgLoader from 'vite-svg-loader';
 
+// Load environment variables using Vite's loadEnv
+const env = loadEnv(process.env.NODE_ENV || 'development', resolve(__dirname, '../..'), '');
+// Merge environment variables into process.env
+Object.assign(process.env, env);
 
-// Load environment variables from root directory
-const rootEnv = loadEnv('', resolve(__dirname, '../..'), '')
+import { config as appConfig } from '../../config';
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
+  devServer: {
+    port: 7001,
+  },
   css: ['~/assets/css/main.css'],
 
   vite: {
@@ -48,19 +54,22 @@ export default defineNuxtConfig({
     }
   },
 
-  // Configure environment variables
+  // Configure environment variables using centralized config
   runtimeConfig: {
     // Server-side environment variables
-    databaseUrl: rootEnv.DATABASE_URL,
-    betterAuthSecret: rootEnv.BETTER_AUTH_SECRET,
+    databaseUrl: appConfig.database.url,
+    betterAuthSecret: process.env.BETTER_AUTH_SECRET,
     
     // Public environment variables (accessible on client)
     public: {
-      betterAuthUrl: rootEnv.BETTER_AUTH_URL,
-      apiBaseUrl: rootEnv.API_BASE_URL,
+      betterAuthUrl: appConfig.app.baseUrl,
+      apiBaseUrl: appConfig.app.baseUrl,
       // Captcha configuration
-      captchaEnabled: rootEnv.CAPTCHA_ENABLED || 'true',
-      turnstileSiteKey: rootEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY || rootEnv.TURNSTILE_SITE_KEY || '1x00000000000000000000AA'
+      captchaEnabled: String(appConfig.captcha.enabled),
+      turnstileSiteKey: appConfig.captcha.cloudflare.siteKey,
+      // WeChat configuration
+      wechatAppId: process.env.WECHAT_APP_ID || 'your-wechat-app-id',
+      wechatRedirectUri: process.env.WECHAT_REDIRECT_URI || `${appConfig.app.baseUrl}/api/auth/oauth2/callback/wechat`
     }
   },
 

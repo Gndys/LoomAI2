@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "dotenv -e ../../.env nuxt dev",
+    "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
@@ -12,7 +12,6 @@
   "devDependencies": {
     "@nuxtjs/i18n": "9.5.5",
     "@nuxtjs/svg": "0.4.1",
-    "dotenv-cli": "^7.4.4",
     "nuxt": "^3.10.3",
     "shadcn-nuxt": "2.2.0",
     "vite-svg-loader": "5.1.0",

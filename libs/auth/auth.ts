@@ -11,7 +11,7 @@ import { sendVerificationEmail, sendResetPasswordEmail } from '@libs/email'
 import { locales, defaultLocale } from '@libs/email/templates'
 import { config } from '@config'
 export { toNextJsHandler } from "better-auth/next-js";
-console.log('env', process.env.BETTER_AUTH_URL)
+console.log('env', config.captcha.cloudflare.secretKey)
 /**
  * 从 referer URL 中提取信息
  * @param request 请求对象

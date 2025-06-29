@@ -1,8 +1,3 @@
-import * as dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
-
 // Function to get environment variables
 function getEnv(key: string): string | undefined {
   return process.env[key];
@@ -22,10 +17,15 @@ function getEnvForService(key: string, service: string): string | undefined {
   return value;
 }
 
-// Function to get environment variables for required services
-function requireEnvForService(key: string, service: string): string {
+// Function to get environment variables for required services with development defaults
+function requireEnvForService(key: string, service: string, devDefault?: string): string {
   const value = getEnv(key);
   if (!value) {
+    // In development, use default values if provided
+    if (process.env.NODE_ENV === 'development' && devDefault) {
+      console.warn(`Warning: Using default value for ${key} in development. Set ${key} in .env file for production.`);
+      return devDefault;
+    }
     throw new Error(`Missing required environment variable: ${key} for ${service} service. This service is required for the application to function.`);
   }
   return value;
@@ -81,7 +81,7 @@ export const config = {
      * This will be used for all callback URLs and webhooks
      */
     get baseUrl() {
-      return requireEnvForService('APP_BASE_URL', 'Application');
+      return requireEnvForService('APP_BASE_URL', 'Application', 'http://localhost:7001');
     },
 
     /**
@@ -535,7 +535,6 @@ export const config = {
       },
       // 客户端使用的 site key（使用 NEXT_PUBLIC_ 前缀）
       get siteKey() {
-
         // 开发环境fallback到测试key
         if (process.env.NODE_ENV === 'development') {
           return '1x00000000000000000000AA'; // 测试用的 siteKey
@@ -556,7 +555,7 @@ export const config = {
   database: {
     // Required core service, using error instead of warning
     get url() {
-      return requireEnvForService('DATABASE_URL', 'Database');
+      return requireEnvForService('DATABASE_URL', 'Database', 'postgresql://username:password@localhost:5432/database_name');
     }
   },
 } as const; 
