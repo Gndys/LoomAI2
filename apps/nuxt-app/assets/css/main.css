@@ -28,6 +28,11 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-1-hex: var(--chart-1-hex);
+  --color-chart-2-hex: var(--chart-2-hex);
+  --color-chart-3-hex: var(--chart-3-hex);
+  --color-chart-4-hex: var(--chart-4-hex);
+  --color-chart-5-hex: var(--chart-5-hex);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -65,6 +70,11 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+  --chart-1-hex: #D97706;
+  --chart-2-hex: #009689;
+  --chart-3-hex: #1E3A8A;
+  --chart-4-hex: #65A30D;
+  --chart-5-hex: #D97706;
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -103,6 +113,11 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+  --chart-1-hex: #8B5CF6;
+  --chart-2-hex: #10B981;
+  --chart-3-hex: #F59E0B;
+  --chart-4-hex: #A855F7;
+  --chart-5-hex: #EF4444;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

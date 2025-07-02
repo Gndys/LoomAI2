@@ -106,7 +106,7 @@ export default defineNuxtConfig({
     transpile: ['pg', 'drizzle-orm']
   },
 
-  modules: ['shadcn-nuxt', '@pinia/nuxt', '@nuxtjs/i18n', '@nuxtjs/color-mode'],
+  modules: ['shadcn-nuxt', '@pinia/nuxt', '@nuxtjs/i18n', '@nuxtjs/color-mode', 'nuxt-charts'],
   
   // Color mode configuration
   colorMode: {
