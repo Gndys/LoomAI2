@@ -38,11 +38,25 @@ defineProps<{
   user: User
 }>()
 
+// Emit events to parent component
+const emit = defineEmits<{
+  'user-updated': [userUpdate: Partial<User> & { id: string }]
+  'user-deleted': [userId: string]
+}>()
+
 const { t } = useI18n()
 const banDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
+
+// Loading states
+const banLoading = ref(false)
+const deleteLoading = ref(false)
+
 // Handle ban/unban user
 const handleToggleBan = async (user: User) => {
+  if (banLoading.value) return
+  
+  banLoading.value = true
   try {
     if (user.banned) {
       // Unban user
@@ -59,17 +73,28 @@ const handleToggleBan = async (user: User) => {
       toast.success(t('admin.users.table.dialog.banSuccess'))
     }
     
-    // Refresh the page to update the table data
-    //window.location.reload()
+    // Close dialog and emit event to parent
+    banDialogOpen.value = false
+    
+    // Emit only the changed properties - more efficient
+    emit('user-updated', { 
+      id: user.id, 
+      banned: !user.banned 
+    })
     
   } catch (error) {
     console.error('Error toggling ban status:', error)
     toast.error(t('admin.users.messages.operationFailed'))
+  } finally {
+    banLoading.value = false
   }
 }
 
 // Handle delete user
 const handleDeleteUser = async (user: User) => {
+  if (deleteLoading.value) return
+  
+  deleteLoading.value = true
   try {
     await authClientVue.admin.removeUser({
       userId: user.id,
@@ -77,12 +102,17 @@ const handleDeleteUser = async (user: User) => {
     
     toast.success(t('admin.users.messages.deleteSuccess'))
     
-    // Refresh the page to update the table data
-    // window.location.reload()
+    // Close dialog and emit event to parent
+    deleteDialogOpen.value = false
+    
+    // Emit deleted user ID
+    emit('user-deleted', user.id)
     
   } catch (error) {
     console.error('Error deleting user:', error)
     toast.error(t('admin.users.messages.deleteError'))
+  } finally {
+    deleteLoading.value = false
   }
 }
 </script>
@@ -96,13 +126,7 @@ const handleDeleteUser = async (user: User) => {
         <MoreHorizontal class="w-4 h-4" />
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <!-- View user profile -->
-      <DropdownMenuItem @click="navigateTo(`/admin/users/${user.id}`)">
-        <User class="mr-2 h-4 w-4" />
-        <span>View profile</span>
-      </DropdownMenuItem>
-      
+    <DropdownMenuContent align="end">      
       <!-- Edit user -->
       <DropdownMenuItem @click="navigateTo(`/admin/users/${user.id}`)">
         <Edit class="mr-2 h-4 w-4" />
@@ -138,7 +162,11 @@ const handleDeleteUser = async (user: User) => {
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel>{{ t('actions.cancel') }}</AlertDialogCancel>
-        <AlertDialogAction @click="handleToggleBan(user)">
+        <AlertDialogAction 
+          :disabled="banLoading"
+          @click="handleToggleBan(user)"
+        >
+          <span v-if="banLoading" class="mr-2">⏳</span>
           {{ user.banned ? t('admin.users.actions.unbanUser') : t('admin.users.actions.banUser') }}
         </AlertDialogAction>
       </AlertDialogFooter>
@@ -155,9 +183,12 @@ const handleDeleteUser = async (user: User) => {
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel>{{ t('actions.cancel') }}</AlertDialogCancel>
-        <AlertDialogAction class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        <AlertDialogAction 
+          class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          :disabled="deleteLoading"
           @click="handleDeleteUser(user)"
         >
+          <span v-if="deleteLoading" class="mr-2">⏳</span>
           {{ t('admin.users.table.actions.deleteUser') }}
         </AlertDialogAction>
       </AlertDialogFooter>

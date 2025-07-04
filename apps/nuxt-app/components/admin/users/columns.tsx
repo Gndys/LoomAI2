@@ -123,8 +123,8 @@ export const columns: ColumnDef<User>[] = [
       const { t } = useI18n()
       const role = row.getValue('role') as string
       const badgeClass = role === 'admin' 
-        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+        ? 'bg-chart-1 text-destructive-foreground'
+        : 'bg-primary text-primary-foreground'
       
       // Use translated role names
       const roleLabel = role === 'admin' ? t('dashboard.roles.admin') : t('dashboard.roles.user')
@@ -147,12 +147,18 @@ export const columns: ColumnDef<User>[] = [
     },
     cell: ({ row }) => {
       const verified = row.getValue('emailVerified') as boolean
+      
+      if (verified) {
+        return (
+          <div class="text-foreground">
+            ✓ Verified
+          </div>
+        )
+      }
+      
       return (
-        <div class={verified 
-          ? 'text-green-600 dark:text-green-400' 
-          : 'text-gray-500 dark:text-gray-400'
-        }>
-          {verified ? '✓ Verified' : '✗ Not verified'}
+        <div class="text-muted-foreground">
+          ✗ Not verified
         </div>
       )
     },
@@ -168,13 +174,18 @@ export const columns: ColumnDef<User>[] = [
     },
     cell: ({ row }) => {
       const banned = row.getValue('banned') as boolean | null
-      const badgeClass = banned
-        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-        : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+      
+      if (banned) {
+        return (
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-destructive text-destructive-foreground">
+            Banned
+          </span>
+        )
+      }
       
       return (
-        <span class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
-          {banned ? 'Banned' : 'Active'}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
+          Active
         </span>
       )
     },
@@ -242,9 +253,21 @@ export const columns: ColumnDef<User>[] = [
       const { t } = useI18n()
       return <div class="text-center">{t('admin.users.table.columns.actions')}</div>
     },
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
       const user = row.original
-      return h('div', { class: 'flex justify-center' }, h(UsersActionsCell, { user }))
+      
+      // Get the onUserUpdated and onUserDeleted functions from table meta
+      const meta = table.options.meta as any
+      const onUserUpdated = meta?.onUserUpdated
+      const onUserDeleted = meta?.onUserDeleted
+      
+      return h('div', { class: 'flex justify-center' }, 
+        h(UsersActionsCell, { 
+          user,
+          'onUser-updated': onUserUpdated,
+          'onUser-deleted': onUserDeleted
+        })
+      )
     },
     enableSorting: false,
     enableHiding: false,

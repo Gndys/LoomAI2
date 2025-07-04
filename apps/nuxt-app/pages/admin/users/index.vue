@@ -35,6 +35,7 @@
             pageSize: limit,
             total: data?.total || 0
           }"
+          @refresh-data="refresh"
         />
       </div>
     </div>

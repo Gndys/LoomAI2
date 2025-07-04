@@ -110,7 +110,7 @@ import {
   type VisibilityState,
   type SortingState,
 } from '@tanstack/vue-table'
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { columns, type User } from './columns'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-vue-next'
 
@@ -126,10 +126,57 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{
+  'refresh-data': []
+}>()
 
 // Get router for navigation
 const router = useRouter()
 const route = useRoute()
+
+// Local data state for real-time updates
+const localData = ref<User[]>([...props.data])
+
+// Watch for props changes and update local data
+watch(() => props.data, (newData) => {
+  localData.value = [...newData]
+}, { deep: true })
+
+// Handle user updates
+const handleUserUpdated = (userUpdate: Partial<User> & { id: string }) => {
+  
+  const index = localData.value.findIndex(user => user.id === userUpdate.id)
+  
+  if (index !== -1) {
+    
+    // Extract id and get the actual update properties
+    const { id, ...updateProperties } = userUpdate
+    
+    // Dynamically update all provided properties - clean and type-safe!
+    Object.assign(localData.value[index], updateProperties, {
+      updatedAt: new Date() // Always update timestamp
+    })
+  } else {
+    console.warn('User not found in localData for update:', userUpdate.id)
+    // If user not found locally, trigger a full refresh
+    emit('refresh-data')
+  }
+}
+
+// Handle user deletion
+const handleUserDeleted = (userId: string) => {
+  console.log('handleUserDeleted called with userId:', userId)
+  console.log('current localData before delete:', localData.value)
+  
+  const originalLength = localData.value.length
+  localData.value = localData.value.filter(user => user.id !== userId)
+  
+  console.log('localData after delete:', localData.value)
+  console.log(`Removed ${originalLength - localData.value.length} users`)
+  
+  // Also emit refresh to parent to update pagination counts
+  emit('refresh-data')
+}
 
 // Table state
 const columnVisibility = ref<VisibilityState>({
@@ -143,7 +190,7 @@ const sorting = ref<SortingState>([])
 
 // Create table instance
 const table = useVueTable({
-  get data() { return props.data },
+  get data() { return localData.value },
   get columns() { return columns },
   getCoreRowModel: getCoreRowModel(),
   onColumnVisibilityChange: (updater) => {
@@ -173,10 +220,12 @@ const table = useVueTable({
     get columnVisibility() { return columnVisibility.value },
     get sorting() { return sorting.value },
   },
+  meta: {
+    onUserUpdated: handleUserUpdated,
+    onUserDeleted: handleUserDeleted,
+  },
   enableSorting: true,
 })
-
-
 
 // Pagination functionality
 const goToPage = (page: number) => {
