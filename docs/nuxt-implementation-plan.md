@@ -382,21 +382,20 @@
 ✅ 开发模式下提供演示数据回退
 
 ### 4.3 用户管理
-- [ ] 创建 `pages/admin/users/index.vue`
-- [ ] 创建 `pages/admin/users/[id]/index.vue` 用户详情页
-- [ ] 实现用户数据表格：
-  - [ ] 用户列表展示
-  - [ ] 分页功能
-  - [ ] 搜索筛选
-  - [ ] 排序功能
-- [ ] 创建 `components/admin/users/UserSearch.vue`
-- [ ] 创建 `components/admin/users/UserColumns.ts` 表格列定义
-- [ ] 实现用户操作功能：
-  - [ ] 查看详情
-  - [ ] 编辑信息
-  - [ ] 禁用/启用账户
-  - [ ] 删除用户
-- [ ] 测试用户管理功能
+- [x] 创建 `pages/admin/users/index.vue`
+- [x] 创建 `pages/admin/users/[id]/index.vue` 用户详情页
+- [x] 实现用户数据表格：
+  - [x] 用户列表展示
+  - [x] 分页功能
+  - [x] 搜索筛选
+  - [x] 排序功能
+- [x] 创建 `components/admin/users/UserSearch.vue`
+- [x] 创建 `components/admin/users/UserColumns.ts` 表格列定义
+- [x] 实现用户操作功能：
+  - [x] 编辑信息
+  - [x] 禁用/启用账户
+  - [x] 删除用户
+- [x] 测试用户管理功能
 
 ### 4.4 订单管理
 - [ ] 创建 `pages/admin/orders/index.vue`

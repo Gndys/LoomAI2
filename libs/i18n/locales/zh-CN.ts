@@ -375,6 +375,8 @@ export const zhCN: Locale = {
         description: "您确定要解封 {userName} 吗？他们将重新获得访问权限。"
       },
       form: {
+        title: "用户信息",
+        description: "请在下方输入用户详细信息",
         labels: {
           name: "姓名",
           email: "邮箱",

@@ -373,6 +373,8 @@ export const en: Locale = {
         description: "Are you sure you want to unban {userName}? They will regain access to the application."
       },
       form: {
+        title: "User Information",
+        description: "Enter user details below",
         labels: {
           name: "Name",
           email: "Email",
@@ -415,6 +417,7 @@ export const en: Locale = {
         updateSuccess: "User updated successfully",
         deleteSuccess: "User deleted successfully",
         deleteError: "Failed to delete user",
+        fetchError: "Failed to fetch user data",
         operationFailed: "Operation failed"
       }
     },

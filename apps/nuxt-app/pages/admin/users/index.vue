@@ -48,8 +48,8 @@ import { UserPlus } from 'lucide-vue-next'
 
 // Define page metadata
 definePageMeta({
-  middleware: 'admin',
   layout: 'admin'
+  // No middleware needed - auth.global.ts handles admin routes automatically
 })
 
 // Get route and composables

@@ -1,5 +1,8 @@
-// 导出所有用户验证器和工具
-export { createValidators, countryCodes, type CountryCode } from './user';
+// Export user validators
+export { createValidators as createUserValidators, countryCodes, type CountryCode } from './user';
+
+// Export admin user validators
+export { createAdminUserValidators } from './admin-user';
 
 // 为 Next.js 创建支持参数插值的翻译函数工厂
 export function createNextTranslationFunction(translations: any) {

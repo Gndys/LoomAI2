@@ -1,80 +1,88 @@
 /**
- * Global authentication middleware for Nuxt.js
- * Handles route protection similar to Next.js authMiddleware
+ * Unified Authentication Middleware for Nuxt.js
+ * Handles all authentication, authorization, and subscription checks in one place
  */
+import { authClientVue } from '@libs/auth/authClient'
+import { Action, Subject, can, createAppUser } from '@libs/permissions'
 
-import { Action, Subject, can, createAppUser, type AppUser } from '@libs/permissions'
-
-// Define the structure for protected route configuration
+// Route configuration interface
 interface ProtectedRouteConfig {
   pattern: RegExp
   type: 'page' | 'api'
+  // Authentication requirements
+  requiresAuth?: boolean
   // Permission required for access
   requiredPermission?: { 
     action: Action
     subject: Subject
   }
-  requiresSubscription?: boolean // Indicates if route requires active subscription
+  // Subscription requirements
+  requiresSubscription?: boolean
 }
 
-// Configuration for Protected Routes
-// Based on the Next.js authMiddleware.ts implementation
+// Unified protected routes configuration
 const protectedRoutes: ProtectedRouteConfig[] = [
   // Admin routes - require admin permissions
   {
     pattern: /^\/admin(\/.*)?$/,
     type: 'page',
+    requiresAuth: true,
     requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
   },
   
   // Settings pages - require authentication only
   {
     pattern: /^\/settings(\/.*)?$/,
-    type: 'page'
+    type: 'page',
+    requiresAuth: true
   },
   
   // Dashboard - require authentication only
   {
     pattern: /^\/dashboard(\/.*)?$/,
-    type: 'page'
+    type: 'page',
+    requiresAuth: true
   },
   
   // Premium features - require active subscription
   {
     pattern: /^\/premium-features(\/.*)?$/,
     type: 'page',
+    requiresAuth: true,
     requiresSubscription: true
   },
   
   // AI features - require authentication (could add subscription later)
   {
     pattern: /^\/ai(\/.*)?$/,
-    type: 'page'
+    type: 'page',
+    requiresAuth: true
   },
 
   // API routes protection
   {
     pattern: /^\/api\/admin\/(.*)?$/,
     type: 'api',
+    requiresAuth: true,
     requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
   },
   
   {
     pattern: /^\/api\/chat(\/.*)?$/,
-    type: 'api'
-    // Could add: requiredPermission: { action: Action.CREATE, subject: Subject.CHAT_MESSAGE }
+    type: 'api',
+    requiresAuth: true
   },
   
   {
     pattern: /^\/api\/premium(\/.*)?$/,
     type: 'api',
+    requiresAuth: true,
     requiresSubscription: true
   }
 ]
 
 /**
  * Check if user has valid subscription
- * This would need to be implemented with actual subscription checking logic
  */
 async function hasValidSubscription(userId: string): Promise<boolean> {
   // TODO: Implement actual subscription checking
@@ -91,6 +99,27 @@ async function hasValidSubscription(userId: string): Promise<boolean> {
   // } catch {
   //   return false
   // }
+}
+
+/**
+ * Get user session using Better Auth
+ */
+async function getUserSession() {
+  try {
+    const session = await authClientVue.getSession()
+    return {
+      session,
+      user: session?.data?.user,
+      isAuthenticated: !!session?.data?.user
+    }
+  } catch (error) {
+    console.error('Failed to get session:', error)
+    return {
+      session: null,
+      user: null,
+      isAuthenticated: false
+    }
+  }
 }
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -114,14 +143,14 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return // Route is not protected
   }
 
-  console.log(`Protected route accessed: ${to.path}, Type: ${matchedRoute.type}`)
+  console.log(`🔒 Protected route accessed: ${to.path} (Type: ${matchedRoute.type})`)
 
-  // Get user session
-  const { user, isAuthenticated } = useAuth()
-  
+  // Get user session (unified approach)
+  const { user, isAuthenticated } = await getUserSession()
+
   // --- 1. Authentication Check ---
-  if (!isAuthenticated.value || !user.value) {
-    console.log(`Authentication failed for: ${to.path}`)
+  if (matchedRoute.requiresAuth && !isAuthenticated) {
+    console.log(`❌ Authentication failed for: ${to.path}`)
     
     if (matchedRoute.type === 'page') {
       // Redirect to signin page
@@ -135,15 +164,20 @@ export default defineNuxtRouteMiddleware(async (to) => {
     }
   }
 
+  // If no authentication required, allow access
+  if (!matchedRoute.requiresAuth) {
+    console.log(`✅ Public access allowed for: ${to.path}`)
+    return
+  }
+
   // --- 2. Subscription Check (if required) ---
   if (matchedRoute.requiresSubscription) {
-    console.log(`Subscription check for: ${to.path}, User: ${user.value.id}`)
+    console.log(`💳 Checking subscription for: ${to.path}, User: ${user!.id}`)
     
-    const hasSubscription = await hasValidSubscription(user.value.id)
-    console.log('hasSubscription', hasSubscription)
+    const hasSubscription = await hasValidSubscription(user!.id)
     
     if (!hasSubscription) {
-      console.log(`Subscription check failed for: ${to.path}, User: ${user.value.id}`)
+      console.log(`❌ Subscription check failed for: ${to.path}, User: ${user!.id}`)
       
       if (matchedRoute.type === 'page') {
         // Redirect to pricing page
@@ -155,19 +189,21 @@ export default defineNuxtRouteMiddleware(async (to) => {
         })
       }
     }
+    
+    console.log(`✅ Subscription check passed for: ${to.path}`)
   }
 
   // --- 3. Authorization Check (RBAC-Based) ---
-  console.log(`Authentication successful for: ${to.path}, User: ${user.value.id}`)
-  
   const requiredPermission = matchedRoute.requiredPermission
   
   if (requiredPermission) {
+    console.log(`🛡️ Checking permissions for: ${to.path} (${requiredPermission.action}:${requiredPermission.subject})`)
+    
     // Create AppUser from session data
-    const appUser = createAppUser(user.value)
+    const appUser = createAppUser(user!)
     
     if (!appUser) {
-      console.log(`Authorization failed (user object missing) for: ${to.path}`)
+      console.log(`❌ Authorization failed (user object missing) for: ${to.path}`)
       throw createError({
         statusCode: 403,
         statusMessage: 'Forbidden: User information missing'
@@ -178,12 +214,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const hasPermission = can(appUser, requiredPermission.action, requiredPermission.subject)
 
     if (!hasPermission) {
-      console.log(`Authorization failed (insufficient permissions) for user ${user.value.id} on ${to.path} (Action: ${requiredPermission.action}, Subject: ${requiredPermission.subject})`)
+      console.log(`❌ Authorization failed for user ${user!.id} on ${to.path} (${requiredPermission.action}:${requiredPermission.subject})`)
       
       if (matchedRoute.type === 'page') {
         throw createError({
           statusCode: 403,
-          statusMessage: 'Access Denied'
+          statusMessage: 'Access Denied: Insufficient permissions'
         })
       } else {
         throw createError({
@@ -193,10 +229,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
       }
     }
     
-    console.log(`Authorization successful (permissions check passed) for user ${user.value.id} on ${to.path}`)
-  } else {
-    console.log(`No specific permission required for: ${to.path}`)
+    console.log(`✅ Authorization successful for user ${user!.id} on ${to.path}`)
   }
+
+  console.log(`✅ Access granted to: ${to.path} for user: ${user!.id}`)
 })
 
 // --- Two-Layer Authorization Concept ---
