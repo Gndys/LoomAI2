@@ -12,6 +12,8 @@ export const zhCN: Locale = {
     loading: "加载中...",
     unexpectedError: "发生意外错误",
     notAvailable: "不可用",
+    yes: "是",
+    no: "否",
     theme: {
       light: "浅色主题",
       dark: "深色主题",
@@ -462,7 +464,10 @@ export const zhCN: Locale = {
         },
         actions: {
           viewOrder: "查看订单",
-          refundOrder: "退款"
+          refundOrder: "退款",
+          openMenu: "打开菜单",
+          actions: "操作",
+          clickToCopy: "点击复制"
         }
       },
       status: {
@@ -475,6 +480,7 @@ export const zhCN: Locale = {
     },
     subscriptions: {
       title: "订阅管理",
+      description: "管理用户订阅和账单",
       actions: {
         createSubscription: "创建订阅"
       },
@@ -482,11 +488,45 @@ export const zhCN: Locale = {
         fetchError: "加载订阅失败，请重试。"
       },
       table: {
+        showing: "显示第 {from} 到 {to} 项，共 {total} 项结果",
         noResults: "未找到订阅。",
+        rowsPerPage: "每页行数",
+        page: "第",
+        of: "页，共",
+        view: "查看",
+        toggleColumns: "切换列",
+        goToFirstPage: "转到第一页",
+        goToPreviousPage: "转到上一页", 
+        goToNextPage: "转到下一页",
+        goToLastPage: "转到最后一页",
         search: {
+          searchLabel: "搜索订阅",
+          searchField: "搜索字段",
+          statusLabel: "状态",
+          providerLabel: "提供商",
+          search: "搜索",
+          clear: "清除",
+          allStatuses: "所有状态",
+          allProviders: "所有提供商",
+          userEmail: "用户邮箱",
+          subscriptionId: "订阅ID",
+          userId: "用户ID",
+          planId: "计划ID",
+          stripeSubscriptionId: "Stripe订阅ID",
+          creemSubscriptionId: "Creem订阅ID",
+          placeholders: {
+            userEmail: "输入用户邮箱...",
+            subscriptionId: "输入订阅ID...",
+            userId: "输入用户ID...",
+            planId: "输入计划ID...",
+            stripeSubscriptionId: "输入Stripe订阅ID...",
+            creemSubscriptionId: "输入Creem订阅ID...",
+            default: "输入搜索词..."
+          },
           searchBy: "搜索条件...",
           searchPlaceholder: "按{field}搜索...",
           filterByStatus: "按状态筛选",
+          filterByProvider: "按提供商筛选",
           allStatus: "所有状态",
           filterByPaymentType: "支付类型",
           allPaymentTypes: "所有类型",
@@ -500,18 +540,40 @@ export const zhCN: Locale = {
         },
         columns: {
           id: "订阅ID",
-          user: "用户",
+          user: "客户",
           plan: "计划",
           status: "状态",
           paymentType: "支付类型",
-          period: "周期",
+          provider: "提供商",
+          periodStart: "开始时间",
+          periodEnd: "结束时间",
+          cancelAtPeriodEnd: "将取消",
           createdAt: "创建时间",
+          updatedAt: "更新时间",
+          metadata: "元数据",
+          period: "周期",
           actions: "操作"
         },
         actions: {
+          openMenu: "打开菜单",
+          actions: "操作",
           viewSubscription: "查看订阅",
-          cancelSubscription: "取消订阅"
+          cancelSubscription: "取消订阅",
+          clickToCopy: "点击复制"
         }
+      },
+      status: {
+        active: "活跃",
+        trialing: "试用中",
+        canceled: "已取消",
+        cancelled: "已取消",
+        past_due: "逾期",
+        unpaid: "未支付",
+        inactive: "未激活"
+      },
+      paymentType: {
+        one_time: "一次性",
+        recurring: "循环订阅"
       }
     }
   },

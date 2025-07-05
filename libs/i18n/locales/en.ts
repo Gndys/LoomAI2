@@ -12,6 +12,8 @@ export const en: Locale = {
     loading: "Loading...",
     unexpectedError: "An unexpected error occurred",
     notAvailable: "N/A",
+    yes: "Yes",
+    no: "No",
     theme: {
       light: "Light Theme",
       dark: "Dark Theme",
@@ -471,6 +473,7 @@ export const en: Locale = {
     },
     subscriptions: {
       title: "Subscriptions",
+      description: "Manage user subscriptions and billing",
       actions: {
         createSubscription: "Create Subscription"
       },
@@ -478,11 +481,45 @@ export const en: Locale = {
         fetchError: "Failed to load subscriptions. Please try again."
       },
       table: {
+        showing: "Showing {from} to {to} of {total} results",
         noResults: "No subscriptions found.",
+        rowsPerPage: "Rows per page",
+        page: "Page",
+        of: "of",
+        view: "View",
+        toggleColumns: "Toggle columns",
+        goToFirstPage: "Go to first page",
+        goToPreviousPage: "Go to previous page", 
+        goToNextPage: "Go to next page",
+        goToLastPage: "Go to last page",
         search: {
+          searchLabel: "Search subscriptions",
+          searchField: "Search field",
+          statusLabel: "Status",
+          providerLabel: "Provider",
+          search: "Search",
+          clear: "Clear",
+          allStatuses: "All statuses",
+          allProviders: "All providers",
+          userEmail: "User Email",
+          subscriptionId: "Subscription ID",
+          userId: "User ID",
+          planId: "Plan ID",
+          stripeSubscriptionId: "Stripe Subscription ID",
+          creemSubscriptionId: "Creem Subscription ID",
+          placeholders: {
+            userEmail: "Enter user email...",
+            subscriptionId: "Enter subscription ID...",
+            userId: "Enter user ID...",
+            planId: "Enter plan ID...",
+            stripeSubscriptionId: "Enter Stripe subscription ID...",
+            creemSubscriptionId: "Enter Creem subscription ID...",
+            default: "Enter search term..."
+          },
           searchBy: "Search by...",
           searchPlaceholder: "Search by {field}...",
           filterByStatus: "Filter by status",
+          filterByProvider: "Filter by provider",
           allStatus: "All Status",
           filterByPaymentType: "Payment type",
           allPaymentTypes: "All Types",
@@ -496,18 +533,40 @@ export const en: Locale = {
         },
         columns: {
           id: "Subscription ID",
-          user: "User",
+          user: "Customer",
           plan: "Plan",
           status: "Status",
           paymentType: "Payment Type",
+          provider: "Provider",
+          periodStart: "Period Start",
+          periodEnd: "Period End",
+          cancelAtPeriodEnd: "Will Cancel",
+          createdAt: "Created",
+          updatedAt: "Updated",
+          metadata: "Metadata",
           period: "Period",
-          createdAt: "Created At",
           actions: "Actions"
         },
         actions: {
+          openMenu: "Open menu",
+          actions: "Actions",
           viewSubscription: "View subscription",
-          cancelSubscription: "Cancel subscription"
+          cancelSubscription: "Cancel subscription",
+          clickToCopy: "Click to copy"
         }
+      },
+      status: {
+        active: "Active",
+        trialing: "Trialing",
+        canceled: "Canceled",
+        cancelled: "Canceled",
+        past_due: "Past Due",
+        unpaid: "Unpaid",
+        inactive: "Inactive"
+      },
+      paymentType: {
+        one_time: "One-time",
+        recurring: "Recurring"
       }
     }
   },

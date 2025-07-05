@@ -6,14 +6,15 @@
       @update:model-value="onFieldChange"
     >
       <SelectTrigger class="w-[120px]">
-        <SelectValue :placeholder="t('admin.orders.table.search.searchBy')" />
+        <SelectValue :placeholder="t('admin.subscriptions.table.search.searchBy')" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="userEmail">{{ t('admin.orders.table.columns.user') }}</SelectItem>
-        <SelectItem value="planId">{{ t('admin.orders.table.columns.plan') }}</SelectItem>
-        <SelectItem value="id">{{ t('admin.orders.table.columns.id') }}</SelectItem>
+        <SelectItem value="userEmail">{{ t('admin.subscriptions.table.columns.user') }}</SelectItem>
+        <SelectItem value="planId">{{ t('admin.subscriptions.table.columns.plan') }}</SelectItem>
+        <SelectItem value="id">{{ t('admin.subscriptions.table.columns.id') }}</SelectItem>
         <SelectItem value="userId">User ID</SelectItem>
-        <SelectItem value="providerOrderId">{{ t('admin.orders.table.columns.providerOrderId') }}</SelectItem>
+        <SelectItem value="stripeSubscriptionId">Stripe ID</SelectItem>
+        <SelectItem value="creemSubscriptionId">Creem ID</SelectItem>
       </SelectContent>
     </Select>
 
@@ -30,6 +31,11 @@
       <SearchIcon class="h-4 w-4" />
     </Button>
 
+    <!-- Clear Button -->
+    <Button type="button" variant="outline" size="icon" class="shrink-0" @click="handleClear">
+      <X class="h-4 w-4" />
+    </Button>
+
     <!-- Divider -->
     <div class="mx-2 h-4 w-[1px] bg-border" />
 
@@ -39,15 +45,16 @@
       @update:model-value="onStatusChange"
     >
       <SelectTrigger class="w-[130px]">
-        <SelectValue :placeholder="t('admin.orders.table.search.filterByStatus')" />
+        <SelectValue :placeholder="t('admin.subscriptions.table.search.filterByStatus')" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">{{ t('admin.orders.table.search.allStatus') }}</SelectItem>
-        <SelectItem value="pending">{{ t('admin.orders.status.pending') }}</SelectItem>
-        <SelectItem value="paid">{{ t('admin.orders.status.paid') }}</SelectItem>
-        <SelectItem value="failed">{{ t('admin.orders.status.failed') }}</SelectItem>
-        <SelectItem value="refunded">{{ t('admin.orders.status.refunded') }}</SelectItem>
-        <SelectItem value="canceled">{{ t('admin.orders.status.canceled') }}</SelectItem>
+        <SelectItem value="all">{{ t('admin.subscriptions.table.search.allStatuses') }}</SelectItem>
+        <SelectItem value="active">{{ t('admin.subscriptions.status.active') }}</SelectItem>
+        <SelectItem value="trialing">{{ t('admin.subscriptions.status.trialing') }}</SelectItem>
+        <SelectItem value="canceled">{{ t('admin.subscriptions.status.canceled') }}</SelectItem>
+        <SelectItem value="past_due">{{ t('admin.subscriptions.status.past_due') }}</SelectItem>
+        <SelectItem value="unpaid">{{ t('admin.subscriptions.status.unpaid') }}</SelectItem>
+        <SelectItem value="inactive">{{ t('admin.subscriptions.status.inactive') }}</SelectItem>
       </SelectContent>
     </Select>
 
@@ -57,20 +64,20 @@
       @update:model-value="onProviderChange"
     >
       <SelectTrigger class="w-[130px]">
-        <SelectValue :placeholder="t('admin.orders.table.search.filterByProvider')" />
+        <SelectValue :placeholder="t('admin.subscriptions.table.search.filterByProvider')" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">{{ t('admin.orders.table.search.allProviders') }}</SelectItem>
-        <SelectItem value="stripe">{{ t('admin.orders.table.search.stripe') }}</SelectItem>
-        <SelectItem value="wechat">{{ t('admin.orders.table.search.wechat') }}</SelectItem>
+        <SelectItem value="all">{{ t('admin.subscriptions.table.search.allProviders') }}</SelectItem>
+        <SelectItem value="stripe">Stripe</SelectItem>
         <SelectItem value="creem">Creem</SelectItem>
+        <SelectItem value="wechat">WeChat</SelectItem>
       </SelectContent>
     </Select>
   </form>
 </template>
 
 <script setup lang="ts">
-import { SearchIcon } from 'lucide-vue-next'
+import { SearchIcon, X } from 'lucide-vue-next'
 
 // Get composables
 const { t } = useI18n()
@@ -86,13 +93,14 @@ const provider = ref((route.query.provider as string) || 'all')
 // Helper function to get search placeholder
 const getSearchPlaceholder = () => {
   const fieldMap: Record<string, string> = {
-    id: t('admin.orders.table.columns.id'),
+    id: t('admin.subscriptions.table.columns.id'),
     userId: 'User ID',
-    planId: t('admin.orders.table.columns.plan'),
+    planId: t('admin.subscriptions.table.columns.plan'),
     userEmail: 'Email',
-    providerOrderId: t('admin.orders.table.columns.providerOrderId')
+    stripeSubscriptionId: 'Stripe ID',
+    creemSubscriptionId: 'Creem ID'
   }
-  return t('admin.orders.table.search.searchPlaceholder', { field: fieldMap[searchField.value] })
+  return t('admin.subscriptions.table.search.searchPlaceholder', { field: fieldMap[searchField.value] })
 }
 
 // Update search value
@@ -154,6 +162,23 @@ const onSearch = () => {
   query.page = '1'
   
   // Navigate with new query
+  router.push({ query })
+}
+
+// Handle clear
+const handleClear = () => {
+  // Reset all search parameters to default
+  searchValue.value = ''
+  searchField.value = 'userEmail'
+  status.value = 'all'
+  provider.value = 'all'
+  
+  // Navigate to clean URL (only keep non-search parameters)
+  const query: any = {}
+  // Keep only non-search related query parameters if any
+  // For now, we'll clear everything and go to page 1
+  query.page = '1'
+  
   router.push({ query })
 }
 

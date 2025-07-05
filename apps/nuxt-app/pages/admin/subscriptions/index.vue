@@ -1,37 +1,29 @@
 <template>
-  <div class="container mx-auto py-10 px-5">
+  <div class="flex flex-col gap-4 py-10 px-5">
     <!-- Page Header -->
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold tracking-tight">{{ t('admin.orders.title') }}</h1>
-        <p class="text-muted-foreground">{{ t('admin.users.subtitle') }}</p>
+        <h1 class="text-2xl font-bold tracking-tight">{{ $t('admin.subscriptions.title') }}</h1>
+        <p class="text-muted-foreground">{{ $t('admin.subscriptions.description') }}</p>
       </div>
-      
-      <!-- Create Order Button (optional feature) -->
-      <Button>
-        <Plus class="mr-2 h-4 w-4" />
-        {{ t('admin.orders.actions.createOrder') }}
-      </Button>
     </div>
 
     <!-- Error State -->
-    <div v-if="error" class="text-center py-10">
-      <p class="text-destructive mb-4">{{ t('admin.orders.messages.fetchError') }}</p>
-      <Button @click="refresh" variant="outline">
-        {{ t('actions.tryAgain') }}
-      </Button>
-    </div>
-
-    <!-- Loading State -->
-    <div v-else-if="pending" class="flex items-center justify-center py-20">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      <span class="ml-2 text-muted-foreground">{{ t('common.loading') }}</span>
+    <div v-if="error" class="rounded-md bg-destructive/15 p-4">
+      <div class="flex">
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-destructive">{{ $t('admin.subscriptions.fetchError') }}</h3>
+          <div class="mt-2 text-sm text-destructive">
+            <p>{{ error }}</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Data Table -->
     <div v-else class="flex flex-col gap-4">
-      <OrdersDataTable 
-        :data="(data?.orders || []) as any[]" 
+      <SubscriptionsDataTable 
+        :data="(subscriptionsData?.subscriptions || []) as any[]" 
         :pagination="pagination || undefined"
         @refresh-data="refresh"
       />
@@ -40,9 +32,6 @@
 </template>
 
 <script setup lang="ts">
-import { Plus } from 'lucide-vue-next'
-import { toast } from 'vue-sonner'
-
 // Define page metadata
 definePageMeta({
   layout: 'admin'
@@ -53,7 +42,7 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
-// Parse query parameters - matching users API pattern
+// Parse query parameters - matching orders API pattern
 const page = computed(() => parseInt(String(route.query.page || '1')) || 1)
 const limit = 10
 
@@ -87,33 +76,33 @@ const queryParams = computed(() => {
   return params
 })
 
-// Fetch orders data
-const { data, error, pending, refresh } = await useFetch('/api/admin/orders', {
+// Fetch subscriptions data
+const { data: subscriptionsData, pending, error, refresh } = await useFetch('/api/admin/subscriptions', {
   query: queryParams,
   server: false,
   default: () => ({
-    orders: [],
+    subscriptions: [],
     total: 0,
     page: 1,
     limit: 10,
-    totalPages: 1
-  }),
-
-  onResponseError({ response }) {
-    console.error('Failed to fetch orders:', response._data)
-    toast.error(t('admin.orders.messages.fetchError'))
-  }
+    totalPages: 0
+  })
 })
 
-// Compute pagination object - matching users pattern
+// Computed properties
+const subscriptions = computed(() => subscriptionsData.value?.subscriptions || [])
+const total = computed(() => subscriptionsData.value?.total || 0)
+const totalPages = computed(() => subscriptionsData.value?.totalPages || 0)
+
+// Compute pagination object - matching orders pattern
 const pagination = computed(() => {
-  if (!data.value) return undefined
+  if (!subscriptionsData.value) return undefined
   
   return {
     currentPage: page.value,
-    totalPages: data.value.totalPages || 1,
+    totalPages: subscriptionsData.value.totalPages || 1,
     pageSize: limit,
-    total: data.value.total || 0
+    total: subscriptionsData.value.total || 0
   }
 })
 
@@ -122,8 +111,14 @@ watch(() => route.query, () => {
   refresh()
 }, { deep: true })
 
-// Set page title
+// SEO and meta
 useHead({
-  title: computed(() => t('admin.orders.title'))
+  title: computed(() => t('admin.subscriptions.title')),
+  meta: [
+    {
+      name: 'description',
+      content: computed(() => t('admin.subscriptions.description'))
+    }
+  ]
 })
 </script> 
