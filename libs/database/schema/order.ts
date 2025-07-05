@@ -15,6 +15,7 @@ export const orderStatus = {
 export const paymentProviders = {
   WECHAT: "wechat",
   STRIPE: "stripe",
+  CREEM: "creem",
 } as const;
 
 // 订单表

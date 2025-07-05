@@ -11,6 +11,7 @@ export const zhCN: Locale = {
     and: "和",
     loading: "加载中...",
     unexpectedError: "发生意外错误",
+    notAvailable: "不可用",
     theme: {
       light: "浅色主题",
       dark: "深色主题",
@@ -463,6 +464,13 @@ export const zhCN: Locale = {
           viewOrder: "查看订单",
           refundOrder: "退款"
         }
+      },
+      status: {
+        pending: "待支付",
+        paid: "已支付",
+        failed: "支付失败",
+        refunded: "已退款",
+        canceled: "已取消"
       }
     },
     subscriptions: {

@@ -11,6 +11,7 @@ export const en: Locale = {
     and: "and",
     loading: "Loading...",
     unexpectedError: "An unexpected error occurred",
+    notAvailable: "N/A",
     theme: {
       light: "Light Theme",
       dark: "Dark Theme",
@@ -438,11 +439,6 @@ export const en: Locale = {
           allStatus: "All Status",
           filterByProvider: "Payment provider",
           allProviders: "All Providers",
-          pending: "Pending",
-          paid: "Paid",
-          failed: "Failed",
-          refunded: "Refunded",
-          canceled: "Canceled",
           stripe: "Stripe",
           wechat: "WeChat"
         },
@@ -458,9 +454,19 @@ export const en: Locale = {
           actions: "Actions"
         },
         actions: {
+          openMenu: "Open menu",
+          actions: "Actions",
           viewOrder: "View order",
-          refundOrder: "Refund order"
+          refundOrder: "Refund order",
+          clickToCopy: "Click to copy"
         }
+      },
+      status: {
+        pending: "Pending",
+        paid: "Paid",
+        failed: "Failed",
+        refunded: "Refunded",
+        canceled: "Canceled"
       }
     },
     subscriptions: {

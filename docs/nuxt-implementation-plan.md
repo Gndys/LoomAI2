@@ -397,20 +397,31 @@
   - [x] 删除用户
 - [x] 测试用户管理功能
 
-### 4.4 订单管理
-- [ ] 创建 `pages/admin/orders/index.vue`
-- [ ] 创建订单数据表格：
-  - [ ] 订单列表展示
-  - [ ] 状态筛选
-  - [ ] 日期范围筛选
-  - [ ] 金额排序
-- [ ] 创建 `components/admin/orders/OrderSearch.vue`
-- [ ] 创建 `components/admin/orders/OrderColumns.ts`
-- [ ] 实现订单操作功能：
-  - [ ] 查看订单详情
-  - [ ] 退款处理
-  - [ ] 状态更新
-- [ ] 测试订单管理功能
+### 4.4 订单管理 ✅
+- [x] 创建 `pages/admin/orders/index.vue`
+- [x] 创建订单数据表格：
+  - [x] 订单列表展示
+  - [x] 状态筛选
+  - [x] 日期范围筛选
+  - [x] 金额排序
+- [x] 创建 `components/admin/orders/OrdersSearch.vue`
+- [x] 创建 `components/admin/orders/columns.ts`
+- [x] 创建 `components/admin/orders/OrdersDataTable.vue`
+- [x] 创建 `components/admin/orders/OrdersColumnToggle.vue`
+- [x] 创建 `server/api/admin/orders.get.ts` API端点
+- [x] 实现搜索和筛选功能：
+  - [x] 按用户邮箱、订单ID、计划ID搜索
+  - [x] 按订单状态筛选 (pending, paid, failed, refunded, canceled)
+  - [x] 按支付提供商筛选 (Stripe, WeChat, Creem)
+  - [x] 按创建时间排序
+- [x] 实现订单操作功能：
+  - [x] 查看订单详情 (基础框架)
+  - [x] 退款处理 (基础框架)
+  - [x] 状态更新
+- [x] 集成权限验证 (RBAC admin权限)
+- [x] 分页功能完整实现
+- [x] 响应式设计和国际化支持
+- [ ] 测试订单管理功能 (需要真实数据)
 
 ### 4.5 订阅管理
 - [ ] 创建 `pages/admin/subscriptions/index.vue`
@@ -843,7 +854,7 @@
 - ✅ **第一阶段**: 100% (5/5 子任务完成)
 - ✅ **第二阶段**: 100% (11/11 子任务完成)  
 - ✅ **第三阶段**: 100% (8/8 子任务完成) - 所有核心功能完成
-- 🔴 **第四阶段**: 17% (1/6 子任务完成)
+- ✅ **第四阶段**: 33% (2/6 子任务完成)
 - 🔴 **第五阶段**: 0% (0/4 子任务完成)
 - 🔴 **第六阶段**: 0% (0/4 子任务完成)
 - 🔴 **第七阶段**: 0% (0/4 子任务完成)
@@ -1101,7 +1112,7 @@ export default defineI18nConfig(() => ({
 - 🔴 第七阶段：样式一致性保证 (0% 完成)
 - 🔴 第八阶段：功能对等验证 (0% 完成)
 
-**总体进度:** 75% (核心用户功能全部完成)
+**总体进度:** 78% (核心用户功能全部完成，管理后台用户和订单管理完成)
 
 **关键里程碑:**
 - ✅ 2024-12-18: 基础设施和shadcn-vue环境搭建完成

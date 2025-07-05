@@ -1,5 +1,10 @@
-// Export user validators
-export { createValidators as createUserValidators, countryCodes, type CountryCode } from './user';
+// Export user validators (maintain backward compatibility)
+export { 
+  createValidators,
+  createValidators as createUserValidators, 
+  countryCodes, 
+  type CountryCode 
+} from './user';
 
 // Export admin user validators
 export { createAdminUserValidators } from './admin-user';

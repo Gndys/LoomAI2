@@ -22,44 +22,44 @@ interface ProtectedRouteConfig {
 
 // Unified protected routes configuration
 const protectedRoutes: ProtectedRouteConfig[] = [
-  // Admin routes - require admin permissions
+  // Admin routes - require admin permissions (support locale prefixes)
   {
-    pattern: /^\/admin(\/.*)?$/,
+    pattern: /^\/(?:en|zh-CN)?\/admin(\/.*)?$/,
     type: 'page',
     requiresAuth: true,
     requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
   },
   
-  // Settings pages - require authentication only
+  // Settings pages - require authentication only (support locale prefixes)
   {
-    pattern: /^\/settings(\/.*)?$/,
+    pattern: /^\/(?:en|zh-CN)?\/settings(\/.*)?$/,
     type: 'page',
     requiresAuth: true
   },
   
-  // Dashboard - require authentication only
+  // Dashboard - require authentication only (support locale prefixes)
   {
-    pattern: /^\/dashboard(\/.*)?$/,
+    pattern: /^\/(?:en|zh-CN)?\/dashboard(\/.*)?$/,
     type: 'page',
     requiresAuth: true
   },
   
-  // Premium features - require active subscription
+  // Premium features - require active subscription (support locale prefixes)
   {
-    pattern: /^\/premium-features(\/.*)?$/,
+    pattern: /^\/(?:en|zh-CN)?\/premium-features(\/.*)?$/,
     type: 'page',
     requiresAuth: true,
     requiresSubscription: true
   },
   
-  // AI features - require authentication (could add subscription later)
+  // AI features - require authentication (support locale prefixes)
   {
-    pattern: /^\/ai(\/.*)?$/,
+    pattern: /^\/(?:en|zh-CN)?\/ai(\/.*)?$/,
     type: 'page',
     requiresAuth: true
   },
 
-  // API routes protection
+  // API routes protection (no locale prefix needed)
   {
     pattern: /^\/api\/admin\/(.*)?$/,
     type: 'api',
@@ -123,11 +123,29 @@ async function getUserSession() {
 }
 
 export default defineNuxtRouteMiddleware(async (to) => {
-  // Skip middleware for auth pages and public routes
+  // Skip middleware for auth pages and public routes (support locale prefixes)
   const authRoutes = ['/signin', '/signup', '/forgot-password', '/reset-password', '/cellphone', '/wechat']
-  const publicRoutes = ['/', '/pricing']
+  const publicRoutes = ['/', '/pricing', '/payment-success', '/payment-cancel']
   
-  if (authRoutes.includes(to.path) || publicRoutes.includes(to.path)) {
+  // Check if path matches auth or public routes (with or without locale prefix)
+  let pathWithoutLocale = to.path
+  
+  // Remove locale prefix if present
+  if (pathWithoutLocale.startsWith('/en/') || pathWithoutLocale.startsWith('/zh-CN/')) {
+    pathWithoutLocale = pathWithoutLocale.replace(/^\/(?:en|zh-CN)/, '')
+  } else if (pathWithoutLocale === '/en' || pathWithoutLocale === '/zh-CN') {
+    pathWithoutLocale = '/'
+  }
+  
+  // Ensure we always have a leading slash for non-root paths
+  if (pathWithoutLocale && !pathWithoutLocale.startsWith('/') && pathWithoutLocale !== '') {
+    pathWithoutLocale = '/' + pathWithoutLocale
+  }
+  
+  console.log(`🔍 Checking path: ${to.path} → without locale: ${pathWithoutLocale}`)
+  
+  if (authRoutes.includes(pathWithoutLocale) || publicRoutes.includes(pathWithoutLocale)) {
+    console.log(`✅ Skipping middleware for public/auth route: ${pathWithoutLocale}`)
     return
   }
 
@@ -214,7 +232,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const hasPermission = can(appUser, requiredPermission.action, requiredPermission.subject)
 
     if (!hasPermission) {
-      console.log(`❌ Authorization failed for user ${user!.id} on ${to.path} (${requiredPermission.action}:${requiredPermission.subject})`)
+      console.log(`❌ Authorization failed for user ${user!.id} (role: ${user!.role}) on ${to.path} (${requiredPermission.action}:${requiredPermission.subject})`)
       
       if (matchedRoute.type === 'page') {
         throw createError({

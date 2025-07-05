@@ -6,10 +6,10 @@ import { useForm } from 'vee-validate'
 import { createValidators } from '@libs/validators'
 import { z } from 'zod'
 
-// Set page layout and middleware
+// Set page layout
 definePageMeta({
-  layout: 'default',
-  middleware: 'auth'
+  layout: 'default'
+  // No middleware needed - auth.global.ts handles authentication automatically
 })
 
 // Set page head information

@@ -132,7 +132,6 @@ import RevenueChart from '../../components/admin/RevenueChart.vue'
 
 // Define metadata for SEO
 definePageMeta({
-  middleware: 'admin',
   layout: 'admin'
 })
 
