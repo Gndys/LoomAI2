@@ -924,6 +924,55 @@ export const en: Locale = {
       title: "TinyShip - AI Assistant",
       description: "Interact with powerful AI models including GPT-4, Qwen, and DeepSeek. Get AI assistance for coding, writing, and problem-solving.",
       keywords: "AI, assistant, chatbot, GPT-4, artificial intelligence, machine learning, conversation"
+    },
+    chat: {
+      title: "AI Assistant",
+      description: "Chat with AI to get help with coding, writing, and problem-solving",
+      placeholder: "What can I help you with?",
+      sending: "Sending...",
+      thinking: "AI is thinking...",
+      noMessages: "Start a conversation with the AI assistant",
+      welcomeMessage: "Hello! I'm your AI assistant. How can I help you today?",
+      toolCall: "Tool Call",
+      providers: {
+        title: "AI Provider",
+        openai: "OpenAI",
+        qwen: "Qwen",
+        deepseek: "DeepSeek"
+      },
+      models: {
+        "gpt-4o": "GPT-4o",
+        "gpt-3.5": "GPT-3.5",
+        "gpt-3": "GPT-3",
+        "qwen-max": "Qwen Max",
+        "qwen-plus": "Qwen Plus", 
+        "qwen-turbo": "Qwen Turbo",
+        "deepseek-chat": "DeepSeek Chat",
+        "deepseek-coder": "DeepSeek Coder"
+      },
+      actions: {
+        send: "Send",
+        copy: "Copy",
+        copied: "Copied!",
+        retry: "Retry",
+        newChat: "New Chat",
+        clearHistory: "Clear History"
+      },
+      errors: {
+        failedToSend: "Failed to send message. Please try again.",
+        networkError: "Network error. Please check your connection.",
+        invalidResponse: "Invalid response from AI. Please try again.",
+        rateLimited: "Too many requests. Please wait a moment.",
+        subscriptionRequired: "AI features require an active subscription"
+      },
+      history: {
+        title: "Chat History",
+        empty: "No chat history",
+        today: "Today",
+        yesterday: "Yesterday",
+        thisWeek: "This Week",
+        older: "Older"
+      }
     }
   },
   premiumFeatures: {

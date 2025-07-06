@@ -969,6 +969,55 @@ export const zhCN: Locale = {
       title: "TinyShip - AI 助手",
       description: "与强大的 AI 模型互动，包括 GPT-4、通义千问和 DeepSeek。获得编程、写作和问题解决的 AI 帮助。",
               keywords: "AI, 助手, 聊天机器人, GPT-4, 人工智能, 机器学习, 对话"
+    },
+    chat: {
+      title: "AI 助手",
+      description: "与 AI 聊天，获得编程、写作和问题解决的帮助",
+      placeholder: "需要我帮什么忙？",
+      sending: "发送中...",
+      thinking: "AI 正在思考...",
+      noMessages: "开始与 AI 助手对话",
+      welcomeMessage: "你好！我是你的 AI 助手。今天我能为你做些什么？",
+      toolCall: "工具调用",
+      providers: {
+        title: "AI 提供商",
+        openai: "OpenAI",
+        qwen: "通义千问",
+        deepseek: "DeepSeek"
+      },
+      models: {
+        "gpt-4o": "GPT-4o",
+        "gpt-3.5": "GPT-3.5",
+        "gpt-3": "GPT-3",
+        "qwen-max": "通义千问-Max",
+        "qwen-plus": "通义千问-Plus", 
+        "qwen-turbo": "通义千问-Turbo",
+        "deepseek-chat": "DeepSeek 对话",
+        "deepseek-coder": "DeepSeek 编程"
+      },
+      actions: {
+        send: "发送",
+        copy: "复制",
+        copied: "已复制！",
+        retry: "重试",
+        newChat: "新对话",
+        clearHistory: "清空历史"
+      },
+      errors: {
+        failedToSend: "发送消息失败，请重试。",
+        networkError: "网络错误，请检查网络连接。",
+        invalidResponse: "AI 响应无效，请重试。",
+        rateLimited: "请求过于频繁，请稍后再试。",
+        subscriptionRequired: "AI 功能需要有效订阅"
+      },
+      history: {
+        title: "聊天记录",
+        empty: "暂无聊天记录",
+        today: "今天",
+        yesterday: "昨天",
+        thisWeek: "本周",
+        older: "更早"
+      }
     }
   },
   home: {
