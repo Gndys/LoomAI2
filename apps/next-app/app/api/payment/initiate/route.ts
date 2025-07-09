@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       currency: plan.currency,
       metadata: {
         clientIp,
-        description: `${plan.name} - ${plan.duration.description}`
+        // description: `${plan.name} - ${plan.duration.description}`
       }
     });
     console.log('Payment initiation result:', result);

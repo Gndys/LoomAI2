@@ -89,7 +89,7 @@ function SubscriptionDashboardPage() {
     }
     
     // 如果没有当前语言的翻译，则使用默认名称
-    return plan.name;
+    return plan.i18n[currentLocale]?.name || planId;
   };
 
   if (loading) {

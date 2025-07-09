@@ -87,7 +87,7 @@ export function AdminOrdersCard({ limit = 10 }: AdminOrdersCardProps) {
   // 获取计划名称
   const getPlanName = (planId: string) => {
     const plan = config.payment.plans[planId as keyof typeof config.payment.plans];
-    return plan?.name || planId;
+    return plan?.i18n[currentLocale]?.name || planId;
   };
 
   // 获取订单状态显示
