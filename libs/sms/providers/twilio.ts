@@ -1,10 +1,10 @@
-import { Twilio } from 'twilio';
+import twilio from 'twilio';
 import { SMSOptions, SMSResponse, TwilioSMSOptions } from '../types';
 import { config } from '@config';
 
 const twilioConfig = config.sms.twilio;
 
-const client = new Twilio(
+const client = twilio(
   twilioConfig.accountSid,
   twilioConfig.authToken
 );

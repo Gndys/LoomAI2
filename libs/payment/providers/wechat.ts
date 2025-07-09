@@ -270,7 +270,7 @@ export class WechatPayProvider implements PaymentProvider {
 
   async createPayment(params: PaymentParams): Promise<PaymentResult> {
     const plan = config.payment.plans[params.planId as keyof typeof config.payment.plans];
-    const description = params.metadata?.description || `${plan.name} - ${plan.duration.description}`;
+    const description = params.metadata?.description || `${plan.i18n['zh-CN']?.name} - ${plan.i18n['zh-CN']?.description}`;
     
     try {
       const data = {

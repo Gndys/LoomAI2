@@ -201,7 +201,7 @@ type RecurringPlan = {
 ```typescript
 monthlyWechat: {
   provider: 'wechat',           // 指定支付提供商
-  id: 'monthlyWechat',
+  id: 'monthlyWechat',          // 每种支付方案需要分配一个不同的 id
   amount: 0.01,                 // 金额 (分)
   currency: 'CNY',              // 币种
   duration: {
@@ -231,6 +231,8 @@ monthlyWechat: {
 monthly: {
   provider: 'stripe',
   id: 'monthly',
+  // 当使用 Stripe 支付时，订阅的时长和价格将由 stripePriceId 决定
+  // 这里的 duration 和 amount 仅用于显示和计算，实际订阅周期和价格以 Stripe 后台配置为准
   amount: 10,                   // 显示金额
   currency: 'CNY',
   duration: {
@@ -266,7 +268,7 @@ lifetime: {
   currency: 'CNY',
   recommended: true,            // 设为推荐
   duration: {
-    months: 999999,             // 表示终身
+    months: 999999,             // 表示终身 plan.duration.months >= 9999; 会被定义为终生会员
     type: 'one_time'           // 单次付费
   },
   stripePriceId: 'price_1RL2IcDjHLfDWeHDMCmobkzb',

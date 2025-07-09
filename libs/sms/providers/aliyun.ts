@@ -1,13 +1,16 @@
 import * as $Dysmsapi20170525 from '@alicloud/dysmsapi20170525';
-import Dysmsapi from '@alicloud/dysmsapi20170525';
+import Dysmsapi20170525_Module from '@alicloud/dysmsapi20170525';
 import * as $OpenApi from '@alicloud/openapi-client';
 import * as $Util from '@alicloud/tea-util';
 import { SMSOptions, SMSResponse, AliyunSMSOptions } from '../types';
 import { config } from '@config';
 
 const aliyunConfig = config.sms.aliyun;
+// @ts-ignore
+// https://github.com/aliyun/alibabacloud-typescript-sdk/issues/30
+const Client = (Dysmsapi20170525_Module).default || Dysmsapi20170525_Module
 
-const client = new Dysmsapi(new $OpenApi.Config({
+const client = new Client(new $OpenApi.Config({
   accessKeyId: aliyunConfig.accessKeyId,
   accessKeySecret: aliyunConfig.accessKeySecret,
   endpoint: aliyunConfig.endpoint,
