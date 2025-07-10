@@ -426,8 +426,17 @@ export class WechatPayProvider implements PaymentProvider {
             orderBy: [desc(subscription.periodEnd)]
           });
           
+          // 处理终身会员的情况
+          const isLifetime = plan.duration.months >= 9999;
+          
           const newPeriodEnd = new Date();
-          newPeriodEnd.setMonth(newPeriodEnd.getMonth() + plan.duration.months);
+          if (isLifetime) {
+            // 设置一个固定的远期日期，但在合理范围内 (100年)
+            newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 100);
+          } else {
+            // 普通订阅
+            newPeriodEnd.setMonth(newPeriodEnd.getMonth() + plan.duration.months);
+          }
           
           if (existingSubscription) {
             // 如果已有订阅，更新现有订阅的结束日期
@@ -437,7 +446,13 @@ export class WechatPayProvider implements PaymentProvider {
               : now;
             
             const extensionEnd = new Date(extensionStart);
-            extensionEnd.setMonth(extensionEnd.getMonth() + plan.duration.months);
+            if (isLifetime) {
+              // 终身会员直接设置为固定的远期日期
+              extensionEnd.setFullYear(now.getFullYear() + 100);
+            } else {
+              // 普通订阅按月数延长
+              extensionEnd.setMonth(extensionEnd.getMonth() + plan.duration.months);
+            }
             
             await db.update(subscription)
               .set({
@@ -449,7 +464,8 @@ export class WechatPayProvider implements PaymentProvider {
                   lastTransactionId: decryptedData.transaction_id,
                   lastTradeState: decryptedData.trade_state,
                   lastTradeStateDesc: decryptedData.trade_state_desc,
-                  lastSuccessTime: decryptedData.success_time
+                  lastSuccessTime: decryptedData.success_time,
+                  isLifetime: isLifetime
                 })
               })
               .where(eq(subscription.id, existingSubscription.id));
@@ -468,7 +484,8 @@ export class WechatPayProvider implements PaymentProvider {
                 transactionId: decryptedData.transaction_id,
                 tradeState: decryptedData.trade_state,
                 tradeStateDesc: decryptedData.trade_state_desc,
-                successTime: decryptedData.success_time
+                successTime: decryptedData.success_time,
+                isLifetime: isLifetime
               })
             });
           }
