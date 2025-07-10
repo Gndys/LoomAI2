@@ -21,10 +21,21 @@ TinyShip 基于 Better Auth 构建了完整的身份认证系统，支持多种�
 BETTER_AUTH_SECRET="your-secret-key-here-32-characters-min" # 32位随机数
 BETTER_AUTH_URL="http://localhost:7001"  # 7001端口是应用启动的默认端口，生产环境改为实际域名
 
-# 数据库配置（认证需要）
+# 数据库配置（认证需要，上一步应该已经配置）
 DATABASE_URL="postgresql://username:password@localhost:5432/tinyship"
 ```
 
+现在我们的应用应该就可以最小化运行了 🎉🎉🎉，可以在根目录运行如下命令来启动应用：
+
+```bash
+# 启动 next.js 应用
+pnpm run dev:next
+# 或者启动 nuxt.js 应用
+pnpm run dev:nuxt
+# 访问 https://localhost:7001
+```
+
+你可以先感受一下大体的功能，现在是最小化应用，一些高级的配置还没有实现（更多登录方式/支付等等），可以继续看下面的内容完成更多配置：
 
 ## 📧 邮箱密码认证（默认启用）
 
@@ -39,7 +50,7 @@ DATABASE_URL="postgresql://username:password@localhost:5432/tinyship"
 
 ### 邮箱验证配置
 
-默认情况下，系统要求新用户验证邮箱才能继续使用。你可以在 `config.ts` 中关闭此功能
+默认情况下，系统要求新用户验证邮箱不需要验证就可以使用。你可以在 `config.ts` 中开启此功能
 
 `config.ts` 是整个应用的配置文件，在这里我们可以修改关于应用的各种配置：
 
@@ -51,13 +62,14 @@ auth: {
   requireEmailVerification: true,
 }
 ```
-如果你想快速体验功能，可以设置为 false，后面的步骤你可以全部跳过，就可以超快速的体验整个应用。
+
+这里强烈建议在线上设置为 true，它通过确认电子邮件地址属于用户来帮助防止垃圾邮件和滥用，也是大多数网站的默认方式。
 
 ### 📧 邮件服务配置（可选）
 
-认证系统会自动发送验证邮件和密码重置邮件。如果你不需要任何发送邮件的功能，可以跳过：
+假如你将 `requireEmailVerification` 设置为 true，认证系统会自动发送验证邮件和密码重置邮件。这个时候你就需要接入邮件服务
 
-如果你需要接入邮件服务，现在推荐选用 Resend，配置如下：
+现在推荐选用 Resend，配置如下：
 
 #### 设置步骤
 1. 访问 [Resend](https://resend.com/) 注册账号
@@ -81,11 +93,12 @@ RESEND_API_KEY="re_123456789_abcdefghijklmnop"
     defaultProvider: 'resend',
 
     /**
-     * 默认发送邮件地址, 按照你验证的网址进行配置
+     * 默认发送邮件地址, 按照你验证的网址进行配置, 这里你需要任意一个域名进行验证
      */
     defaultFrom: 'noreply@tinyship.cn',
   },
 ```
+
 配置完毕以后应该就在注册的时候成功的发送验证邮件了。
 
 目前应用中使用邮件发送位置如下，用于发送验证邮件和密码重置邮件，供参考：
@@ -326,3 +339,5 @@ const props = withDefaults(defineProps<Props>(), {
 
 
 更多认证配置和 API 使用请参考 [Better Auth 官方文档](https://www.better-auth.com/docs) 和 `libs/auth/README.md` 文件。
+
+接下来如果你想接入支付的话，让我们来配置 [支付设置](./payment.md), 让你的应用开始赚钱吧。
