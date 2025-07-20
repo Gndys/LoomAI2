@@ -31,6 +31,11 @@ function requireEnvForService(key: string, service: string, devDefault?: string)
   return value;
 }
 
+// Theme and i18n type definitions
+type Theme = 'light' | 'dark';
+type ColorScheme = 'default' | 'claude' | 'cosmic-night' | 'modern-minimal' | 'ocean-breeze';
+type Locale = 'en' | 'zh-CN';
+
 // 计划类型定义
 
 type BasePlan = {
@@ -79,6 +84,60 @@ export const config = {
      */
     get baseUrl() {
       return requireEnvForService('APP_BASE_URL', 'Application', 'http://localhost:7001');
+    },
+
+    /**
+     * Theme Configuration
+     * Default theme and color scheme for the application
+     */
+    theme: {
+      /**
+       * Default theme mode
+       * @type {'light' | 'dark'}
+       */
+      defaultTheme: 'light' as const,
+      
+      /**
+       * Default color scheme
+       * @type {'default' | 'claude' | 'cosmic-night' | 'modern-minimal' | 'ocean-breeze'}
+       */
+      defaultColorScheme: 'claude' as const,
+      
+      /**
+       * Storage key for theme persistence
+       */
+      storageKey: 'tinyship-ui-theme'
+    },
+
+    /**
+     * Internationalization Configuration
+     * Default language and locale settings
+     */
+    i18n: {
+      /**
+       * Default locale
+       * @type {'en' | 'zh-CN'}
+       */
+      defaultLocale: 'zh-CN' as const,
+      
+      /**
+       * Available locales
+       */
+      locales: ['en', 'zh-CN'] as const,
+      
+      /**
+       * Cookie key for locale persistence
+       * Used by both Next.js middleware and Nuxt.js i18n module
+       */
+      cookieKey: 'NEXT_LOCALE',
+      
+      /**
+       * Auto-detect browser language
+       * When true, detects user's browser language preference
+       * When false, always uses defaultLocale for new users
+       * Cookie preferences always take priority when set
+       */
+      autoDetect: false
     },
 
     /**

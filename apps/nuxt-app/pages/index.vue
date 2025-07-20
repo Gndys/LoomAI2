@@ -5,8 +5,7 @@
       <title>{{ t('home.metadata.title') }}</title>
       <meta name="description" :content="t('home.metadata.description')" />
       <meta name="keywords" :content="t('home.metadata.keywords')" />
-    </Head>
-    
+    </Head>    
     <div class="flex flex-col min-h-screen bg-background">
       <!-- Hero Section -->
       <section class="relative min-h-screen flex items-center justify-center overflow-hidden">

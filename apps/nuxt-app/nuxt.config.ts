@@ -10,7 +10,6 @@ const env = loadEnv(process.env.NODE_ENV || 'development', resolve(__dirname, '.
 Object.assign(process.env, env);
 
 import { config as appConfig } from '../../config';
-
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
@@ -138,25 +137,19 @@ export default defineNuxtConfig({
   
   // Internationalization configuration
   i18n: {
-    locales: [
-      {
-        code: 'en',
-        name: 'English',
-      },
-      {
-        code: 'zh-CN',
-        name: '中文',
-      }
-    ],
-    defaultLocale: 'zh-CN',
+    locales: appConfig.app.i18n.locales.map(code => ({
+      code,
+      name: code === 'en' ? 'English' : '中文',
+    })),
+    defaultLocale: appConfig.app.i18n.defaultLocale,
     strategy: 'prefix',
-    detectBrowserLanguage: {
+    detectBrowserLanguage: appConfig.app.i18n.autoDetect ? {
       useCookie: true,
-      cookieKey: 'NEXT_LOCALE',
+      cookieKey: appConfig.app.i18n.cookieKey,
       redirectOn: 'root',
-      alwaysRedirect: false,
-      fallbackLocale: 'zh-CN'
-    },
+      alwaysRedirect: true,
+      fallbackLocale: appConfig.app.i18n.defaultLocale,
+    } : false, // Disable browser detection if autoDetect is false
   },
 
   shadcn: {

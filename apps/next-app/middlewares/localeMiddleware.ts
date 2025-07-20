@@ -3,22 +3,33 @@ import type { NextRequest } from 'next/server';
 import { i18n } from '../app/i18n-config'; // Adjusted import path
 import { match as matchLocale } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
+import { config } from '@config';
 
 function getLocale(request: NextRequest): string {
-  // Negotiator expects plain object so we need to transform headers
-  const negotiatorHeaders: Record<string, string> = {};
-  request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
-
-  // Use negotiator and intl-localematcher to get best locale
-  let languages = new Negotiator({ headers: negotiatorHeaders }).languages();
-
-  // Try to get locale from cookie
-  const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
+  // Try to get locale from cookie first (highest priority)
+  const cookieLocale = request.cookies.get(config.app.i18n.cookieKey)?.value;
+  
   if (cookieLocale && i18n.locales.includes(cookieLocale as any)) {
-    languages = [cookieLocale, ...languages];
+    return cookieLocale;
   }
 
-  return matchLocale(languages, i18n.locales as unknown as string[], i18n.defaultLocale);
+  // Check if auto-detection is enabled
+  if (!config.app.i18n.autoDetect) {
+    return i18n.defaultLocale;
+  }
+
+  // If auto-detect enabled and no cookie, detect from browser headers
+  const negotiatorHeaders: Record<string, string> = {};
+  request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
+  
+  const languages = new Negotiator({ headers: negotiatorHeaders }).languages();
+  
+  try {
+    return matchLocale(languages, i18n.locales as unknown as string[], i18n.defaultLocale);
+  } catch (error) {
+    // If matchLocale fails, return default locale
+    return i18n.defaultLocale;
+  }
 }
 
 export function localeMiddleware(request: NextRequest): NextResponse | undefined {

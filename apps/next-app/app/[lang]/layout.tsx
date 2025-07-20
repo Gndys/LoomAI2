@@ -6,6 +6,7 @@ import { use } from 'react';
 import { Toaster } from "@/components/ui/sonner"
 import { translations } from "@libs/i18n";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { ThemeScript } from "@/components/theme-script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -91,8 +92,11 @@ export default function RootLayout({
   
   return (
     <html lang={lang} suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ThemeProvider defaultTheme="light" defaultColorScheme="default">
+        <ThemeProvider>
           {children}
           <Toaster />
         </ThemeProvider>

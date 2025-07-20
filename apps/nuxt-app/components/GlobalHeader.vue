@@ -36,13 +36,15 @@
           <!-- Language switcher -->
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <Button variant="ghost" size="sm" class="h-8 w-8 px-0">
-                <span class="sr-only">{{ t('header.language.switchLanguage') }}</span>
-                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <Button variant="ghost" size="sm" class="h-9 px-3">
+                <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="10"/>
                   <path d="M2 12h20"/>
                   <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                 </svg>
+                <span class="hidden sm:inline">
+                  {{ locale === 'en' ? t('header.language.english') : t('header.language.chinese') }}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -50,10 +52,11 @@
                 v-for="localeOption in availableLocales" 
                 :key="localeOption.code"
                 @click="changeLanguage(localeOption.code)"
-                :class="{ 'bg-accent': localeOption.code === locale }"
               >
-                <span class="mr-2 text-lg">{{ localeOption.flag }}</span>
-                {{ localeOption.name }}
+                <span>{{ localeOption.name }}</span>
+                <svg v-if="localeOption.code === locale" class="ml-auto h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -176,6 +179,37 @@
         >
           {{ t('header.navigation.pricing') }}
         </NuxtLink>
+        
+        <!-- Mobile Theme and Language Controls -->
+        <div class="border-t border-border pt-3 mt-3 space-y-2">
+          <div class="px-3 py-2">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-foreground">{{ t('header.mobile.languageSelection') }}</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <Button variant="ghost" size="sm">
+                    <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M2 12h20"/>
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                    {{ locale === 'en' ? t('header.language.english') : t('header.language.chinese') }}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    v-for="localeOption in availableLocales" 
+                    :key="localeOption.code"
+                    @click="changeLanguage(localeOption.code)"
+                  >
+                    <span>{{ localeOption.name }}</span>
+                    <Check v-if="localeOption.code === locale" class="ml-auto h-4 w-4" />
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
       </div>
       
       <div class="pt-4 pb-3 border-t border-border">
@@ -235,23 +269,24 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-
+import { Check } from 'lucide-vue-next'
 // Reactive state
 const isMenuOpen = ref(false)
 
 // Internationalization - using @nuxtjs/i18n properly
-const { t, locale } = useI18n()
+const { t, locale, locales } = useI18n()
 const localePath = useLocalePath()
 const switchLocalePath = useSwitchLocalePath()
 
 // Authentication
 const { user, signOut } = useAuth()
-
-// Available locales for language switcher
-const availableLocales = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'zh-CN', name: '中文 (简体)', flag: '🇨🇳' }
-]
+// Available locales from i18n config  
+const availableLocales = computed(() => 
+  locales.value.map(localeConfig => ({
+    code: localeConfig.code,
+    name: localeConfig.name
+  }))
+)
 
 // Language change handler
 const changeLanguage = (targetLocale: string) => {

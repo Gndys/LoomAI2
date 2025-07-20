@@ -1,9 +1,15 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-
-type Theme = 'light' | 'dark'
-type ColorScheme = 'default' | 'claude' | 'cosmic-night' | 'modern-minimal' | 'ocean-breeze'
+import { config } from '@config'
+import { 
+  type Theme, 
+  type ColorScheme, 
+  type ThemeState,
+  applyThemeToDocument,
+  getStoredThemeState,
+  saveThemeState
+} from '@libs/ui/themes'
 
 type ThemeProviderProps = {
   children: React.ReactNode
@@ -20,8 +26,8 @@ type ThemeProviderState = {
 }
 
 const initialState: ThemeProviderState = {
-  theme: 'light',
-  colorScheme: 'default',
+  theme: config.app.theme.defaultTheme,
+  colorScheme: config.app.theme.defaultColorScheme,
   setTheme: () => null,
   setColorScheme: () => null,
 }
@@ -30,67 +36,50 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
 export function ThemeProvider({
   children,
-  defaultTheme = 'light',
-  defaultColorScheme = 'default',
-  storageKey = 'tinyship-ui-theme',
+  defaultTheme = config.app.theme.defaultTheme,
+  defaultColorScheme = config.app.theme.defaultColorScheme,
+  storageKey = config.app.theme.storageKey,
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(defaultTheme)
   const [colorScheme, setColorScheme] = useState<ColorScheme>(defaultColorScheme)
 
   useEffect(() => {
-    const root = window.document.documentElement
-    
     // Try to get stored preferences
-    const stored = localStorage.getItem(storageKey)
+    const stored = getStoredThemeState(storageKey)
     
     if (stored) {
-      try {
-        const { theme: storedTheme, colorScheme: storedColorScheme } = JSON.parse(stored)
-        if (storedTheme && storedTheme !== theme) {
-          setTheme(storedTheme)
-        }
-        if (storedColorScheme && storedColorScheme !== colorScheme) {
-          setColorScheme(storedColorScheme)
-        }
-      } catch (error) {
-        console.warn('Failed to parse stored theme preferences:', error)
-        // Fallback to system preference
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-        if (systemTheme !== theme) {
-          setTheme(systemTheme)
-        }
+      if (stored.theme !== theme) {
+        setTheme(stored.theme)
+      }
+      if (stored.colorScheme !== colorScheme) {
+        setColorScheme(stored.colorScheme)
       }
     } else {
-      // No stored preferences, use system preference
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-      if (systemTheme !== theme) {
-        setTheme(systemTheme)
+      // No stored preferences, use config defaults and save them
+      const defaultState: ThemeState = {
+        theme: defaultTheme,
+        colorScheme: defaultColorScheme
       }
+      
+      if (defaultTheme !== theme) {
+        setTheme(defaultTheme)
+      }
+      if (defaultColorScheme !== colorScheme) {
+        setColorScheme(defaultColorScheme)
+      }
+      
+      // Save defaults to localStorage
+      saveThemeState(storageKey, defaultState)
     }
-  }, [storageKey]) // Remove theme and colorScheme from dependencies to prevent loops
+  }, [storageKey, defaultTheme, defaultColorScheme]) // Include all dependencies
 
   useEffect(() => {
-    const root = window.document.documentElement
-
-    root.classList.remove('light', 'dark', 'theme-default', 'theme-claude', 'theme-cosmic-night', 'theme-modern-minimal', 'theme-ocean-breeze')
-
-    if (theme === 'dark') {
-      root.classList.add('dark')
-    }
-
-    if (colorScheme === 'claude') {
-      root.classList.add('theme-claude')
-    } else if (colorScheme === 'cosmic-night') {
-      root.classList.add('theme-cosmic-night')
-    } else if (colorScheme === 'modern-minimal') {
-      root.classList.add('theme-modern-minimal')
-    } else if (colorScheme === 'ocean-breeze') {
-      root.classList.add('theme-ocean-breeze')
-    }
-
+    // Apply theme to document
+    applyThemeToDocument(theme, colorScheme)
+    
     // Save to localStorage
-    localStorage.setItem(storageKey, JSON.stringify({ theme, colorScheme }))
+    saveThemeState(storageKey, { theme, colorScheme })
   }, [theme, colorScheme, storageKey])
 
   const value = {

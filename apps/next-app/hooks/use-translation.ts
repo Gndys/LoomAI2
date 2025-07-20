@@ -1,14 +1,15 @@
 'use client';
 
 import { useParams, useRouter, usePathname } from 'next/navigation';
-import { translations, type SupportedLocale, defaultLocale, locales, type Translations } from '@libs/i18n';
+import { translations, type SupportedLocale, locales, type Translations } from '@libs/i18n';
 import { createNextTranslationFunction } from '@libs/validators';
+import { config } from '@config';
 
 export function useTranslation() {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
-  const locale = (params?.lang as SupportedLocale) || defaultLocale;
+  const locale = (params?.lang as SupportedLocale) || config.app.i18n.defaultLocale;
   const t = translations[locale] as Translations;
 
   // 创建支持参数插值的翻译函数
@@ -22,7 +23,7 @@ export function useTranslation() {
     router.push(`/${newLocale}${pathWithoutLocale}`);
     
     // Store the preference
-    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000`;
+    document.cookie = `${config.app.i18n.cookieKey}=${newLocale}; path=/; max-age=31536000`;
   };
 
   return {
@@ -30,8 +31,8 @@ export function useTranslation() {
     tWithParams, // 新增：支持参数插值的翻译函数
     locale,
     locales,
-    defaultLocale,
+    defaultLocale: config.app.i18n.defaultLocale,
     changeLocale,
-    isDefaultLocale: locale === defaultLocale,
+    isDefaultLocale: locale === config.app.i18n.defaultLocale,
   } as const;
 } 

@@ -7,6 +7,7 @@ import { Logo } from "./ui/logo";
 import { authClientReact } from "@libs/auth/authClient";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
+import { config } from "@config";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +52,7 @@ export default function Header({ className }: HeaderProps) {
     const pathWithoutLocale = pathname.replace(`/${currentLocale}`, '') || '/';
     
     // Store the preference first
-    document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000`;
+    document.cookie = `${config.app.i18n.cookieKey}=${locale}; path=/; max-age=31536000`;
     
     // Navigate to the new locale path using window.location to ensure full page reload
     // This prevents theme state issues during navigation

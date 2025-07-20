@@ -1,81 +1,51 @@
 // Enhanced theme composable for Nuxt with localStorage persistence and color scheme support
-export type Theme = 'light' | 'dark'
-export type ColorScheme = 'default' | 'claude' | 'cosmic-night' | 'modern-minimal' | 'ocean-breeze'
-
-interface ThemeState {
-  theme: Theme
-  colorScheme: ColorScheme
-}
+import { config } from '@config'
+import { 
+  type Theme, 
+  type ColorScheme, 
+  type ThemeState,
+  applyThemeToDocument,
+  getStoredThemeState,
+  saveThemeState
+} from '@libs/ui/themes'
 
 // Global state - 确保所有组件使用相同的状态实例
-const STORAGE_KEY = 'tinyship-ui-theme'
-const theme = ref<Theme>('light')
-const colorScheme = ref<ColorScheme>('default')
+const STORAGE_KEY = config.app.theme.storageKey
+const theme = ref<Theme>(config.app.theme.defaultTheme)
+const colorScheme = ref<ColorScheme>(config.app.theme.defaultColorScheme)
 const isInitialized = ref(false)
 
 export const useTheme = () => {
   
-  // Initialize state from localStorage or system preference
+  // Initialize state from localStorage or use config defaults
   const initializeTheme = () => {
-    if (!process.client) return
+    if (!import.meta.client) return false
     
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        const { theme: storedTheme, colorScheme: storedColorScheme }: ThemeState = JSON.parse(stored)
-        if (storedTheme) theme.value = storedTheme
-        if (storedColorScheme) colorScheme.value = storedColorScheme
-      } else {
-        // Fallback to system preference
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-        theme.value = systemTheme
-      }
-    } catch (error) {
-      // Fallback to system preference on error
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-      theme.value = systemTheme
+    const stored = getStoredThemeState(STORAGE_KEY)
+    
+    if (stored) {
+      theme.value = stored.theme
+      colorScheme.value = stored.colorScheme
+      return true // Found stored preferences
+    } else {
+      // No stored preferences, keep config defaults and will save them
+      return false // No stored preferences found
     }
   }
   
   // Apply theme classes to document
   const applyTheme = (saveToStorage = true) => {
-    if (!process.client) return
+    if (!import.meta.client) return
     
-    const root = document.documentElement
+    // Apply theme to document
+    applyThemeToDocument(theme.value, colorScheme.value)
     
-    // Remove existing light/dark classes
-    root.classList.remove('light', 'dark')
-    
-    // Remove existing color scheme classes
-    root.classList.remove(
-      'theme-default', 
-      'theme-claude', 
-      'theme-cosmic-night', 
-      'theme-modern-minimal', 
-      'theme-ocean-breeze'
-    )
-    
-    // Apply current theme (light is default, only add dark explicitly)
-    if (theme.value === 'dark') {
-      root.classList.add('dark')
-    }
-    
-    // Apply color scheme (default doesn't need a class)
-    if (colorScheme.value !== 'default') {
-      root.classList.add(`theme-${colorScheme.value}`)
-    }
-    
-    // Save to localStorage only if initialized and saveToStorage is true
+    // Save to localStorage if requested
     if (saveToStorage && isInitialized.value) {
-      try {
-        const dataToSave = {
-          theme: theme.value,
-          colorScheme: colorScheme.value
-        }
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave))
-      } catch (error) {
-        console.warn('Failed to save theme preference to localStorage:', error)
-      }
+      saveThemeState(STORAGE_KEY, {
+        theme: theme.value,
+        colorScheme: colorScheme.value
+      })
     }
   }
   
@@ -89,33 +59,16 @@ export const useTheme = () => {
   }
   
   // Initialize only once
-  if (process.client && !isInitialized.value) {
+  if (import.meta.client && !isInitialized.value) {
     onMounted(() => {
-      initializeTheme()
-      applyTheme(false) // 初始化时不保存
+      const hasStoredPreferences = initializeTheme()
+      applyTheme(!hasStoredPreferences) // Save to localStorage if no stored preferences found
       isInitialized.value = true
       
       // Only set up watchers once
       nextTick(() => {
-        // Watch for changes and apply them - 创建包装函数
+        // Watch for changes and apply them
         watch([theme, colorScheme], () => applyTheme(true), { immediate: false })
-      })
-      
-      // Watch system preference changes
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-        // Only update if no explicit theme is stored
-        const stored = localStorage.getItem(STORAGE_KEY)
-        if (!stored) {
-          theme.value = e.matches ? 'dark' : 'light'
-        }
-      }
-      
-      mediaQuery.addEventListener('change', handleSystemThemeChange)
-      
-      // Cleanup on unmount
-      onUnmounted(() => {
-        mediaQuery.removeEventListener('change', handleSystemThemeChange)
       })
     })
   }
@@ -126,4 +79,7 @@ export const useTheme = () => {
     setTheme,
     setColorScheme
   }
-} 
+}
+
+// Export types for external use
+export type { Theme, ColorScheme, ThemeState } 

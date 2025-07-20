@@ -1,5 +1,8 @@
 import { en, zhCN } from './locales'
 
+// Re-export from config for consistency
+export { config } from '@config'
+
 export const defaultLocale = 'en'
 export const locales = ['en', 'zh-CN'] as const
 
