@@ -2,8 +2,8 @@ import type { Locale } from './types'
 
 export const en: Locale = {
   common: {
-    welcome: "Welcome to ShipEasy",
-    siteName: "ShipEasy",
+    welcome: "Welcome to TinyShip",
+    siteName: "TinyShip",
     login: "Login",
     signup: "Sign Up",
     logout: "Logout",
@@ -64,19 +64,19 @@ export const en: Locale = {
   },
   email: {
     verification: {
-      subject: "Verify your ShipEasy account",
+      subject: "Verify your TinyShip account",
       title: "Verify your email address",
       greeting: "Hello {{name}},",
-      message: "Thank you for registering with ShipEasy. To complete your registration, please click the button below to verify your email address.",
+      message: "Thank you for registering with TinyShip. To complete your registration, please click the button below to verify your email address.",
       button: "Verify Email Address",
       alternativeText: "Or, copy and paste the following link into your browser:",
       expiry: "This link will expire in {{expiry_hours}} hours.",
       disclaimer: "If you didn't request this verification, please ignore this email.",
-      signature: "Happy Shipping,<br>The ShipEasy Team",
-      copyright: "© {{year}} ShipEasy. All rights reserved."
+      signature: "Happy Shipping,<br>The TinyShip Team",
+      copyright: "© {{year}} TinyShip. All rights reserved."
     },
     resetPassword: {
-      subject: "Reset your ShipEasy password",
+      subject: "Reset your TinyShip password",
       title: "Reset your password",
       greeting: "Hello {{name}},",
       message: "We received a request to reset your password. Please click the button below to create a new password. If you didn't make this request, you can safely ignore this email.",
@@ -84,8 +84,8 @@ export const en: Locale = {
       alternativeText: "Or, copy and paste the following link into your browser:",
       expiry: "This link will expire in {{expiry_hours}} hours.",
       disclaimer: "If you didn't request a password reset, no action is required.",
-      signature: "Happy Shipping,<br>The ShipEasy Team",
-      copyright: "© {{year}} ShipEasy. All rights reserved."
+      signature: "Happy Shipping,<br>The TinyShip Team",
+      copyright: "© {{year}} TinyShip. All rights reserved."
     }
   },
   auth: {

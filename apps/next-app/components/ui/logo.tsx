@@ -1,3 +1,5 @@
+import { config } from '@config';
+
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
   variant?: 'full' | 'icon-only' | 'text-only';
@@ -55,7 +57,7 @@ export function Logo({
 
   const TextComponent = () => (
     <span className={`font-bold text-foreground ${currentSize.text} ${textClassName}`}>
-      TinyShip
+      {config.app.name}
     </span>
   );
 

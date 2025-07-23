@@ -79,6 +79,12 @@ export const config = {
    */
   app: {
     /**
+     * Application Name
+     * This will be used throughout the application for branding
+     */
+    name: 'TinyShip',
+
+    /**
      * Base URL Configuration
      * This will be used for all callback URLs and webhooks
      */

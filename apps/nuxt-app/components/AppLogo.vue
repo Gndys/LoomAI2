@@ -14,7 +14,7 @@
     </svg>
   </div>
   <span v-else-if="variant === 'text-only'" :class="cn('font-bold text-foreground', currentSize.text, textClassName)">
-    TinyShip
+    {{ appName }}
   </span>
   <div v-else :class="cn('flex items-center space-x-3', className)">
     <div :class="cn(currentSize.container, 'rounded-full bg-chart-1 flex items-center justify-center', iconClassName)">
@@ -32,13 +32,14 @@
       </svg>
     </div>
     <span v-if="showText" :class="cn('font-bold text-foreground', currentSize.text, textClassName)">
-      TinyShip
+      {{ appName }}
     </span>
   </div>
 </template>
 
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
+import { config } from '@config'
 
 interface Props {
   size?: 'sm' | 'md' | 'lg'
@@ -77,4 +78,5 @@ const sizeClasses = {
 }
 
 const currentSize = computed(() => sizeClasses[props.size])
+const appName = config.app.name
 </script> 
