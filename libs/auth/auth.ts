@@ -138,7 +138,7 @@ export const auth = betterAuth({
       captcha({
         provider: "cloudflare-turnstile",
         secretKey: config.captcha.cloudflare.secretKey!,
-        endpoints: ["/sign-up/email", "/sign-in/email", "/forget-password", '/phone-number/send-otp']
+        endpoints: ["/sign-up/email", "/sign-in/email", "/forget-password", '/phone-number/send-otp', '/send-verification-email']
       })
     ] : []),
 
@@ -200,5 +200,18 @@ export const auth = betterAuth({
         {path: "/sign-in/email", adapter: StandardAdapter(emailSignInSchema)},
       ]
     ),
-  ]
+  ],
+  rateLimit: {
+    enabled: true,
+    customRules: {
+      "/send-verification-email": {
+        window: 60, 
+        max: 1,    
+      },
+      "/forget-password": {
+        window: 60, 
+        max: 1, 
+      },
+    },
+  }
 })

@@ -60,7 +60,8 @@ export const zhCN: Locale = {
     createUser: "创建用户",
     deleteUser: "删除用户",
     back: "返回",
-    resendCode: "重新发送"
+    resendCode: "重新发送",
+    resendVerificationEmail: "重新发送验证邮件"
   },
   email: {
     verification: {
@@ -150,7 +151,19 @@ export const zhCN: Locale = {
         requiredEmail: "请输入邮箱",
         requiredPassword: "请输入密码",
         invalidCredentials: "邮箱或密码错误",
-        captchaRequired: "请完成验证码验证"
+        captchaRequired: "请完成验证码验证",
+        emailNotVerified: {
+          title: "需要邮箱验证",
+          description: "请检查您的邮箱并点击验证链接。如果您没有收到邮件，可以点击下方按钮重新发送。",
+          resendSuccess: "验证邮件已重新发送，请检查您的邮箱。",
+          resendError: "重发验证邮件失败，请稍后重试。",
+          dialogTitle: "重新发送验证邮件",
+          dialogDescription: "请完成验证码验证后重新发送验证邮件",
+          emailLabel: "邮箱地址",
+          sendButton: "发送验证邮件",
+          sendingButton: "发送中...",
+          waitButton: "等待 {seconds}s"
+        }
       }
     },
     signup: {

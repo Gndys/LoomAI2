@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { FormError } from "@/components/ui/form-error"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Turnstile } from "@/components/ui/turnstile"
+import { ResendVerificationDialog } from "@/components/resend-verification-dialog"
 import { Inbox } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 import { config } from "@config"
@@ -30,6 +31,7 @@ export function SignupForm({
   const [errorCode, setErrorCode] = useState('');
   const [isVerificationEmailSent, setIsVerificationEmailSent] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
+  const [showResendDialog, setShowResendDialog] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileKey, setTurnstileKey] = useState(0); // 用于强制重新渲染 Turnstile
 
@@ -114,17 +116,23 @@ export function SignupForm({
               {t.auth.signup.verification.sent} <strong>{verificationEmail}</strong>.
             </p>
             <p className="text-sm text-muted-foreground">
-              {t.auth.signup.verification.checkSpam}{" "}
-              {t.auth.signup.verification.spamInstruction}{" "}
-              <button 
-                onClick={() => setIsVerificationEmailSent(false)} 
-                className="text-primary underline underline-offset-4 hover:text-primary/90"
+              {t.auth.signup.verification.checkSpam}
+              {t.auth.signup.verification.spamInstruction}
+              <Button
+                variant="link"
+                onClick={() => setShowResendDialog(true)}
               >
                 {t.actions.tryAgain}
-              </button>
+              </Button>
             </p>
           </AlertDescription>
         </Alert>
+        
+        <ResendVerificationDialog
+          isOpen={showResendDialog}
+          onClose={() => setShowResendDialog(false)}
+          email={verificationEmail}
+        />
       </div>
     );
   }

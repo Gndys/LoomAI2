@@ -60,7 +60,8 @@ export const en: Locale = {
     createUser: "Create User",
     deleteUser: "Delete User",
     back: "Back",
-    resendCode: "Resend Code"
+    resendCode: "Resend Code",
+    resendVerificationEmail: "Resend Verification Email"
   },
   email: {
     verification: {
@@ -150,7 +151,19 @@ export const en: Locale = {
         requiredEmail: "Email is required",
         requiredPassword: "Password is required",
         invalidCredentials: "Invalid email or password",
-        captchaRequired: "Please complete the captcha verification"
+        captchaRequired: "Please complete the captcha verification",
+        emailNotVerified: {
+          title: "Email verification required",
+          description: "Please check your email and click the verification link. If you haven't received the email, click the button below to resend.",
+          resendSuccess: "Verification email has been resent, please check your inbox.",
+          resendError: "Failed to resend verification email, please try again later.",
+          dialogTitle: "Resend Verification Email",
+          dialogDescription: "Please complete the captcha verification before resending the verification email",
+          emailLabel: "Email Address",
+          sendButton: "Send Verification Email",
+          sendingButton: "Sending...",
+          waitButton: "Wait {seconds}s"
+        }
       }
     },
     signup: {

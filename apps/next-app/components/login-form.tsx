@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FormError } from "@/components/ui/form-error"
 import { Turnstile } from "@/components/ui/turnstile"
+import { ResendVerificationDialog } from "@/components/resend-verification-dialog"
 import { useTranslation } from "@/hooks/use-translation";
 import { config } from "@config";
 import Link from "next/link";
@@ -24,6 +25,8 @@ export function LoginForm({
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorCode, setErrorCode] = useState('');
+  const [userEmail, setUserEmail] = useState(''); // 存储用户邮箱用于重发验证邮件
+  const [showResendDialog, setShowResendDialog] = useState(false); // 控制重发弹窗显示
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileKey, setTurnstileKey] = useState(0); // 用于强制重新渲染 Turnstile
   
@@ -56,6 +59,7 @@ export function LoginForm({
     setLoading(true);
     setErrorMessage('');
     setErrorCode('');
+    setUserEmail(data.email); // 保存用户邮箱
 
     const { error } = await authClientReact.signIn.email({
       email: data.email,
@@ -93,7 +97,19 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-4", className)} {...props}>
-      <FormError message={errorMessage} code={errorCode} />
+      <FormError 
+        message={errorMessage} 
+        code={errorCode}
+        userEmail={userEmail}
+        onResendClick={() => setShowResendDialog(true)}
+      />
+      
+      <ResendVerificationDialog
+        isOpen={showResendDialog}
+        onClose={() => setShowResendDialog(false)}
+        email={userEmail}
+      />
+      
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div className="grid gap-6">
           <div className="grid gap-2">

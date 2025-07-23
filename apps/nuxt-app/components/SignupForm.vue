@@ -23,15 +23,21 @@
         <p class="text-sm text-muted-foreground">
           {{ t('auth.signup.verification.checkSpam') }}
           {{ t('auth.signup.verification.spamInstruction') }}
-          <button 
-            @click="isVerificationEmailSent = false" 
-            class="text-primary underline underline-offset-4 hover:text-primary/90"
+          <Button
+            variant="link"
+            @click="showResendDialog = true" 
           >
             {{ t('actions.tryAgain') }}
-          </button>
+          </Button>
         </p>
       </AlertDescription>
     </Alert>
+    
+    <ResendVerificationDialog
+      :is-open="showResendDialog"
+      :email="verificationEmail"
+      @close="showResendDialog = false"
+    />
   </div>
 
       <!-- Registration form -->
@@ -188,6 +194,7 @@ const errorMessage = ref('')
 const errorCode = ref('')
 const isVerificationEmailSent = ref(false)
 const verificationEmail = ref('')
+const showResendDialog = ref(false)
 
 // Get runtime configuration
 const runtimeConfig = useRuntimeConfig()

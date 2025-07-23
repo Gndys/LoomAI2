@@ -1,7 +1,19 @@
 <template>
   <div :class="cn('flex flex-col gap-4', className)">
     <!-- Display error message -->
-    <FormError v-if="errorMessage" :message="errorMessage" :code="errorCode" />
+    <FormError 
+      v-if="errorMessage" 
+      :message="errorMessage" 
+      :code="errorCode"
+      :user-email="userEmail"
+      :on-resend-click="() => showResendDialog = true"
+    />
+    
+    <ResendVerificationDialog
+      :is-open="showResendDialog"
+      :email="userEmail"
+      @close="showResendDialog = false"
+    />
     
     <form @submit="onSubmit" class="flex flex-col gap-4">
       <div class="grid gap-6">
@@ -128,6 +140,8 @@ const { locale } = useI18n()
 const loading = ref(false)
 const errorMessage = ref('')
 const errorCode = ref('')
+const userEmail = ref('') // 存储用户邮箱用于重发验证邮件
+const showResendDialog = ref(false) // 控制重发弹窗显示
 
 // Get runtime configuration
 const runtimeConfig = useRuntimeConfig()
@@ -200,6 +214,8 @@ const onSubmit = handleSubmit(async (values) => {
   }
 
   try {
+    userEmail.value = values.email // 保存用户邮箱
+    
     const fetchOptions: any = {}
     
     // If captcha is enabled, add captcha token to request headers
