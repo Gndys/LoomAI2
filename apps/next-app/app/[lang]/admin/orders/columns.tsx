@@ -3,13 +3,14 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, Copy, ExternalLink, RefreshCw, ArrowUp, ArrowDown } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { useTranslation } from "@/hooks/use-translation"
 
@@ -45,17 +46,78 @@ const getStatusBadge = (status: string, t: any) => {
 
 const getProviderBadge = (provider: string, t: any) => {
   const providerConfig = {
-    stripe: { label: t.admin.orders.table.search.stripe, variant: "default" as const },
+    stripe: { label: t.admin.orders.table.search.stripe, variant: "outline" as const },
     wechat: { label: t.admin.orders.table.search.wechat, variant: "outline" as const },
+    creem: { label: t.admin.orders.table.search.creem, variant: "outline" as const },
   }
   
   const config = providerConfig[provider as keyof typeof providerConfig] || { label: provider, variant: "outline" as const }
   return <Badge variant={config.variant}>{config.label}</Badge>
 }
 
-const formatDate = (date: string | Date) => {
+const formatDate = (date: string | Date | null) => {
+  if (!date) return 'N/A'
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString()
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const formatAmount = (amount: string, currency: string) => {
+  const numAmount = parseFloat(amount)
+  if (isNaN(numAmount)) return `${currency} ${amount}`
+  
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: 2
+  }).format(numAmount)
+}
+
+// Sortable header component
+const SortableHeader = ({ column, title, t }: { column: any, title: string, t: any }) => {
+  const sortDirection = column.getIsSorted()
+  
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="h-auto p-0 font-medium hover:bg-transparent hover:text-accent-foreground flex items-center"
+        >
+          {title}
+          <div className="ml-2 flex flex-col">
+            {sortDirection === "asc" ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : sortDirection === "desc" ? (
+              <ArrowDown className="h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="h-3 w-3" />
+            )}
+          </div>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
+          <ArrowUp className="mr-2 h-4 w-4" />
+          {t.admin.orders.table.sort.ascending}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
+          <ArrowDown className="mr-2 h-4 w-4" />
+          {t.admin.orders.table.sort.descending}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => column.clearSorting()}>
+          <ArrowUpDown className="mr-2 h-4 w-4" />
+          {t.admin.orders.table.sort.none}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 export const useOrderColumns = (): ColumnDef<Order>[] => {
@@ -65,55 +127,105 @@ export const useOrderColumns = (): ColumnDef<Order>[] => {
     {
       accessorKey: "id",
       header: t.admin.orders.table.columns.id,
-      cell: ({ row }) => (
-        <div className="font-mono text-sm max-w-[100px] truncate" title={row.getValue("id")}>
-          {row.getValue("id")}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const id = row.getValue("id") as string
+        
+        const copyToClipboard = async () => {
+          try {
+            await navigator.clipboard.writeText(id)
+            console.log('Order ID copied to clipboard:', id)
+          } catch (err) {
+            console.error('Failed to copy Order ID:', err)
+          }
+        }
+        
+        return (
+          <div className="group relative">
+            <div 
+              className="font-mono text-sm max-w-[100px] truncate cursor-pointer"
+              title={id}
+              onClick={copyToClipboard}
+            >
+              #{id.slice(-8)}
+            </div>
+            
+            {/* Tooltip */}
+            <div className="absolute z-50 hidden group-hover:block top-full left-0 pt-1">
+              <div className="bg-popover text-popover-foreground shadow-md rounded-md border p-2 text-xs font-mono min-w-max">
+                <div className="flex items-center gap-2">
+                  <span className="select-all">{id}</span>
+                  <button 
+                    className="p-1 hover:bg-accent rounded"
+                    onClick={copyToClipboard}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {t.admin.orders.table.actions.clickToCopy}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      },
+      enableSorting: false,
     },
     {
       accessorKey: "userEmail",
-      header: t.admin.orders.table.columns.user,
+      header: ({ column }) => {
+        return <SortableHeader column={column} title={t.admin.orders.table.columns.user} t={t} />
+      },
       cell: ({ row }) => {
         const email = row.getValue("userEmail") as string
         const name = row.original.userName
         return (
           <div className="max-w-[150px]">
-            <div className="font-medium truncate" title={name || 'N/A'}>
-              {name || 'N/A'}
+            <div className="font-medium truncate text-foreground" title={name || t.common.notAvailable}>
+              {name || t.common.notAvailable}
             </div>
-            <div className="text-sm text-gray-500 truncate" title={email || 'N/A'}>
-              {email || 'N/A'}
+            <div className="text-sm text-muted-foreground truncate" title={email || t.common.notAvailable}>
+              {email || t.common.notAvailable}
             </div>
           </div>
         )
       },
+      enableHiding: false,
     },
     {
       accessorKey: "amount",
-      header: t.admin.orders.table.columns.amount,
+      header: ({ column }) => {
+        return <SortableHeader column={column} title={t.admin.orders.table.columns.amount} t={t} />
+      },
       cell: ({ row }) => {
         const amount = row.getValue("amount") as string
         const currency = row.original.currency
-        return <div className="font-medium">{currency} {amount}</div>
+        return <div className="font-medium text-foreground">{formatAmount(amount, currency)}</div>
       },
+      enableHiding: false,
     },
     {
       accessorKey: "planId",
       header: t.admin.orders.table.columns.plan,
-      cell: ({ row }) => (
-        <div className="font-medium">{row.getValue("planId")}</div>
-      ),
+      cell: ({ row }) => {
+        const planId = row.getValue("planId") as string
+        return <div className="font-medium">{planId || t.common.notAvailable}</div>
+      },
+      enableSorting: false,
     },
     {
       accessorKey: "status",
       header: t.admin.orders.table.columns.status,
       cell: ({ row }) => getStatusBadge(row.getValue("status"), t),
+      enableHiding: false,
+      enableSorting: false,
     },
     {
       accessorKey: "provider",
       header: t.admin.orders.table.columns.provider,
       cell: ({ row }) => getProviderBadge(row.getValue("provider"), t),
+      enableHiding: false,
+      enableSorting: false,
     },
     {
       accessorKey: "providerOrderId",
@@ -121,23 +233,26 @@ export const useOrderColumns = (): ColumnDef<Order>[] => {
       cell: ({ row }) => {
         const providerOrderId = row.getValue("providerOrderId") as string
         return (
-          <div className="font-mono text-xs max-w-[120px] truncate" title={providerOrderId || 'N/A'}>
-            {providerOrderId || 'N/A'}
+          <div className="font-mono text-xs max-w-[120px] truncate" title={providerOrderId || t.common.notAvailable}>
+            {providerOrderId || t.common.notAvailable}
           </div>
         )
       },
+      enableSorting: false,
     },
     {
       accessorKey: "createdAt",
-      header: t.admin.orders.table.columns.createdAt,
+      header: ({ column }) => {
+        return <SortableHeader column={column} title={t.admin.orders.table.columns.createdAt} t={t} />
+      },
       cell: ({ row }) => {
-        const date = row.getValue("createdAt") as string | Date
-        return <div>{formatDate(date)}</div>
+        const date = row.getValue("createdAt") as string | Date | null
+        return <div className="text-sm text-muted-foreground">{formatDate(date)}</div>
       },
     },
     {
       id: "actions",
-      header: t.admin.orders.table.columns.actions,
+      header: () => <div className="text-center">{t.admin.orders.table.columns.actions}</div>,
       cell: ({ row }) => {
         const order = row.original
 
@@ -145,18 +260,37 @@ export const useOrderColumns = (): ColumnDef<Order>[] => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">{t.admin.orders.table.actions.openMenu}</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{t.admin.orders.table.columns.actions}</DropdownMenuLabel>
-              <DropdownMenuItem>{t.admin.orders.table.actions.viewOrder}</DropdownMenuItem>
-              <DropdownMenuItem>{t.admin.orders.table.actions.refundOrder}</DropdownMenuItem>
+              <DropdownMenuLabel>{t.admin.orders.table.actions.actions}</DropdownMenuLabel>
+              <DropdownMenuItem 
+                onClick={() => {
+                  // TODO: Implement view order functionality
+                  console.log('View order:', order.id)
+                }}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                {t.admin.orders.table.actions.viewOrder}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => {
+                  // TODO: Implement refund functionality
+                  console.log('Refund order:', order.id)
+                }}
+                disabled={order.status !== 'paid'}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {t.admin.orders.table.actions.refundOrder}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )
       },
+      enableHiding: false,
+      enableSorting: false,
     },
   ]
 }

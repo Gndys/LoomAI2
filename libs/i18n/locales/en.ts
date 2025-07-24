@@ -266,7 +266,8 @@ export const en: Locale = {
       success: {
         title: "Password Reset Successful",
         description: "Your password has been successfully reset.",
-        backToSignin: "Back to Sign In"
+        backToSignin: "Back to Sign In",
+        goToSignIn: "Back to Sign In"
       },
       errors: {
         invalidPassword: "Password must be at least 8 characters",
@@ -382,7 +383,13 @@ export const en: Locale = {
         },
         actions: {
           editUser: "Edit User",
-          deleteUser: "Delete User"
+          deleteUser: "Delete User",
+          clickToCopy: "Click to copy"
+        },
+        sort: {
+          ascending: "Sort ascending",
+          descending: "Sort descending",
+          none: "Remove sorting"
         },
         noResults: "No users found",
         search: {
@@ -485,7 +492,8 @@ export const en: Locale = {
           filterByProvider: "Payment provider",
           allProviders: "All Providers",
           stripe: "Stripe",
-          wechat: "WeChat"
+          wechat: "WeChat",
+          creem: "Creem"
         },
         columns: {
           id: "Order ID",
@@ -504,6 +512,11 @@ export const en: Locale = {
           viewOrder: "View order",
           refundOrder: "Refund order",
           clickToCopy: "Click to copy"
+        },
+        sort: {
+          ascending: "Sort ascending",
+          descending: "Sort descending",
+          none: "Remove sorting"
         }
       },
       status: {
@@ -544,6 +557,9 @@ export const en: Locale = {
           clear: "Clear",
           allStatuses: "All statuses",
           allProviders: "All providers",
+          stripe: "Stripe",
+          creem: "Creem",
+          wechat: "WeChat",
           userEmail: "User Email",
           subscriptionId: "Subscription ID",
           userId: "User ID",
@@ -596,6 +612,11 @@ export const en: Locale = {
           viewSubscription: "View subscription",
           cancelSubscription: "Cancel subscription",
           clickToCopy: "Click to copy"
+        },
+        sort: {
+          ascending: "Sort ascending",
+          descending: "Sort descending",
+          none: "Remove sorting"
         }
       },
       status: {

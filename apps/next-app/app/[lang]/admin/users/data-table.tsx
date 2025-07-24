@@ -26,8 +26,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { useRouter, usePathname } from "next/navigation"
-import { useState } from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import { ColumnToggle } from "./components/column-toggle"
 import { Search } from "./components/search"
 import { useTranslation } from "@/hooks/use-translation"
@@ -51,6 +51,7 @@ export function DataTable<TData, TValue>({
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     id: false,
     emailVerified: false,
@@ -58,6 +59,19 @@ export function DataTable<TData, TValue>({
     updatedAt: false,
   })
   const [sorting, setSorting] = useState<SortingState>([])
+
+  // Initialize sorting from URL parameters
+  useEffect(() => {
+    const sortBy = searchParams.get('sortBy')
+    const sortDirection = searchParams.get('sortDirection')
+    
+    if (sortBy && sortDirection) {
+      setSorting([{
+        id: sortBy,
+        desc: sortDirection === 'desc'
+      }])
+    }
+  }, [searchParams])
 
   const table = useReactTable({
     data,
@@ -85,6 +99,7 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       sorting,
     },
+    manualSorting: true, // Enable manual sorting for server-side
     enableSorting: true,
   })
 

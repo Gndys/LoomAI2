@@ -68,7 +68,7 @@
         <SelectItem value="all">{{ t('admin.orders.table.search.allProviders') }}</SelectItem>
         <SelectItem value="stripe">{{ t('admin.orders.table.search.stripe') }}</SelectItem>
         <SelectItem value="wechat">{{ t('admin.orders.table.search.wechat') }}</SelectItem>
-        <SelectItem value="creem">Creem</SelectItem>
+        <SelectItem value="creem">{{ t('admin.orders.table.search.creem') }}</SelectItem>
       </SelectContent>
     </Select>
   </form>

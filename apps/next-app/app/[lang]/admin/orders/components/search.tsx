@@ -10,7 +10,7 @@ import { useTranslation } from "@/hooks/use-translation"
 
 type SearchField = "id" | "userId" | "planId" | "userEmail" | "providerOrderId";
 type OrderStatus = "pending" | "paid" | "failed" | "refunded" | "canceled" | "all";
-type PaymentProvider = "stripe" | "wechat" | "all";
+type PaymentProvider = "stripe" | "wechat" | "creem" | "all";
 
 export function Search() {
   const { t } = useTranslation()
@@ -151,6 +151,7 @@ export function Search() {
           <SelectItem value="all">{t.admin.orders.table.search.allProviders}</SelectItem>
           <SelectItem value="stripe">{t.admin.orders.table.search.stripe}</SelectItem>
           <SelectItem value="wechat">{t.admin.orders.table.search.wechat}</SelectItem>
+          <SelectItem value="creem">{t.admin.orders.table.search.creem}</SelectItem>
         </SelectContent>
       </Select>
     </form>

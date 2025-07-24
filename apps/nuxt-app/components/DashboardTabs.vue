@@ -140,8 +140,8 @@ const handleCancelEdit = () => {
               <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
                   <Avatar class="w-16 h-16">
-                    <AvatarImage :src="user?.avatar" :alt="user?.name || 'User'" />
-                    <AvatarFallback class="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl font-bold">
+                    <AvatarImage :src="user?.image" :alt="user?.name || t('dashboard.profile.noNameSet')" />
+                    <AvatarFallback class="bg-gradient-chart-warm text-white text-xl font-bold">
                       {{ user?.name?.charAt(0) || user?.email?.charAt(0) || 'U' }}
                     </AvatarFallback>
                   </Avatar>

@@ -83,6 +83,9 @@ export async function GET(request: NextRequest) {
       case 'userId':
         orderBy = sortDirection === 'desc' ? desc(order.userId) : asc(order.userId);
         break;
+      case 'userEmail':
+        orderBy = sortDirection === 'desc' ? desc(user.email) : asc(user.email);
+        break;
       case 'amount':
         orderBy = sortDirection === 'desc' ? desc(order.amount) : asc(order.amount);
         break;

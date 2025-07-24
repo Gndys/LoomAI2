@@ -68,9 +68,9 @@
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">{{ t('admin.subscriptions.table.search.allProviders') }}</SelectItem>
-        <SelectItem value="stripe">Stripe</SelectItem>
-        <SelectItem value="creem">Creem</SelectItem>
-        <SelectItem value="wechat">WeChat</SelectItem>
+        <SelectItem value="stripe">{{ t('admin.subscriptions.table.search.stripe') }}</SelectItem>
+        <SelectItem value="creem">{{ t('admin.subscriptions.table.search.creem') }}</SelectItem>
+        <SelectItem value="wechat">{{ t('admin.subscriptions.table.search.wechat') }}</SelectItem>
       </SelectContent>
     </Select>
   </form>

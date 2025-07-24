@@ -78,11 +78,6 @@ export default async function SubscriptionsPage({ params, searchParams }: PagePr
       <div className="container mx-auto py-10 px-5">
         <div className='flex items-center justify-between mb-4'>
           <h1 className="text-2xl font-bold">{t.admin.subscriptions.title}</h1>
-          
-          <Button>
-            <Plus className="mr-2 h-4 w-4"></Plus>
-            {t.admin.subscriptions.actions.createSubscription}
-          </Button>
         </div>
         <div className="flex flex-col gap-4">
           <DataTable 

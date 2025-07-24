@@ -2,10 +2,10 @@ import { headers } from 'next/headers'
 import Link from 'next/link'
 import { columns } from './columns';
 import { DataTable } from './data-table';
-import { authClientReact } from '@libs/auth/authClient'; // 确保路径正确
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react'
 import { translations } from '@libs/i18n';
+import { config } from '@config';
 
 type SearchField = "email" | "name" | "id";
 type Role = "admin" | "user" | "all";
@@ -37,95 +37,94 @@ export default async function UserPage({ params, searchParams }: PageProps) {
   const sortBy = (rawParams.sortBy as string) || undefined;
   const sortDirection = (rawParams.sortDirection as "asc" | "desc") || undefined;
 
-  const query = {
-    limit: pageSize,
-    offset: (page - 1) * pageSize,
-  } as any;
-
-  // Only add sorting if both parameters are present
-  if (sortBy && sortDirection) {
-    query.sortBy = sortBy;
-    query.sortDirection = sortDirection;
-  }
-
-  // Only add search if there's a value
-  if (searchValue) {
-    if (searchField === "id") {
-      query.filterField = "id";
-      query.filterOperator = "eq";
-      query.filterValue = searchValue;
-    } else {
-      query.searchField = searchField;
-      query.searchOperator = "contains";
-      query.searchValue = searchValue;
-    }
-  }
-
-  // Only add role filter if not "all"
-  if (role && role !== "all") {
-    if (!query.filterField) {
-      query.filterField = "role";
-      query.filterOperator = "eq";
-      query.filterValue = role;
-    } else {
-      query.additionalFilters = [{
-        field: "role",
-        operator: "eq",
-        value: role
-      }];
-    }
-  }
-
-  // Only add banned filter if not "all"
-  if (banned && banned !== "all") {
-    const bannedFilter = {
-      field: "banned",
-      operator: "eq",
-      value: banned === "true"
-    };
-
-    if (!query.filterField) {
-      query.filterField = bannedFilter.field;
-      query.filterOperator = bannedFilter.operator;
-      query.filterValue = bannedFilter.value;
-    } else {
-      query.additionalFilters = query.additionalFilters || [];
-      query.additionalFilters.push(bannedFilter);
-    }
-  }
-
-  const { data } = await authClientReact.admin.listUsers({
-    query,
-    fetchOptions: {
-      headers: await headers(),
-    }
+  // 构建API查询参数
+  const queryParams = new URLSearchParams({
+    limit: pageSize.toString(),
+    offset: ((page - 1) * pageSize).toString(),
   });
 
-  const totalPages = Math.ceil((data?.total || 0) / pageSize);
+  // 添加搜索参数
+  if (searchValue) {
+    queryParams.append('searchField', searchField);
+    queryParams.append('searchValue', searchValue);
+  }
 
-  return (
-    <div className="container mx-auto py-10 px-5">
-      <div className='flex items-center justify-between mb-4'>
-        <h1 className="text-2xl font-bold">{t.admin.users.title}</h1>
-        
-        <Link href='/admin/users/new'><Button>
-          <UserPlus className="mr-2 h-4 w-4"></UserPlus>
-          {t.admin.users.actions.addUser}
-        </Button>
-        </Link>
+  // 添加筛选参数
+  if (role && role !== 'all') {
+    queryParams.append('role', role);
+  }
+  if (banned && banned !== 'all') {
+    queryParams.append('banned', banned);
+  }
+
+  // 添加排序参数
+  if (sortBy && sortDirection) {
+    queryParams.append('sortBy', sortBy);
+    queryParams.append('sortDirection', sortDirection);
+  }
+
+  try {
+    // 调用API获取用户数据
+    const baseUrl = config.app.baseUrl;
+    const apiUrl = `${baseUrl}/api/admin/users?${queryParams.toString()}`;
+    console.log('Fetching users from:', apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      headers: await headers(),
+      cache: 'no-store', // 确保获取最新数据
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch users');
+    }
+
+    const data = await response.json();
+    const totalPages = Math.ceil((data?.total || 0) / pageSize);
+
+    return (
+      <div className="container mx-auto py-10 px-5">
+        <div className='flex items-center justify-between mb-4'>
+          <h1 className="text-2xl font-bold">{t.admin.users.title}</h1>
+          
+          <Link href='/admin/users/new'><Button>
+            <UserPlus className="mr-2 h-4 w-4"></UserPlus>
+            {t.admin.users.actions.addUser}
+          </Button>
+          </Link>
+        </div>
+        <div className="flex flex-col gap-4">
+          <DataTable 
+            columns={columns} 
+            data={data?.users || []} 
+            pagination={{
+              currentPage: page,
+              totalPages,
+              pageSize,
+              total: data?.total || 0
+            }}
+          />
+        </div>
       </div>
-      <div className="flex flex-col gap-4">
-        <DataTable 
-          columns={columns} 
-          data={data?.users as any[]} 
-          pagination={{
-            currentPage: page,
-            totalPages,
-            pageSize,
-            total: data?.total || 0
-          }}
-        />
+    );
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return (
+      <div className="container mx-auto py-10 px-5">
+        <div className='flex items-center justify-between mb-4'>
+          <h1 className="text-2xl font-bold">{t.admin.users.title}</h1>
+          
+          <Link href='/admin/users/new'><Button>
+            <UserPlus className="mr-2 h-4 w-4"></UserPlus>
+            {t.admin.users.actions.addUser}
+          </Button>
+          </Link>
+        </div>
+        <div className="flex flex-col gap-4">
+          <div className="text-center py-10">
+            <p className="text-red-500">{t.admin.users.messages.fetchError}</p>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }

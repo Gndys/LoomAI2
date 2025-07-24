@@ -4,6 +4,8 @@ import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
+  SortingState,
   useReactTable,
 } from "@tanstack/react-table"
 
@@ -24,8 +26,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { useRouter, usePathname } from "next/navigation"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import { Search } from "./components/search"
+import { ColumnToggle } from "./components/column-toggle"
 import { useTranslation } from "@/hooks/use-translation"
 import { useOrderColumns } from "./columns"
 
@@ -47,12 +51,50 @@ export function DataTable<TData, TValue>({
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const columns = useOrderColumns()
+  const [sorting, setSorting] = useState<SortingState>([])
+
+  // Initialize sorting from URL parameters
+  useEffect(() => {
+    const sortBy = searchParams.get('sortBy')
+    const sortDirection = searchParams.get('sortDirection')
+    
+    if (sortBy && sortDirection) {
+      setSorting([{
+        id: sortBy,
+        desc: sortDirection === 'desc'
+      }])
+    }
+  }, [searchParams])
 
   const table = useReactTable({
     data,
     columns: columns as ColumnDef<TData, TValue>[],
+    onSortingChange: (updater) => {
+      const newSorting = typeof updater === 'function' ? updater(sorting) : updater
+      setSorting(newSorting)
+      
+      // Update URL with new sorting parameters
+      const searchParams = new URLSearchParams(window.location.search)
+      
+      if (newSorting.length > 0) {
+        searchParams.set('sortBy', newSorting[0].id)
+        searchParams.set('sortDirection', newSorting[0].desc ? 'desc' : 'asc')
+      } else {
+        searchParams.delete('sortBy')
+        searchParams.delete('sortDirection')
+      }
+      
+      // Reset to first page when sorting changes
+      searchParams.set('page', '1')
+      router.push(`${pathname}?${searchParams.toString()}`)
+    },
     getCoreRowModel: getCoreRowModel(),
+    manualSorting: true, // Enable manual sorting for server-side
+    state: {
+      sorting,
+    },
   })
 
   const handlePageChange = (page: number) => {
@@ -65,6 +107,7 @@ export function DataTable<TData, TValue>({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Search />
+        <ColumnToggle table={table} />
       </div>
       
       <div className="rounded-md border">

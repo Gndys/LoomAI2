@@ -456,7 +456,7 @@ export const config = {
       },
       endpoint: 'dysmsapi.aliyuncs.com',
       signName: '上海挚箴技术服务中心',
-      templateCode: 'SMS_1234567890',
+      templateCode: 'SMS_235815655',
     },
 
     /**

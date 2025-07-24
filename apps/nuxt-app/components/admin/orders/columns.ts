@@ -217,7 +217,6 @@ export const columns: ColumnDef<Order>[] = [
         refunded: t('admin.orders.status.refunded'),
         canceled: t('admin.orders.status.canceled')
       }
-      console.log('sdf', statusTranslations.pending)
       return h(Badge, { 
         variant: getStatusVariant(status) 
       }, () => statusTranslations[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1))

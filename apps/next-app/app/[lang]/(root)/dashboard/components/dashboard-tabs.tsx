@@ -95,13 +95,13 @@ export function DashboardTabs({
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <Avatar className="w-16 h-16">
-                  <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl font-bold">
+                  <AvatarImage src={user?.image} alt={user?.name || t.dashboard.profile.noNameSet} />
+                  <AvatarFallback className="bg-gradient-chart-warm text-white text-xl font-bold">
                     {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-lg font-medium">{user?.name || 'Unnamed User'}</h3>
+                  <h3 className="text-lg font-medium">{user?.name || t.dashboard.profile.noNameSet}</h3>
                   <p className="text-sm text-muted-foreground">{user?.email}</p>
                   <div className="flex items-center space-x-2 mt-1">
                     <Badge variant={getRoleBadgeVariant(user?.role)}>
@@ -110,7 +110,7 @@ export function DashboardTabs({
                     {user?.emailVerified && (
                       <div className="flex items-center text-green-600 text-xs">
                         <CheckCircle className="w-3 h-3 mr-1" />
-                        已验证
+                        {t.dashboard.profile.emailVerified}
                       </div>
                     )}
                   </div>
@@ -123,7 +123,7 @@ export function DashboardTabs({
                   onClick={() => setIsEditing(true)}
                 >
                   <Edit className="w-4 h-4 mr-2" />
-                  编辑
+                  {t.actions.edit}
                 </Button>
               )}
             </div>
@@ -150,32 +150,32 @@ export function DashboardTabs({
                       placeholder={t.dashboard.profile.form.placeholders.email}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t.dashboard.profile.form.emailReadonly || "邮箱地址无法修改"}
+                      {t.dashboard.profile.form.emailReadonly}
                     </p>
                   </div>
                 </div>
                 <div className="flex space-x-2">
-                  <Button 
-                    onClick={handleUpdateProfile}
-                    disabled={updateLoading}
-                    size="sm"
-                  >
-                    {updateLoading ? (
-                      <>加载中...</>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        保存
-                      </>
-                    )}
-                  </Button>
+                                      <Button 
+                      onClick={handleUpdateProfile}
+                      disabled={updateLoading}
+                      size="sm"
+                    >
+                      {updateLoading ? (
+                        <>{t.common.loading}</>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          {t.actions.save}
+                        </>
+                      )}
+                    </Button>
                   <Button 
                     variant="outline" 
                     onClick={handleCancelEdit}
                     size="sm"
                   >
                     <X className="w-4 h-4 mr-2" />
-                    取消
+                    {t.actions.cancel}
                   </Button>
                 </div>
               </div>
@@ -185,7 +185,7 @@ export function DashboardTabs({
                   <Label className="text-sm font-medium text-muted-foreground">
                     {t.dashboard.profile.form.labels.name}
                   </Label>
-                  <p className="mt-1">{user?.name || '未设置'}</p>
+                  <p className="mt-1">{user?.name || t.dashboard.profile.noNameSet}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">
@@ -197,7 +197,7 @@ export function DashboardTabs({
                   <Label className="text-sm font-medium text-muted-foreground">
                     {t.dashboard.account.memberSince}
                   </Label>
-                  <p className="mt-1">{user?.createdAt ? formatDate(user.createdAt) : 'N/A'}</p>
+                  <p className="mt-1">{user?.createdAt ? formatDate(user.createdAt) : t.common.notAvailable}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">

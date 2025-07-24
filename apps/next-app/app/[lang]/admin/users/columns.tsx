@@ -18,7 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useState } from "react"
-import { MoreHorizontal } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -29,9 +29,63 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
-import { DataTableColumnHeader } from "./components/data-table-column-header"
 import { authClientReact } from "@libs/auth/authClient"
 import { useTranslation } from "@/hooks/use-translation"
+
+// Format date helper
+const formatDate = (date: string | Date | null) => {
+  if (!date) return 'N/A'
+  const d = typeof date === 'string' ? new Date(date) : date
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// Sortable header component
+const SortableHeader = ({ column, title, t }: { column: any, title: string, t: any }) => {
+  const sortDirection = column.getIsSorted()
+  
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="h-auto p-0 font-medium hover:bg-transparent hover:text-accent-foreground flex items-center"
+        >
+          {title}
+          <div className="ml-2 flex flex-col">
+            {sortDirection === "asc" ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : sortDirection === "desc" ? (
+              <ArrowDown className="h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="h-3 w-3" />
+            )}
+          </div>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
+          <ArrowUp className="mr-2 h-4 w-4" />
+          {t.admin.users.table.sort.ascending}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
+          <ArrowDown className="mr-2 h-4 w-4" />
+          {t.admin.users.table.sort.descending}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => column.clearSorting()}>
+          <ArrowUpDown className="mr-2 h-4 w-4" />
+          {t.admin.users.table.sort.none}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
 // This type is used to define the shape of our data.
 // You can use a Zod schema here if you want.
@@ -228,14 +282,73 @@ export const columns = () => {
     {
       accessorKey: "id",
       header: t.admin.users.table.columns.id,
+      cell: ({ row }) => {
+        const id = row.getValue("id") as string
+        
+        const copyToClipboard = async () => {
+          try {
+            await navigator.clipboard.writeText(id)
+            console.log('User ID copied to clipboard:', id)
+          } catch (err) {
+            console.error('Failed to copy User ID:', err)
+          }
+        }
+        
+        return (
+          <div className="group relative">
+            <div 
+              className="font-mono text-sm max-w-[100px] truncate cursor-pointer"
+              title={id}
+              onClick={copyToClipboard}
+            >
+              #{id.slice(-8)}
+            </div>
+            
+            {/* Tooltip */}
+            <div className="absolute z-50 hidden group-hover:block top-full left-0 pt-1">
+              <div className="bg-popover text-popover-foreground shadow-md rounded-md border p-2 text-xs font-mono min-w-max">
+                <div className="flex items-center gap-2">
+                  <span className="select-all">{id}</span>
+                  <button 
+                    className="p-1 hover:bg-accent rounded"
+                    onClick={copyToClipboard}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {t.admin.users.table.actions.clickToCopy}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      },
+      enableSorting: false,
     },
     {
       accessorKey: "name",
       header: t.admin.users.table.columns.name,
+      cell: ({ row }) => {
+        const name = row.getValue("name") as string
+        return (
+          <div className="font-medium text-foreground" title={name || t.common.notAvailable}>
+            {name || t.common.notAvailable}
+          </div>
+        )
+      },
     },
     {
       accessorKey: "email",
       header: t.admin.users.table.columns.email,
+      cell: ({ row }) => {
+        const email = row.getValue("email") as string
+        return (
+          <div className="text-sm text-muted-foreground max-w-[200px] truncate" title={email || t.common.notAvailable}>
+            {email || t.common.notAvailable}
+          </div>
+        )
+      },
     },
     {
       accessorKey: "role",
@@ -249,6 +362,18 @@ export const columns = () => {
     {
       accessorKey: "emailVerified",
       header: t.admin.users.table.columns.emailVerified,
+      cell: ({ row }) => {
+        const isVerified = row.getValue("emailVerified") as boolean
+        return (
+          <div className="text-sm">
+            {isVerified ? (
+              <span className="text-green-600 font-medium">{t.common.yes}</span>
+            ) : (
+              <span className="text-muted-foreground">{t.common.no}</span>
+            )}
+          </div>
+        )
+      },
     },
     {
       accessorKey: "banned",
@@ -261,25 +386,23 @@ export const columns = () => {
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t.admin.users.table.columns.createdAt} />
-      ),
+      header: ({ column }) => {
+        return <SortableHeader column={column} title={t.admin.users.table.columns.createdAt} t={t} />
+      },
       cell: ({ row }) => {
-        const createdAt = row.getValue("createdAt") as Date;
-        const formatted = `${createdAt.getFullYear()}/${String(createdAt.getMonth() + 1).padStart(2, "0")}/${String(createdAt.getDate()).padStart(2, "0")}`;
-        return <div className="text-right font-medium">{formatted}</div>;
+        const date = row.getValue("createdAt") as string | Date | null
+        return <div className="text-sm text-muted-foreground">{formatDate(date)}</div>;
       },
       enableSorting: true,
     },
     {
       accessorKey: "updatedAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t.admin.users.table.columns.updatedAt} />
-      ),
+      header: ({ column }) => {
+        return <SortableHeader column={column} title={t.admin.users.table.columns.updatedAt} t={t} />
+      },
       cell: ({ row }) => {
-        const updatedAt = row.getValue("updatedAt") as Date;
-        const formatted = `${updatedAt.getFullYear()}/${String(updatedAt.getMonth() + 1).padStart(2, "0")}/${String(updatedAt.getDate()).padStart(2, "0")}`;
-        return <div className="text-right font-medium">{formatted}</div>;
+        const date = row.getValue("updatedAt") as string | Date | null
+        return <div className="text-sm text-muted-foreground">{formatDate(date)}</div>;
       },
       enableSorting: true,
     },

@@ -266,7 +266,8 @@ export const zhCN: Locale = {
       success: {
         title: "密码重置成功",
         description: "您的密码已经成功重置。",
-        backToSignin: "返回登录"
+        backToSignin: "返回登录",
+        goToSignIn: "返回登录"
       },
       errors: {
         invalidPassword: "密码长度至少为8个字符",
@@ -384,7 +385,13 @@ export const zhCN: Locale = {
         },
         actions: {
           editUser: "编辑用户",
-          deleteUser: "删除用户"
+          deleteUser: "删除用户",
+          clickToCopy: "点击复制"
+        },
+        sort: {
+          ascending: "升序排列",
+          descending: "降序排列",
+          none: "取消排序"
         },
         noResults: "未找到用户",
         search: {
@@ -492,7 +499,8 @@ export const zhCN: Locale = {
           refunded: "已退款",
           canceled: "已取消",
           stripe: "Stripe",
-          wechat: "微信支付"
+          wechat: "微信支付",
+          creem: "Creem"
         },
         columns: {
           id: "订单ID",
@@ -511,6 +519,11 @@ export const zhCN: Locale = {
           openMenu: "打开菜单",
           actions: "操作",
           clickToCopy: "点击复制"
+        },
+        sort: {
+          ascending: "升序排列",
+          descending: "降序排列",
+          none: "取消排序"
         }
       },
       status: {
@@ -551,6 +564,9 @@ export const zhCN: Locale = {
           clear: "清除",
           allStatuses: "所有状态",
           allProviders: "所有提供商",
+          stripe: "Stripe",
+          creem: "Creem",
+          wechat: "微信支付",
           userEmail: "用户邮箱",
           subscriptionId: "订阅ID",
           userId: "用户ID",
@@ -603,6 +619,11 @@ export const zhCN: Locale = {
           viewSubscription: "查看订阅",
           cancelSubscription: "取消订阅",
           clickToCopy: "点击复制"
+        },
+        sort: {
+          ascending: "升序排列",
+          descending: "降序排列",
+          none: "取消排序"
         }
       },
       status: {

@@ -117,24 +117,7 @@ export default function UserPage({ params }: UserPageProps) {
 
     try {
       if (isEditMode && id) {
-        // Update user
-        await authClientReact.admin.setRole({
-          userId: id,
-          role: data.role!,
-        });
-
-        if (data.banned) {
-          await authClientReact.admin.banUser({
-            userId: id,
-            banReason: data.banReason || 'No reason provided',
-          });
-        } else {
-          await authClientReact.admin.unbanUser({
-            userId: id,
-          });
-        }
-
-        // Other updates through your API
+        // Update user through API (handles all fields including role and ban status)
         await fetch(`/api/users/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },

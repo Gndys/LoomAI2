@@ -3,29 +3,33 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, Copy, ExternalLink, RefreshCw, ArrowUp, ArrowDown } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { useTranslation } from "@/hooks/use-translation"
 
 export type Subscription = {
   id: string
-  userId: string
-  planId: string
+  userId: string | null
+  planId: string | null
   status: string
   paymentType: string
   stripeCustomerId?: string | null
   stripeSubscriptionId?: string | null
-  periodStart: string | Date
-  periodEnd: string | Date
+  creemCustomerId?: string | null
+  creemSubscriptionId?: string | null
+  periodStart: string | Date | null
+  periodEnd: string | Date | null
   cancelAtPeriodEnd?: boolean | null
-  createdAt: string | Date
-  updatedAt?: string | Date
+  metadata?: any
+  createdAt: string | Date | null
+  updatedAt?: string | Date | null
   // 关联的用户信息
   userName?: string | null
   userEmail?: string | null
@@ -54,9 +58,79 @@ const getPaymentTypeBadge = (paymentType: string, t: any) => {
   return <Badge variant={config.variant}>{config.label}</Badge>
 }
 
-const formatDate = (date: string | Date) => {
+const formatDate = (date: string | Date | null) => {
+  if (!date) return 'N/A'
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString()
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+const formatDateTime = (date: string | Date | null) => {
+  if (!date) return 'N/A'
+  const d = typeof date === 'string' ? new Date(date) : date
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const getProviderDisplay = (subscription: Subscription) => {
+  if (subscription.stripeCustomerId || subscription.stripeSubscriptionId) {
+    return 'Stripe'
+  }
+  if (subscription.creemCustomerId || subscription.creemSubscriptionId) {
+    return 'Creem'
+  }
+  // Default to WeChat for unknown providers
+  return 'WeChat'
+}
+
+// Sortable header component
+const SortableHeader = ({ column, title, t }: { column: any, title: string, t: any }) => {
+  const sortDirection = column.getIsSorted()
+  
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="h-auto p-0 font-medium hover:bg-transparent hover:text-accent-foreground flex items-center"
+        >
+          {title}
+          <div className="ml-2 flex flex-col">
+            {sortDirection === "asc" ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : sortDirection === "desc" ? (
+              <ArrowDown className="h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="h-3 w-3" />
+            )}
+          </div>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
+          <ArrowUp className="mr-2 h-4 w-4" />
+          {t.admin.subscriptions.table.sort.ascending}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
+          <ArrowDown className="mr-2 h-4 w-4" />
+          {t.admin.subscriptions.table.sort.descending}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => column.clearSorting()}>
+          <ArrowUpDown className="mr-2 h-4 w-4" />
+          {t.admin.subscriptions.table.sort.none}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 export const useSubscriptionColumns = (): ColumnDef<Subscription>[] => {
@@ -66,11 +140,49 @@ export const useSubscriptionColumns = (): ColumnDef<Subscription>[] => {
     {
       accessorKey: "id",
       header: t.admin.subscriptions.table.columns.id,
-      cell: ({ row }) => (
-        <div className="font-mono text-sm max-w-[100px] truncate" title={row.getValue("id")}>
-          {row.getValue("id")}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const id = row.getValue("id") as string
+        
+        const copyToClipboard = async () => {
+          try {
+            await navigator.clipboard.writeText(id)
+            console.log('Subscription ID copied to clipboard:', id)
+          } catch (err) {
+            console.error('Failed to copy Subscription ID:', err)
+          }
+        }
+        
+        return (
+          <div className="group relative">
+            <div 
+              className="font-mono text-sm max-w-[100px] truncate cursor-pointer"
+              title={id}
+              onClick={copyToClipboard}
+            >
+              #{id.slice(-8)}
+            </div>
+            
+            {/* Tooltip */}
+            <div className="absolute z-50 hidden group-hover:block top-full left-0 pt-1">
+              <div className="bg-popover text-popover-foreground shadow-md rounded-md border p-2 text-xs font-mono min-w-max">
+                <div className="flex items-center gap-2">
+                  <span className="select-all">{id}</span>
+                  <button 
+                    className="p-1 hover:bg-accent rounded"
+                    onClick={copyToClipboard}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {t.admin.subscriptions.table.actions.clickToCopy}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      },
+      enableSorting: false,
     },
     {
       accessorKey: "userEmail",
@@ -80,27 +192,30 @@ export const useSubscriptionColumns = (): ColumnDef<Subscription>[] => {
         const name = row.original.userName
         return (
           <div className="max-w-[150px]">
-            <div className="font-medium truncate" title={name || 'N/A'}>
-              {name || 'N/A'}
+            <div className="font-medium truncate text-foreground" title={name || t.common.notAvailable}>
+              {name || t.common.notAvailable}
             </div>
-            <div className="text-sm text-gray-500 truncate" title={email || 'N/A'}>
-              {email || 'N/A'}
+            <div className="text-sm text-muted-foreground truncate" title={email || t.common.notAvailable}>
+              {email || t.common.notAvailable}
             </div>
           </div>
         )
       },
+      enableHiding: false,
     },
     {
       accessorKey: "planId",
       header: t.admin.subscriptions.table.columns.plan,
-      cell: ({ row }) => (
-        <div className="font-medium">{row.getValue("planId")}</div>
-      ),
+      cell: ({ row }) => {
+        const planId = row.getValue("planId") as string
+        return <div className="font-medium">{planId || t.common.notAvailable}</div>
+      },
     },
     {
       accessorKey: "status",
       header: t.admin.subscriptions.table.columns.status,
       cell: ({ row }) => getStatusBadge(row.getValue("status"), t),
+      enableHiding: false,
     },
     {
       accessorKey: "paymentType",
@@ -108,30 +223,56 @@ export const useSubscriptionColumns = (): ColumnDef<Subscription>[] => {
       cell: ({ row }) => getPaymentTypeBadge(row.getValue("paymentType"), t),
     },
     {
-      accessorKey: "periodStart",
-      header: t.admin.subscriptions.table.columns.period,
+      id: "provider",
+      header: t.admin.subscriptions.table.columns.provider,
       cell: ({ row }) => {
-        const startDate = row.getValue("periodStart") as string | Date
-        const endDate = row.original.periodEnd
+        const provider = getProviderDisplay(row.original)
+        return <div className="font-medium">{provider}</div>
+      },
+      enableHiding: false,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "periodStart",
+      header: t.admin.subscriptions.table.columns.periodStart,
+      cell: ({ row }) => {
+        const startDate = row.getValue("periodStart") as string | Date | null
+        return <div className="text-sm text-muted-foreground">{formatDate(startDate)}</div>
+      },
+    },
+    {
+      accessorKey: "periodEnd",
+      header: t.admin.subscriptions.table.columns.periodEnd,
+      cell: ({ row }) => {
+        const endDate = row.getValue("periodEnd") as string | Date | null
+        return <div className="text-sm text-muted-foreground">{formatDate(endDate)}</div>
+      },
+    },
+    {
+      accessorKey: "cancelAtPeriodEnd",
+      header: t.admin.subscriptions.table.columns.cancelAtPeriodEnd,
+      cell: ({ row }) => {
+        const willCancel = row.getValue("cancelAtPeriodEnd") as boolean | null
         return (
-          <div className="text-sm">
-            <div>{formatDate(startDate)}</div>
-            <div className="text-gray-500">to {formatDate(endDate)}</div>
-          </div>
+          <Badge variant={willCancel ? "destructive" : "outline"}>
+            {willCancel ? t.common.yes : t.common.no}
+          </Badge>
         )
       },
     },
     {
       accessorKey: "createdAt",
-      header: t.admin.subscriptions.table.columns.createdAt,
+      header: ({ column }) => {
+        return <SortableHeader column={column} title={t.admin.subscriptions.table.columns.createdAt} t={t} />
+      },
       cell: ({ row }) => {
-        const date = row.getValue("createdAt") as string | Date
-        return <div>{formatDate(date)}</div>
+        const date = row.getValue("createdAt") as string | Date | null
+        return <div className="text-sm text-muted-foreground">{formatDateTime(date)}</div>
       },
     },
     {
       id: "actions",
-      header: t.admin.subscriptions.table.columns.actions,
+      header: () => <div className="text-center">{t.admin.subscriptions.table.columns.actions}</div>,
       cell: ({ row }) => {
         const subscription = row.original
 
@@ -139,18 +280,37 @@ export const useSubscriptionColumns = (): ColumnDef<Subscription>[] => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">{t.admin.subscriptions.table.actions.openMenu}</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{t.admin.subscriptions.table.columns.actions}</DropdownMenuLabel>
-              <DropdownMenuItem>{t.admin.subscriptions.table.actions.viewSubscription}</DropdownMenuItem>
-              <DropdownMenuItem>{t.admin.subscriptions.table.actions.cancelSubscription}</DropdownMenuItem>
+              <DropdownMenuLabel>{t.admin.subscriptions.table.actions.actions}</DropdownMenuLabel>
+              <DropdownMenuItem 
+                onClick={() => {
+                  // TODO: Implement view subscription functionality
+                  console.log('View subscription:', subscription.id)
+                }}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                {t.admin.subscriptions.table.actions.viewSubscription}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => {
+                  // TODO: Implement cancel functionality
+                  console.log('Cancel subscription:', subscription.id)
+                }}
+                disabled={subscription.status === 'canceled' || subscription.status === 'cancelled'}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {t.admin.subscriptions.table.actions.cancelSubscription}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )
       },
+      enableHiding: false,
+      enableSorting: false,
     },
   ]
 }
