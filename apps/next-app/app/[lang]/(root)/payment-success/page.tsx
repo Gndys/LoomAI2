@@ -92,7 +92,7 @@ export default function PaymentSuccessPage() {
 
         <div className="flex flex-col sm:flex-row gap-4 pt-6">
           <Button asChild>
-            <Link href="/dashboard/subscription">
+            <Link href="/dashboard">
               {t.payment.result.success.actions.viewSubscription}
             </Link>
           </Button>

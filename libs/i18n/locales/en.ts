@@ -738,23 +738,10 @@ export const en: Locale = {
     },
     management: {
       title: "Subscription Management",
-      help: {
-        title: "Need Help?",
-        description: "If you have any questions about your subscription or need assistance, please contact our support team.",
-        contactSupport: "Contact Support"
-      },
-      stripe: {
-        title: "Subscription Management",
-        description: "You can manage your subscription, payment methods, and billing history in the Stripe customer portal.",
-        manageSubscription: "Manage Subscription",
-        viewBilling: "View Billing History",
-        changePlan: "Change Plan",
-        redirecting: "Redirecting..."
-      },
-      lifetime: {
-        title: "Lifetime Membership",
-        description: "You are a lifetime member and can enjoy all premium features permanently."
-      }
+      description: "Manage your subscription, view billing history, and update payment methods through the customer portal.",
+      manageSubscription: "Manage Subscription",
+      changePlan: "Change Plan",
+      redirecting: "Redirecting..."
     },
     noSubscription: {
       title: "No Active Subscription Found",

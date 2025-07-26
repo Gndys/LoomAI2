@@ -745,23 +745,10 @@ export const zhCN: Locale = {
     },
     management: {
       title: "订阅管理",
-      help: {
-        title: "需要帮助？",
-        description: "如果您对订阅有任何问题或需要帮助，请联系我们的客户支持团队。",
-        contactSupport: "联系支持"
-      },
-      stripe: {
-        title: "订阅管理",
-        description: "您可以在 Stripe 客户门户中管理您的订阅、付款方式和账单历史。",
-        manageSubscription: "管理订阅",
-        viewBilling: "查看账单历史",
-        changePlan: "更改计划",
-        redirecting: "正在跳转..."
-      },
-      lifetime: {
-        title: "终身会员",
-        description: "您已经是我们的终身会员，可以永久享受所有高级功能。"
-      }
+      description: "通过客户门户管理您的订阅、查看账单历史和更新付款方式。",
+      manageSubscription: "管理订阅",
+      changePlan: "更改计划",
+      redirecting: "正在跳转..."
     },
     noSubscription: {
       title: "未找到有效订阅",

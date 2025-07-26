@@ -3,17 +3,18 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { 
-  Crown, 
   CreditCard, 
-  Calendar, 
-  CheckCircle,
-  XCircle,
-  Clock,
-  ExternalLink
+  CalendarIcon,
+  ExternalLink,
+  Package
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslation } from "@/hooks/use-translation";
+import { toast } from "sonner";
+import { config } from "@config";
 
 interface SubscriptionCardProps {
   // Props interface for subscription data if needed
@@ -23,6 +24,7 @@ export function SubscriptionCard({}: SubscriptionCardProps) {
   const { t, locale: currentLocale } = useTranslation();
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     async function fetchSubscriptionData() {
@@ -42,6 +44,55 @@ export function SubscriptionCard({}: SubscriptionCardProps) {
     fetchSubscriptionData();
   }, []);
 
+  // 打开客户门户（支持多个支付提供商）
+  const openCustomerPortal = async (provider?: string) => {
+    try {
+      setRedirecting(true);
+      const returnUrl = `${window.location.origin}/${currentLocale}/dashboard`;
+      
+      const response = await fetch('/api/subscription/portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          returnUrl,
+          provider // 可选：指定支付提供商，如果不指定则自动检测
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '无法打开客户门户');
+      }
+      
+      const { url } = await response.json();
+      
+      // 重定向到客户门户
+      window.location.href = url;
+    } catch (error) {
+      console.error('打开客户门户失败:', error);
+      toast.error(t.common.unexpectedError);
+      setRedirecting(false);
+    }
+  };
+
+
+
+  // 获取计划名称
+  const getPlanName = (planId: string) => {
+    const plan = config.payment.plans[planId as keyof typeof config.payment.plans];
+    if (!plan) return planId; // 如果找不到计划，则返回 planId
+    
+    // 使用当前语言的翻译
+    if (plan.i18n && plan.i18n[currentLocale]) {
+      return plan.i18n[currentLocale].name;
+    }
+    
+    // 如果没有当前语言的翻译，则使用默认名称
+    return plan.i18n[currentLocale]?.name || planId;
+  };
+
   // 格式化日期
   const formatDate = (dateString: string | Date) => {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
@@ -52,127 +103,136 @@ export function SubscriptionCard({}: SubscriptionCardProps) {
     });
   };
 
-  // 获取订阅状态显示
-  const getSubscriptionStatus = () => {
-    if (!subscriptionData) return null;
+  // 计算订阅期间已经过去的时间比例
+  const calculateProgress = () => {
+    if (!subscriptionData?.subscription) return 0;
     
-    if (subscriptionData.isLifetime) {
-      return {
-        text: t.dashboard.subscription.status.lifetime,
-        variant: 'default' as const,
-        icon: Crown
-      };
-    }
+    const start = new Date(subscriptionData.subscription.periodStart).getTime();
+    const end = new Date(subscriptionData.subscription.periodEnd).getTime();
+    const now = Date.now();
     
-    if (subscriptionData.hasSubscription) {
-      const status = subscriptionData.subscription?.status;
-      switch (status) {
-        case 'active':
-          return {
-            text: t.dashboard.subscription.status.active,
-            variant: 'default' as const,
-            icon: CheckCircle
-          };
-        case 'canceled':
-          return {
-            text: t.dashboard.subscription.status.canceled,
-            variant: 'secondary' as const,
-            icon: XCircle
-          };
-        case 'past_due':
-          return {
-            text: t.dashboard.subscription.status.pastDue,
-            variant: 'destructive' as const,
-            icon: Clock
-          };
-        default:
-          return {
-            text: status || t.dashboard.subscription.status.unknown,
-            variant: 'outline' as const,
-            icon: CreditCard
-          };
-      }
-    }
+    if (now >= end) return 100;
+    if (now <= start) return 0;
     
-    return {
-      text: t.dashboard.subscription.status.noSubscription,
-      variant: 'outline' as const,
-      icon: CreditCard
-    };
+    return Math.floor(((now - start) / (end - start)) * 100);
   };
+
+
 
   if (loading) {
     return (
-      <div>
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <CreditCard className="h-5 w-5" />
-          {t.dashboard.subscription.title}
-        </h3>
-        <div className="animate-pulse">
-          <div className="h-4 bg-muted rounded w-32 mb-2"></div>
-          <div className="h-4 bg-muted rounded w-48"></div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-center h-40">
+          <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full"></div>
         </div>
       </div>
     );
   }
 
-  const subscriptionStatus = getSubscriptionStatus();
+  // 如果用户没有有效订阅，显示升级选项
+  if (!subscriptionData?.hasSubscription && !subscriptionData?.isLifetime) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.subscription.noSubscription.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">{t.subscription.noSubscription.description}</p>
+            <Button asChild>
+              <Link href={`/${currentLocale}/pricing`}>{t.subscription.noSubscription.viewPlans}</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const isLifetime = subscriptionData.isLifetime;
+  const sub = subscriptionData.subscription;
+  const planId = sub?.planId || '';
 
   return (
-    <div>
-      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-        <CreditCard className="h-5 w-5" />
-        {t.dashboard.subscription.title}
-      </h3>
-      <div className="space-y-4">
-        {subscriptionStatus && (
-          <div className="flex items-center gap-2">
-            <subscriptionStatus.icon className="h-4 w-4" />
-            <Badge variant={subscriptionStatus.variant}>
-              {subscriptionStatus.text}
-            </Badge>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t.subscription.title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* 订阅概览部分 */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Package className="h-5 w-5 mr-2 text-primary" />
+              <span className="font-medium">{t.subscription.overview.planType}</span>
+            </div>
+            <span className="font-medium text-primary">
+              {isLifetime ? t.subscription.management.lifetime.title : getPlanName(planId)}
+            </span>
           </div>
-        )}
-
-        {subscriptionData?.isLifetime ? (
-          <p className="text-muted-foreground">
-            {t.dashboard.subscription.lifetimeAccess}
-          </p>
-        ) : subscriptionData?.hasSubscription ? (
-          <div>
-            {subscriptionData.subscription?.periodEnd && (
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">
-                  {t.dashboard.subscription.expires}
-                </span>
-                <span>{formatDate(subscriptionData.subscription.periodEnd)}</span>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <CreditCard className="h-5 w-5 mr-2 text-primary" />
+              <span className="font-medium">{t.subscription.overview.status}</span>
+            </div>
+            <span className="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+              {t.subscription.overview.active}
+            </span>
+          </div>
+          
+          {!isLifetime && sub && (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <CalendarIcon className="h-5 w-5 mr-2 text-primary" />
+                  <span className="font-medium">{t.subscription.overview.startDate}</span>
+                </div>
+                <span>{formatDate(sub.periodStart)}</span>
               </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-muted-foreground">
-            {t.dashboard.subscription.noActiveSubscription}
-          </p>
-        )}
-
-        <div>
-          {subscriptionData?.hasSubscription || subscriptionData?.isLifetime ? (
-            <Button variant="outline" asChild>
-              <Link href={`/${currentLocale}/dashboard/subscription`}>
-                {t.dashboard.subscription.manageSubscription}
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          ) : (
-            <Button asChild>
-              <Link href={`/${currentLocale}/pricing`}>
-                {t.dashboard.subscription.viewPlans}
-              </Link>
-            </Button>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <CalendarIcon className="h-5 w-5 mr-2 text-primary" />
+                  <span className="font-medium">{t.subscription.overview.endDate}</span>
+                </div>
+                <span>{formatDate(sub.periodEnd)}</span>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{t.subscription.overview.progress}</span>
+                  <span>{calculateProgress()}%</span>
+                </div>
+                <Progress value={calculateProgress()} className="h-2" />
+              </div>
+            </>
           )}
         </div>
-      </div>
-    </div>
+
+        {/* 分割线 */}
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-medium mb-4">{t.subscription.management.title}</h3>
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              {t.subscription.management.description}
+            </p>
+            <div className="flex gap-3">
+              {/* 只有Stripe和Creem用户才显示管理按钮，微信支付用户没有客户门户 */}
+              {(sub?.stripeCustomerId || sub?.creemCustomerId) && (
+                <Button 
+                  variant="default" 
+                  className="flex items-center gap-1"
+                  onClick={() => openCustomerPortal()}
+                  disabled={redirecting}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  {redirecting ? t.subscription.management.redirecting : t.subscription.management.manageSubscription}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 } 

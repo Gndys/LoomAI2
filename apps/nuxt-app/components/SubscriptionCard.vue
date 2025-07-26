@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { 
-  Crown, 
   CreditCard, 
-  Calendar, 
-  CheckCircle,
-  XCircle,
-  Clock,
-  ExternalLink
+  CalendarIcon,
+  ExternalLink,
+  Package
 } from 'lucide-vue-next'
 
 const { t, locale } = useI18n()
@@ -15,6 +12,7 @@ const localePath = useLocalePath()
 // Subscription data state
 const subscriptionData = ref<any>(null)
 const loading = ref(true)
+const redirecting = ref(false)
 
 /**
  * Fetch subscription data from API
@@ -31,32 +29,41 @@ const fetchSubscriptionData = async () => {
 }
 
 /**
- * Navigate to subscription portal
+ * Open customer portal (auto-detects provider)
  */
-const navigateToPortal = async () => {
+const openCustomerPortal = async (provider?: string) => {
   try {
-    loading.value = true
+    redirecting.value = true
+    const returnUrl = `${window.location.origin}/dashboard`
+    
     const { url } = await $fetch('/api/subscription/portal', {
       method: 'POST',
-      body: {}
+      body: { 
+        returnUrl,
+        provider // 可选：指定支付提供商，如果不指定则自动检测
+      }
     })
     
-    if (url) {
-      // Open in new tab for better UX
-      window.open(url, '_blank')
-    }
+    // 重定向到客户门户
+    window.location.href = url
   } catch (error) {
-    console.error('Failed to create portal session:', error)
-    // You could add toast notification here
-  } finally {
-    loading.value = false
+    console.error('打开客户门户失败:', error)
+    // 显示错误提示
+    redirecting.value = false
   }
 }
 
 /**
+ * Get plan name from config
+ */
+const getPlanName = (planId: string) => {
+  // This would need to be imported from your config
+  // For now, return the planId as fallback
+  return planId
+}
+
+/**
  * Format date according to user locale
- * @param dateString - Date string or Date object
- * @returns Formatted date string
  */
 const formatDate = (dateString: string | Date) => {
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString
@@ -69,56 +76,25 @@ const formatDate = (dateString: string | Date) => {
 }
 
 /**
- * Get subscription status display configuration
- * @returns Status display object with text, variant, and icon
+ * Calculate subscription progress percentage
  */
-const subscriptionStatus = computed(() => {
-  if (!subscriptionData.value) return null
+const calculateProgress = () => {
+  if (!subscriptionData.value?.subscription) return 0
   
-  if (subscriptionData.value.isLifetime) {
-    return {
-      text: t('dashboard.subscription.status.lifetime'),
-      variant: 'default' as const,
-      icon: Crown
-    }
-  }
+  const start = new Date(subscriptionData.value.subscription.periodStart).getTime()
+  const end = new Date(subscriptionData.value.subscription.periodEnd).getTime()
+  const now = Date.now()
   
-  if (subscriptionData.value.hasSubscription) {
-    const status = subscriptionData.value.subscription?.status
-    switch (status) {
-      case 'active':
-        return {
-          text: t('dashboard.subscription.status.active'),
-          variant: 'default' as const,
-          icon: CheckCircle
-        }
-      case 'canceled':
-        return {
-          text: t('dashboard.subscription.status.canceled'),
-          variant: 'secondary' as const,
-          icon: XCircle
-        }
-      case 'past_due':
-        return {
-          text: t('dashboard.subscription.status.pastDue'),
-          variant: 'destructive' as const,
-          icon: Clock
-        }
-      default:
-        return {
-          text: status || t('dashboard.subscription.status.unknown'),
-          variant: 'outline' as const,
-          icon: CreditCard
-        }
-    }
-  }
+  if (now >= end) return 100
+  if (now <= start) return 0
   
-  return {
-    text: t('dashboard.subscription.status.noSubscription'),
-    variant: 'outline' as const,
-    icon: CreditCard
-  }
-})
+  return Math.floor(((now - start) / (end - start)) * 100)
+}
+
+// Computed properties
+const isLifetime = computed(() => subscriptionData.value?.isLifetime)
+const sub = computed(() => subscriptionData.value?.subscription)
+const planId = computed(() => sub.value?.planId || '')
 
 // Fetch data when component mounts
 onMounted(() => {
@@ -127,66 +103,105 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
-    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-      <CreditCard class="h-5 w-5" />
-      {{ t('dashboard.subscription.title') }}
-    </h3>
-    
-    <!-- Loading state -->
-    <div v-if="loading" class="animate-pulse">
-      <div class="h-4 bg-muted rounded w-32 mb-2"></div>
-      <div class="h-4 bg-muted rounded w-48"></div>
-    </div>
-    
-    <!-- Subscription content -->
-    <div v-else class="space-y-4">
-      <div v-if="subscriptionStatus" class="flex items-center gap-2">
-        <component :is="subscriptionStatus.icon" class="h-4 w-4" />
-        <Badge :variant="subscriptionStatus.variant">
-          {{ subscriptionStatus.text }}
-        </Badge>
-      </div>
-
-      <!-- Lifetime membership -->
-      <p v-if="subscriptionData?.isLifetime" class="text-muted-foreground">
-        {{ t('dashboard.subscription.lifetimeAccess') }}
-      </p>
-      
-      <!-- Active subscription -->
-      <div v-else-if="subscriptionData?.hasSubscription">
-        <div v-if="subscriptionData.subscription?.periodEnd" class="flex items-center gap-2 text-sm">
-          <Calendar class="h-4 w-4 text-muted-foreground" />
-          <span class="text-muted-foreground">
-            {{ t('dashboard.subscription.expires') }}
-          </span>
-          <span>{{ formatDate(subscriptionData.subscription.periodEnd) }}</span>
-        </div>
-      </div>
-      
-      <!-- No subscription -->
-      <p v-else class="text-muted-foreground">
-        {{ t('dashboard.subscription.noActiveSubscription') }}
-      </p>
-
-      <!-- Action buttons -->
-      <div>
-        <Button 
-          v-if="subscriptionData?.hasSubscription || subscriptionData?.isLifetime"
-          variant="outline" 
-          @click="navigateToPortal"
-          :disabled="loading"
-        >
-          {{ t('dashboard.subscription.manageSubscription') }}
-          <ExternalLink class="ml-2 h-4 w-4" />
-        </Button>
-        
-        <Button v-else :as-child="true">
-          <NuxtLink :to="localePath('/pricing')">
-            {{ t('dashboard.subscription.viewPlans') }}
-          </NuxtLink>
-        </Button>
-      </div>
+  <!-- Loading state -->
+  <div v-if="loading" class="space-y-4">
+    <div class="flex items-center justify-center h-40">
+      <div class="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full"></div>
     </div>
   </div>
+
+  <!-- No subscription state -->
+  <div v-else-if="!subscriptionData?.hasSubscription && !subscriptionData?.isLifetime" class="space-y-6">
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ t('subscription.noSubscription.title') }}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p class="mb-4">{{ t('subscription.noSubscription.description') }}</p>
+        <Button :as-child="true">
+          <NuxtLink :to="localePath('/pricing')">{{ t('subscription.noSubscription.viewPlans') }}</NuxtLink>
+        </Button>
+      </CardContent>
+    </Card>
+  </div>
+
+  <!-- Subscription details -->
+  <Card v-else>
+    <CardHeader>
+      <CardTitle>{{ t('subscription.title') }}</CardTitle>
+    </CardHeader>
+    <CardContent class="space-y-6">
+      <!-- 订阅概览部分 -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <Package class="h-5 w-5 mr-2 text-primary" />
+            <span class="font-medium">{{ t('subscription.overview.planType') }}</span>
+          </div>
+          <span class="font-medium text-primary">
+            {{ isLifetime ? t('dashboard.subscription.status.lifetime') : getPlanName(planId) }}
+          </span>
+        </div>
+        
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <CreditCard class="h-5 w-5 mr-2 text-primary" />
+            <span class="font-medium">{{ t('subscription.overview.status') }}</span>
+          </div>
+          <span class="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+            {{ t('subscription.overview.active') }}
+          </span>
+        </div>
+        
+        <template v-if="!isLifetime && sub">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <CalendarIcon class="h-5 w-5 mr-2 text-primary" />
+              <span class="font-medium">{{ t('subscription.overview.startDate') }}</span>
+            </div>
+            <span>{{ formatDate(sub.periodStart) }}</span>
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <CalendarIcon class="h-5 w-5 mr-2 text-primary" />
+              <span class="font-medium">{{ t('subscription.overview.endDate') }}</span>
+            </div>
+            <span>{{ formatDate(sub.periodEnd) }}</span>
+          </div>
+          
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-medium">{{ t('subscription.overview.progress') }}</span>
+              <span>{{ calculateProgress() }}%</span>
+            </div>
+            <Progress :model-value="calculateProgress()" class="h-2" />
+          </div>
+        </template>
+      </div>
+
+      <!-- 分割线 -->
+      <div class="border-t pt-6">
+        <h3 class="text-lg font-medium mb-4">{{ t('subscription.management.title') }}</h3>
+        <div class="rounded-lg border p-4">
+          <p class="text-sm text-muted-foreground mb-4">
+            {{ t('subscription.management.description') }}
+          </p>
+          <div class="flex gap-3">
+            <!-- 只有Stripe和Creem用户才显示管理按钮，微信支付用户没有客户门户 -->
+            <Button 
+              v-if="sub?.stripeCustomerId || sub?.creemCustomerId"
+              variant="default" 
+              class="flex items-center gap-1"
+              @click="openCustomerPortal()"
+              :disabled="redirecting"
+            >
+              <ExternalLink class="h-4 w-4" />
+              {{ redirecting ? t('subscription.management.redirecting') : t('subscription.management.manageSubscription') }}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
 </template> 
