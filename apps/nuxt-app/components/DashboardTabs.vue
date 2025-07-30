@@ -102,7 +102,7 @@ const handleCancelEdit = () => {
 </script>
 
 <template>
-  <Card>
+  <Card class="py-0">
     <CardContent class="p-0">
       <div class="flex min-h-[600px] overflow-hidden">
         <!-- Left sidebar navigation - fixed width -->

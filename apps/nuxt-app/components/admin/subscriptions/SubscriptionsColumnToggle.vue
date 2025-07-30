@@ -55,7 +55,7 @@ const props = defineProps<Props>()
 const { t } = useI18n()
 
 // Hidden column IDs that should not be toggleable
-const hiddenColumnIds = ['id', 'userEmail', 'status', 'provider', 'actions']
+const hiddenColumnIds = ['userEmail', 'status', 'provider', 'actions']
 
 // Filter columns to only show toggleable ones
 const filteredColumns = computed(() => {
@@ -70,6 +70,7 @@ const filteredColumns = computed(() => {
 // Get display name for column
 const getColumnDisplayName = (columnId: string): string => {
   const columnMap: Record<string, string> = {
+    id: t('admin.subscriptions.table.columns.id'),
     planId: t('admin.subscriptions.table.columns.plan'),
     paymentType: t('admin.subscriptions.table.columns.paymentType'),
     periodStart: t('admin.subscriptions.table.columns.periodStart'),

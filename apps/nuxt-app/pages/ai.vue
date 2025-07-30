@@ -167,6 +167,8 @@ import { useChat } from '@ai-sdk/vue'
 import { Send, X, Loader2 } from 'lucide-vue-next'
 import VueMarkdownRender from 'vue-markdown-render'
 import markdownItHighlightjs from 'markdown-it-highlightjs'
+import { toast } from 'vue-sonner'
+import { authClientVue } from '@libs/auth/authClient'
 //import 'vue-markdown-render/dist/style.css'
 
 // SEO and metadata
@@ -179,14 +181,14 @@ useSeoMeta({
 })
 
 // Local reactive data
-const selectedModel = ref('openai:gpt-4o')
+const selectedModel = ref('qwen:qwen-turbo')
 const messagesContainer = ref<HTMLElement>()
 const scrollAnchor = ref<HTMLElement>()
 const textareaRef = ref<HTMLTextAreaElement>()
+const hasSubscription = ref(true) // 默认允许，避免闪烁
 
 // Provider models configuration
 const providerModels = {
-  openai: ['gpt-4o', 'gpt-3.5-turbo', 'gpt-3.5'],
   qwen: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
   deepseek: ['deepseek-chat', 'deepseek-coder'],
 }
@@ -245,10 +247,41 @@ const scrollToBottom = async () => {
 const reloadConversation = () => {
   messages.value = []
 }
-// Enhanced form submission with custom body
+
+// Check user subscription status once on page load
+const checkSubscriptionStatus = async () => {
+  try {
+    const response = await $fetch('/api/subscription/status', {
+      method: 'GET'
+    })
+    hasSubscription.value = response && response.hasSubscription
+  } catch (error) {
+    console.error('Failed to check subscription status:', error)
+    hasSubscription.value = false
+  }
+}
+
+// Enhanced form submission with subscription check
 const handleSubmit = (event: Event) => {
   event.preventDefault()
   if (!input.value.trim() || isLoading.value) return
+  
+  // Check subscription status (cached from page load)
+  if (!hasSubscription.value) {
+    // Show permission denied toast
+    toast.error($t('ai.chat.errors.subscriptionRequired'), {
+      description: $t('ai.chat.errors.subscriptionRequiredDescription'),
+      action: {
+        label: $t('common.viewPlans'),
+        onClick: () => {
+          // Navigate to pricing page
+          const localePath = useLocalePath()
+          navigateTo(localePath('/pricing'))
+        }
+      }
+    })
+    return
+  }
   
   // Reset textarea height
   if (textareaRef.value) {
@@ -281,6 +314,9 @@ watch(messages, scrollToBottom, { deep: true })
 
 // Initialize on mount
 onMounted(() => {
+  // Check subscription status once on page load
+  checkSubscriptionStatus()
+  
   // Focus on input
   if (textareaRef.value) {
     textareaRef.value.focus()

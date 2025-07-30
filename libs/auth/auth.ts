@@ -118,12 +118,12 @@ export const auth = betterAuth({
       
       try {
         // 使用我们的邮件模块发送重置密码邮件
-        // await sendResetPasswordEmail(user.email, {
-        //   name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
-        //   reset_url: url,
-        //   expiry_hours: 1,
-        //   locale: locale as 'en' | 'zh-CN' // 类型转换
-        // });
+        await sendResetPasswordEmail(user.email, {
+          name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
+          reset_url: url,
+          expiry_hours: 1,
+          locale: locale as 'en' | 'zh-CN' // 类型转换
+        });
         
         console.log(`Reset password email sent to ${user.email} in ${locale} language`);
       } catch (error) {
@@ -138,10 +138,14 @@ export const auth = betterAuth({
       const { locale, lastSegment } = getRefererInfo(request);
       console.log('headers', request?.headers?.get('referer'))
       
+      // 检查是否是用户主动重发请求
+      const isUserInitiated = request?.headers?.get('x-resend-source') === 'user-initiated';
+      
       // 特殊处理：如果是从登录页面（signin）发起的验证，不发送邮件
+      // 但如果是用户主动重发请求，则允许发送
       // 这是因为 better-auth 在用户未验证时登录会自动触发验证邮件发送
       // 但我们希望只在注册时发送验证邮件
-      if (lastSegment === 'signin') {
+      if (lastSegment === 'signin' && !isUserInitiated) {
         console.log('Skipping verification email for signin request');
         return;
       }
@@ -156,12 +160,12 @@ export const auth = betterAuth({
       
       try {
         // 使用我们的邮件模块发送验证邮件
-        // await sendVerificationEmail(user.email, {
-        //   name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
-        //   verification_url: url,
-        //   expiry_hours: 1,
-        //   locale: locale as 'en' | 'zh-CN' // 类型转换
-        // });
+        await sendVerificationEmail(user.email, {
+          name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
+          verification_url: url,
+          expiry_hours: 1,
+          locale: locale as 'en' | 'zh-CN' // 类型转换
+        });
         
         console.log(`Verification email sent to ${user.email} in ${locale} language`);
       } catch (error) {
@@ -222,22 +226,22 @@ export const auth = betterAuth({
         }
         
         try {
-          // // Implement sending OTP code via SMS
-          // const result = await sendSMS({
-          //   to: phoneNumber,
-          //   templateParams: {
-          //     code
-          //   },
-          //   provider: 'aliyun'
-          // });
+          // Implement sending OTP code via SMS
+          const result = await sendSMS({
+            to: phoneNumber,
+            templateParams: {
+              code
+            },
+            provider: 'aliyun'
+          });
           
-          // console.log('SMS send result:', result);
+          console.log('SMS send result:', result);
           
-          // if (!result.success) {
-          //   const errorMessage = result.error?.message || 'Failed to send SMS';
-          //   console.error('SMS sending failed:', errorMessage);
-          //   throw new Error(errorMessage);
-          // }
+          if (!result.success) {
+            const errorMessage = result.error?.message || 'Failed to send SMS';
+            console.error('SMS sending failed:', errorMessage);
+            throw new Error(errorMessage);
+          }
           
           console.log(`OTP ${code} sent successfully to ${phoneNumber}`);
           // 成功时不需要返回值，better-auth会自动处理

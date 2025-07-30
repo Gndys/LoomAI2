@@ -269,61 +269,61 @@ export const columns: ColumnDef<Order>[] = [
       return h('div', { class: 'text-sm text-muted-foreground' }, formatDate(date))
     },
   },
-  {
-    id: 'actions',
-    header: () => {
-      const { t } = useI18n()
-      return h('div', { class: 'text-center' }, t('admin.orders.table.columns.actions'))
-    },
-    enableHiding: false,
-    cell: ({ row, table }) => {
-      const { t } = useI18n()
-      const order = row.original
+  // {
+  //   id: 'actions',
+  //   header: () => {
+  //     const { t } = useI18n()
+  //     return h('div', { class: 'text-center' }, t('admin.orders.table.columns.actions'))
+  //   },
+  //   enableHiding: false,
+  //   cell: ({ row, table }) => {
+  //     const { t } = useI18n()
+  //     const order = row.original
 
-      return h(DropdownMenu, {}, {
-        default: () => [
-          h(DropdownMenuTrigger, { asChild: true }, {
-            default: () => h(Button, { 
-              variant: 'ghost', 
-              class: 'h-8 w-8 p-0' 
-            }, {
-              default: () => [
-                h('span', { class: 'sr-only' }, t('admin.orders.table.actions.openMenu')),
-                h(MoreHorizontal, { class: 'h-4 w-4' })
-              ]
-            })
-          }),
-          h(DropdownMenuContent, { align: 'end' }, {
-            default: () => [
-              h(DropdownMenuLabel, {}, { default: () => t('admin.orders.table.actions.actions') }),
-              h(DropdownMenuItem, { 
-                onClick: () => {
-                  // TODO: Implement view order functionality
-                  console.log('View order:', order.id)
-                }
-              }, {
-                default: () => [
-                  h(ExternalLink, { class: 'mr-2 h-4 w-4' }),
-                  t('admin.orders.table.actions.viewOrder')
-                ]
-              }),
-              h(DropdownMenuItem, { 
-                onClick: () => {
-                  // TODO: Implement refund functionality
-                  console.log('Refund order:', order.id)
-                },
-                disabled: order.status !== 'paid'
-              }, {
-                default: () => [
-                  h(RefreshCw, { class: 'mr-2 h-4 w-4' }),
-                  t('admin.orders.table.actions.refundOrder')
-                ]
-              })
-            ]
-          })
-        ]
-      })
-    },
-    enableSorting: false,
-  },
+  //     return h(DropdownMenu, {}, {
+  //       default: () => [
+  //         h(DropdownMenuTrigger, { asChild: true }, {
+  //           default: () => h(Button, { 
+  //             variant: 'ghost', 
+  //             class: 'h-8 w-8 p-0' 
+  //           }, {
+  //             default: () => [
+  //               h('span', { class: 'sr-only' }, t('admin.orders.table.actions.openMenu')),
+  //               h(MoreHorizontal, { class: 'h-4 w-4' })
+  //             ]
+  //           })
+  //         }),
+  //         h(DropdownMenuContent, { align: 'end' }, {
+  //           default: () => [
+  //             h(DropdownMenuLabel, {}, { default: () => t('admin.orders.table.actions.actions') }),
+  //             h(DropdownMenuItem, { 
+  //               onClick: () => {
+  //                 // TODO: Implement view order functionality
+  //                 console.log('View order:', order.id)
+  //               }
+  //             }, {
+  //               default: () => [
+  //                 h(ExternalLink, { class: 'mr-2 h-4 w-4' }),
+  //                 t('admin.orders.table.actions.viewOrder')
+  //               ]
+  //             }),
+  //             h(DropdownMenuItem, { 
+  //               onClick: () => {
+  //                 // TODO: Implement refund functionality
+  //                 console.log('Refund order:', order.id)
+  //               },
+  //               disabled: order.status !== 'paid'
+  //             }, {
+  //               default: () => [
+  //                 h(RefreshCw, { class: 'mr-2 h-4 w-4' }),
+  //                 t('admin.orders.table.actions.refundOrder')
+  //               ]
+  //             })
+  //           ]
+  //         })
+  //       ]
+  //     })
+  //   },
+  //   enableSorting: false,
+  // },
 ] 

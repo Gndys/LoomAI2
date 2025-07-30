@@ -34,9 +34,36 @@
 
 # 第一部分：手动界面测试
 
+## 公开功能测试 (无需登录)
+
+### 1.1 页面访问测试
+
+#### 测试步骤：
+1. **打开浏览器**，清除所有 cookies 和缓存
+2. **访问以下页面**，确认都能正常访问：
+
+| 页面 | URL | 预期结果 |
+|------|-----|----------|
+| 首页 | `http://localhost:7001/zh-CN/` | ✅ 正常显示首页内容 |
+| 定价页面 | `http://localhost:7001/zh-CN/pricing` | ✅ 显示定价信息 |
+| 登录页面 | `http://localhost:7001/zh-CN/signin` | ✅ 显示登录表单 |
+| 注册页面 | `http://localhost:7001/zh-CN/signup` | ✅ 显示注册表单 |
+| 忘记密码 | `http://localhost:7001/zh-CN/forgot-password` | ✅ 显示密码重置表单 |
+| 重置密码 | `http://localhost:7001/zh-CN/reset-password` | ✅ 显示密码重置表单 |
+| 手机验证 | `http://localhost:7001/zh-CN/cellphone` | ✅ 显示手机验证页面 |
+| 微信登录 | `http://localhost:7001/zh-CN/wechat` | ✅ 显示微信登录页面 |
+
+3. **尝试访问受保护页面**，确认会被重定向：
+
+| 页面 | URL | 预期结果 |
+|------|-----|----------|
+| 用户仪表板 | `http://localhost:7001/zh-CN/dashboard` | ❌ 重定向到 `/zh-CN/signin` |
+| AI 功能 | `http://localhost:7001/zh-CN/ai` | ❌ 重定向到 `/zh-CN/signin` |
+| 管理员面板 | `http://localhost:7001/zh-CN/admin` | ❌ 返回 403 或重定向 |
 ## 📱 1. 用户认证流程测试
 
-### 1.1 用户注册流程
+### 1.1 用户注册流程 
+
 **测试步骤**：
 1. 访问 `http://localhost:7001/zh-CN/signup`
 2. 填写注册信息（邮箱、密码、姓名）
@@ -95,6 +122,13 @@
 
 **预期结果**：
 - ✅ 重定向到 OAuth 授权页面
+- ✅ 授权成功后返回应用并登录
+
+### 1.6 微信登录
+1. 访问 `http://localhost:7001/zh-CN/wechat`
+2. 扫码完成登录
+
+**预期结果**：
 - ✅ 授权成功后返回应用并登录
 
 ## 💳 2. 支付和订阅流程测试

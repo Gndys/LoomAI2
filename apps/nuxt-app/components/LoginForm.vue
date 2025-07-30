@@ -14,7 +14,6 @@
       :email="userEmail"
       @close="showResendDialog = false"
     />
-    
     <form @submit="onSubmit" class="flex flex-col gap-4">
       <div class="grid gap-6">
         <!-- Email input -->

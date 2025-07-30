@@ -13,6 +13,7 @@ export const zhCN: Locale = {
     loading: "加载中...",
     unexpectedError: "发生了意外错误",
     notAvailable: "不可用",
+    viewPlans: "查看计划",
     yes: "是",
     no: "否",
     theme: {
@@ -1064,7 +1065,8 @@ export const zhCN: Locale = {
         networkError: "网络错误，请检查网络连接。",
         invalidResponse: "AI 响应无效，请重试。",
         rateLimited: "请求过于频繁，请稍后再试。",
-        subscriptionRequired: "AI 功能需要有效订阅"
+        subscriptionRequired: "AI 功能需要有效订阅",
+        subscriptionRequiredDescription: "升级到付费计划以使用 AI 聊天功能"
       },
       history: {
         title: "聊天记录",

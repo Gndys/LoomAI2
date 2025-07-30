@@ -12,6 +12,7 @@ interface ProtectedRouteConfig {
   pattern: RegExp;
   type: 'page' | 'api';
   // Permission required for access
+  requiresAuth?: boolean; // Explicit authentication requirement
   requiredPermission?: { 
     action: Action; 
     subject: Subject; // Subject must be from the Subject enum
@@ -28,55 +29,65 @@ const protectedRoutes: ProtectedRouteConfig[] = [
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/signin$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/signup$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/forgot-password$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/reset-password$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/cellphone$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/wechat$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/admin(\\/.*)?$`), 
     type: 'page',
+    requiresAuth: true,
     requiredPermission: { action: Action.MANAGE, subject: Subject.ALL } 
   },
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/settings(\\/.*)?$`), 
     type: 'page',
+    requiresAuth: true
   },
-  {
-    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/ai(\\/.*)?$`), 
-    type: 'page',
-  },
+  // {
+  //   pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/ai(\\/.*)?$`), 
+  //   type: 'page',
+  //   requiresAuth: true
+  // },
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/dashboard(\\/.*)?$`), 
     type: 'page',
-    // requiresSubscription: true // 付费区域
+    requiresAuth: true
   },
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/premium-features(\\/.*)?$`), 
     type: 'page',
+    requiresAuth: true,
     requiresSubscription: true // 高级功能区域
   },
   
@@ -84,6 +95,7 @@ const protectedRoutes: ProtectedRouteConfig[] = [
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/pricing$`),
     type: 'page',
+    requiresAuth: false,
     redirectIfSubscribed: true // 已订阅用户访问定价页面时重定向到仪表板
   },
   
@@ -91,62 +103,74 @@ const protectedRoutes: ProtectedRouteConfig[] = [
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/payment-success$`),
     type: 'page',
+    requiresAuth: true
   },
   {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/payment-cancel$`),
     type: 'page',
+    requiresAuth: true
   },
   {
     pattern: new RegExp('^/api/users(\\/.*)?$'),
     type: 'api',
+    requiresAuth: true,
     requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
   },
   {
     pattern: new RegExp('^/api/admin/subscriptions(\\/.*)?$'),
     type: 'api',
+    requiresAuth: true,
     requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
   },
   {
     pattern: new RegExp('^/api/admin/orders(\\/.*)?$'),
     type: 'api',
+    requiresAuth: true,
     requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
   },
   {
     pattern: new RegExp('^/api/premium(\\/.*)?$'), 
     type: 'api',
+    requiresAuth: true,
     requiresSubscription: true
   },
   {
     pattern: new RegExp('^/api/subscription(\\/.*)?$'),
     type: 'api',
-    // 订阅相关API都需要登录状态
+    requiresAuth: true // 订阅相关API都需要登录状态
   },
   {
     pattern: new RegExp('^/api/orders(\\/.*)?$'),
     type: 'api',
-    // 订单相关API需要登录状态
+    requiresAuth: true // 订单相关API需要登录状态
   },
   {
     pattern: new RegExp('^/api/payment/initiate(\\/.*)?$'),
     type: 'api',
+    requiresAuth: true
   },
   {
     pattern: new RegExp('^/api/payment/query(\\/.*)?$'),
     type: 'api',
+    requiresAuth: true
   },
   {
     pattern: new RegExp('^/api/payment/verify(\\/.*)?$'),
     type: 'api',
+    requiresAuth: true
   },
   {
     pattern: new RegExp('^/api/chat(\\/.*)?$'), 
     type: 'api',
+    requiresAuth: true,
+    requiresSubscription: true
     // TODO: Replace Subject.CHAT_MESSAGE with a valid Subject 
     // requiredPermission: { action: Action.CREATE, subject: Subject.CHAT_MESSAGE } // Requires definition
   },
   {
     pattern: new RegExp('^/api/protected(\\/.*)?$'), 
-    type: 'api', 
+    type: 'api',
+    requiresAuth: true
     // TODO: Replace Subject.PROTECTED_RESOURCE with a valid Subject
     // requiredPermission: { action: Action.READ, subject: Subject.PROTECTED_RESOURCE } // Requires definition
   },
@@ -189,8 +213,9 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
   });
 
   // --- 1. Authentication Check ---
-  if (!session) {
+  if (!session && matchedRoute.requiresAuth !== false) {
     console.log(`Authentication failed for: ${pathname}`);
+    
     if (matchedRoute.type === 'page') {
       const currentLocale = pathname.split('/')[1]; 
       const loginUrl = new URL(`/${currentLocale}/signin`, request.url);
@@ -219,9 +244,9 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
   }
 
   // --- 2.5. Redirect If Subscribed Check (e.g., pricing page) ---
-  if (matchedRoute.redirectIfSubscribed) {
-    console.log(`Checking if subscribed user should be redirected from: ${pathname}, User: ${session!.user?.id}`);
-    const hasSubscription = await hasValidSubscription(session!.user?.id!);
+  if (matchedRoute.redirectIfSubscribed && session) {
+    console.log(`Checking if subscribed user should be redirected from: ${pathname}, User: ${session.user?.id}`);
+    const hasSubscription = await hasValidSubscription(session.user?.id!);
     console.log('hasSubscription for redirect check', hasSubscription);
     
     if (hasSubscription) {

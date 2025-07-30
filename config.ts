@@ -537,7 +537,7 @@ export const config = {
     /**
      * Enable/Disable Captcha Verification
      */
-    enabled: true,
+    enabled: false,
 
     /**
      * Default Captcha Provider

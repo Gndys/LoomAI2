@@ -13,6 +13,7 @@ export const en: Locale = {
     loading: "Loading...",
     unexpectedError: "An unexpected error occurred",
     notAvailable: "N/A",
+    viewPlans: "View Plans",
     yes: "Yes",
     no: "No",
     theme: {
@@ -1251,7 +1252,8 @@ export const en: Locale = {
         networkError: "Network error. Please check your connection.",
         invalidResponse: "Invalid response from AI. Please try again.",
         rateLimited: "Too many requests. Please wait a moment.",
-        subscriptionRequired: "AI features require an active subscription"
+        subscriptionRequired: "AI features require an active subscription",
+        subscriptionRequiredDescription: "Upgrade to a premium plan to access AI chat features"
       },
       history: {
         title: "Chat History",

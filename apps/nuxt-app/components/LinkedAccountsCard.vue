@@ -5,7 +5,8 @@ const { t } = useI18n()
 
 interface LinkedAccount {
   id: string
-  providerId: string
+  providerId?: string
+  provider?: string // Next.js 版本使用 provider 字段
   accountId: string
   createdAt: string | Date
 }
@@ -19,9 +20,18 @@ const loading = ref(true)
 const fetchLinkedAccounts = async () => {
   try {
     const response: any = await authClientVue.listAccounts()
-    linkedAccounts.value = response.accounts || []
+    
+    // 根据实际返回的数据结构设置账户列表
+    if (response.data) {
+      linkedAccounts.value = response.data
+    } else if (response.accounts) {
+      linkedAccounts.value = response.accounts
+    } else {
+      linkedAccounts.value = []
+    }
   } catch (error) {
     console.error('Failed to fetch linked accounts:', error)
+    linkedAccounts.value = []
   } finally {
     loading.value = false
   }
@@ -43,11 +53,18 @@ const formatDate = (dateString: string | Date) => {
 
 /**
  * Get provider display name from i18n
- * @param providerId - Provider identifier (e.g. 'google', 'github')
+ * @param account - Account object
  * @returns Localized provider name
  */
-const getProviderDisplayName = (providerId: string) => {
-  const providerKey = `dashboard.linkedAccounts.providers.${providerId}` as const
+const getProviderDisplayName = (account: LinkedAccount) => {
+  let provider = account.provider || account.providerId || 'unknown'
+  
+  // 处理单复数差异：credential -> credentials
+  if (provider === 'credential') {
+    provider = 'credentials'
+  }
+  
+  const providerKey = `dashboard.linkedAccounts.providers.${provider}` as const
   return t(providerKey)
 }
 
@@ -68,7 +85,7 @@ onMounted(() => {
     </div>
     
     <!-- Linked accounts list -->
-    <div v-else-if="linkedAccounts.length > 0" class="space-y-3">
+    <div v-if="!loading && linkedAccounts.length > 0" class="space-y-3">
       <div 
         v-for="account in linkedAccounts" 
         :key="account.id"
@@ -80,7 +97,7 @@ onMounted(() => {
             <div class="w-4 h-4 bg-primary rounded-full"></div>
           </div>
           <div>
-            <p class="font-medium">{{ getProviderDisplayName(account.providerId) }}</p>
+            <p class="font-medium">{{ getProviderDisplayName(account) }}</p>
             <p class="text-sm text-muted-foreground">
               {{ t('dashboard.linkedAccounts.connectedAt') }} {{ formatDate(account.createdAt) }}
             </p>
@@ -93,7 +110,7 @@ onMounted(() => {
     </div>
     
     <!-- No linked accounts -->
-    <div v-else class="text-center p-8 text-muted-foreground">
+    <div v-else-if="!loading && linkedAccounts.length === 0" class="text-center p-8 text-muted-foreground">
       <p>{{ t('dashboard.linkedAccounts.noLinkedAccounts') }}</p>
     </div>
   </div>

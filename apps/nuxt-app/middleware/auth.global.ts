@@ -12,7 +12,7 @@ interface ProtectedRouteConfig {
   pattern: RegExp
   type: 'page' | 'api'
   // Authentication requirements
-  requiresAuth?: boolean
+  requiresAuth?: boolean // Explicit authentication requirement
   // Permission required for access
   requiredPermission?: { 
     action: Action
@@ -32,31 +32,37 @@ const protectedRoutes: ProtectedRouteConfig[] = [
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/signin$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/signup$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/forgot-password$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/reset-password$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/cellphone$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/wechat$`),
     type: 'page',
+    requiresAuth: false,
     isAuthRoute: true
   },
   
@@ -71,19 +77,22 @@ const protectedRoutes: ProtectedRouteConfig[] = [
   // Settings pages - require authentication only (require locale prefix)
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/settings(\\/.*)?$`),
-    type: 'page'
+    type: 'page',
+    requiresAuth: true
   },
   
   // Dashboard - require authentication only (require locale prefix)
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/dashboard(\\/.*)?$`),
-    type: 'page'
+    type: 'page',
+    requiresAuth: true
   },
   
   // Premium features - require active subscription (require locale prefix)
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/premium-features(\\/.*)?$`),
     type: 'page',
+    requiresAuth: true,
     requiresSubscription: true
   },
   
@@ -91,34 +100,41 @@ const protectedRoutes: ProtectedRouteConfig[] = [
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/pricing$`),
     type: 'page',
+    requiresAuth: false,
     redirectIfSubscribed: true
   },
   
   // AI features - require authentication (require locale prefix)
-  {
-    pattern: new RegExp(`^\\/(${locales.join('|')})\\/ai(\\/.*)?$`),
-    type: 'page'
-  },
+  // {
+  //   pattern: new RegExp(`^\\/(${locales.join('|')})\\/ai(\\/.*)?$`),
+  //   type: 'page',
+  //   requiresAuth: true
+  // },
   
   // Payment pages - require authentication (require locale prefix)
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/payment-success$`),
-    type: 'page'
+    type: 'page',
+    requiresAuth: true
   },
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/payment-cancel$`),
-    type: 'page'
+    type: 'page',
+    requiresAuth: true
   }
 ]
 
 /**
- * Check if user has valid subscription
+ * Check if user has valid subscription via API call
  */
 async function hasValidSubscription(userId: string): Promise<boolean> {
   try {
-    const { checkSubscriptionStatus } = await import('@libs/database/utils/subscription')
-    const subscription = await checkSubscriptionStatus(userId)
-    return !!subscription
+    // 通过 API 调用检查订阅状态，避免在客户端导入数据库模块
+    const response = await $fetch('/api/subscription/status', {
+      method: 'GET'
+    })
+    
+    return response && response.hasSubscription
   } catch (error) {
     console.error('Failed to check subscription status:', error)
     return false
@@ -153,33 +169,86 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // Add debug logging to see if middleware is triggered
   console.log(`🚀 Auth middleware triggered for: ${to.path}`)
   
-  // Handle server-side checks for better UX
+  // Handle server-side checks for better UX and security
   if (import.meta.server) {
     console.log(`🖥️ Server-side auth check for: ${to.path}`)
     
-    // Get headers for server-side session check
+    // Check if current route matches any configured route
+    const matchedRoute = protectedRoutes.find(route => route.pattern.test(to.path))
+    
+    if (!matchedRoute) {
+      return // Route is not configured, allow access
+    }
+    
+    // Get server-side session using Better Auth (避免导入数据库模块)
     const headers = useRequestHeaders(['cookie'])
+    let serverSession = null
     
-    // Quick check for session cookie
-    const hasCookie = headers.cookie?.includes('better-auth.session_token') || 
-                     headers.cookie?.includes('better-auth-session')
-    
-    if (!hasCookie) {
-      // Check if this route needs protection
-      const matchedRoute = protectedRoutes.find(route => route.pattern.test(to.path))
+    try {
+      // 使用 Better Auth 的服务端 API 获取 session
+      const { auth } = await import('@libs/auth')
+      const reqHeaders = new Headers()
+      Object.entries(headers).forEach(([key, value]) => {
+        if (value) reqHeaders.set(key, value)
+      })
       
-      if (matchedRoute && !matchedRoute.isAuthRoute) {
-        console.log(`🔒 No session cookie found for protected route: ${to.path}`)
-        // Server-side redirect for better UX
-        return navigateTo('/signin')
+      const session = await auth.api.getSession({ headers: reqHeaders })
+      serverSession = session
+    } catch (error) {
+      console.error('Failed to get server session:', error)
+    }
+    
+    const isAuthenticated = !!serverSession?.user
+    const user = serverSession?.user
+    
+    // --- 服务端认证检查 ---
+    if (!isAuthenticated && matchedRoute.requiresAuth !== false && !matchedRoute.isAuthRoute) {
+      console.log(`🔒 Server-side authentication failed for: ${to.path}`)
+      const localePath = useLocalePath()
+      return navigateTo(localePath('/signin'))
+    }
+    
+    // --- 服务端权限检查（关键安全检查）---
+    if (matchedRoute.requiredPermission && isAuthenticated) {
+      console.log(`🛡️ Server-side permission check for: ${to.path}`)
+      
+      try {
+        // 使用权限系统进行检查（不导入数据库模块）
+        const appUser = createAppUser(user!)
+        const hasPermission = can(appUser, matchedRoute.requiredPermission.action, matchedRoute.requiredPermission.subject)
+        
+        if (!hasPermission) {
+          console.log(`❌ Server-side permission denied for: ${to.path}`)
+          throw createError({
+            statusCode: 403,
+            statusMessage: 'Access Denied: Insufficient permissions'
+          })
+        }
+        
+        console.log(`✅ Server-side permission granted for: ${to.path}`)
+      } catch (error) {
+        console.error('Server-side permission check failed:', error)
+        throw createError({
+          statusCode: 403,
+          statusMessage: 'Access Denied'
+        })
       }
     }
     
-    return // Let client-side handle detailed checks
+    // --- 处理认证路由重定向 ---
+    if (matchedRoute.isAuthRoute && isAuthenticated) {
+      console.log(`↩️ Server-side: authenticated user accessing auth route, redirecting to dashboard`)
+      const localePath = useLocalePath()
+      return navigateTo(localePath('/dashboard'))
+    }
+    
+    console.log(`✅ Server-side checks passed for: ${to.path}`)
+    return // 服务端检查通过，继续到客户端或渲染页面
   }
 
   console.log(`🌐 Processing auth middleware on client for: ${to.path}`)
-
+  
+  // 客户端主要处理订阅检查和体验优化（认证和权限已在服务端检查）
   console.log(`🔍 Checking path: ${to.path}`)
 
   // Check if current route matches any configured route
@@ -189,62 +258,25 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return // Route is not configured
   }
 
-  console.log(`🔒 Configured route accessed: ${to.path} (Type: ${matchedRoute.type})`)
+  console.log(`🔒 Client-side processing for: ${to.path} (Type: ${matchedRoute.type})`)
 
-  // Handle auth routes: redirect logged-in users to dashboard
-  if (matchedRoute.isAuthRoute) {
-    console.log(`🔐 Auth route detected: ${to.path}`)
-    
-    // Get user session to check if already logged in
-    const { user, isAuthenticated } = await getUserSession()
-    
-    if (isAuthenticated) {
-      console.log(`↩️ User already authenticated, redirecting from ${to.path} to dashboard`)
-      return navigateTo('/dashboard')
-    }
-    
-    console.log(`✅ Guest user accessing auth route: ${to.path}`)
-    return // Allow access to auth route
-  }
-
-  // On client-side, wait for auth to be ready before checking
-  console.log(`⏳ Ensuring auth is ready on client-side for: ${to.path}`)
-
-  // Get user session (client-side only now)
-  console.log(`🔍 Getting user session for: ${to.path}`)
+  // Get user session for client-side checks
   const { user, isAuthenticated } = await getUserSession()
-  console.log(`🔍 Session result: isAuthenticated=${isAuthenticated}, user=${user ? user.id : 'null'}`)
+  console.log(`🔍 Client session result: isAuthenticated=${isAuthenticated}, user=${user ? user.id : 'null'}`)
 
-  // --- 1. Authentication Check ---
-  if (!isAuthenticated) {
-    console.log(`❌ Authentication failed for: ${to.path}`)
-    
-    if (matchedRoute.type === 'page') {
-      // Redirect to signin page
-      return navigateTo('/signin')
-    } else {
-      // For API routes, this would be handled by server middleware
-      throw createError({
-        statusCode: 401,
-        statusMessage: 'Unauthorized'
-      })
-    }
-  }
-
-  // User is authenticated, continue with other checks
-
-  // --- 2. Subscription Check (if required) ---
-  if (matchedRoute.requiresSubscription) {
-    console.log(`💳 Checking subscription for: ${to.path}, User: ${user!.id}`)
+  // --- 客户端订阅检查（体验优化）---
+  if (matchedRoute.requiresSubscription && isAuthenticated) {
+    console.log(`💳 Client-side subscription check for: ${to.path}, User: ${user!.id}`)
     
     const hasSubscription = await hasValidSubscription(user!.id)
     
     if (!hasSubscription) {
-      console.log(`❌ Subscription check failed for: ${to.path}, User: ${user!.id}`)
+      console.log(`❌ Client-side subscription check failed for: ${to.path}, User: ${user!.id}`)
       
       if (matchedRoute.type === 'page') {
-        // Redirect to pricing page
-        return navigateTo('/pricing')
+        // Redirect to pricing page using Nuxt i18n
+        const localePath = useLocalePath()
+        return navigateTo(localePath('/pricing'))
       } else {
         throw createError({
           statusCode: 402,
@@ -253,63 +285,26 @@ export default defineNuxtRouteMiddleware(async (to) => {
       }
     }
     
-    console.log(`✅ Subscription check passed for: ${to.path}`)
+    console.log(`✅ Client-side subscription check passed for: ${to.path}`)
   }
 
-  // --- 2.5. Redirect If Subscribed Check (e.g., pricing page) ---
-  if (matchedRoute.redirectIfSubscribed) {
-    console.log(`💰 Checking if subscribed user should be redirected from: ${to.path}, User: ${user!.id}`)
+  // --- 客户端订阅用户重定向检查 ---
+  if (matchedRoute.redirectIfSubscribed && isAuthenticated) {
+    console.log(`💰 Client-side checking if subscribed user should be redirected from: ${to.path}, User: ${user!.id}`)
     
     const hasSubscription = await hasValidSubscription(user!.id)
     
     if (hasSubscription) {
-      console.log(`↩️ User is subscribed, redirecting from ${to.path} to dashboard`)
-      return navigateTo('/dashboard')
+      console.log(`↩️ Client-side: subscribed user redirecting from ${to.path} to dashboard`)
+      const localePath = useLocalePath()
+      return navigateTo(localePath('/dashboard'))
     }
     
-    console.log(`✅ User is not subscribed, allowing access to: ${to.path}`)
+    console.log(`✅ Client-side: non-subscribed user allowed access to: ${to.path}`)
   }
 
-  // --- 3. Authorization Check (RBAC-Based) ---
-  const requiredPermission = matchedRoute.requiredPermission
-  
-  if (requiredPermission) {
-    console.log(`🛡️ Checking permissions for: ${to.path} (${requiredPermission.action}:${requiredPermission.subject})`)
-    
-    // Create AppUser from session data
-    const appUser = createAppUser(user!)
-    
-    if (!appUser) {
-      console.log(`❌ Authorization failed (user object missing) for: ${to.path}`)
-      throw createError({
-        statusCode: 403,
-        statusMessage: 'Forbidden: User information missing'
-      })
-    }
-
-    // Check permissions using RBAC system
-    const hasPermission = can(appUser, requiredPermission.action, requiredPermission.subject)
-
-    if (!hasPermission) {
-      console.log(`❌ Authorization failed for user ${user!.id} (role: ${user!.role}) on ${to.path} (${requiredPermission.action}:${requiredPermission.subject})`)
-      
-      if (matchedRoute.type === 'page') {
-        throw createError({
-          statusCode: 403,
-          statusMessage: 'Access Denied: Insufficient permissions'
-        })
-      } else {
-        throw createError({
-          statusCode: 403,
-          statusMessage: 'Forbidden'
-        })
-      }
-    }
-    
-    console.log(`✅ Authorization successful for user ${user!.id} on ${to.path}`)
-  }
-
-  console.log(`✅ Access granted to: ${to.path} for user: ${user!.id}`)
+  console.log(`✅ Client-side checks completed for: ${to.path}`)
+  console.log(`🏁 Middleware completed successfully for: ${to.path}`)
 })
 
 // --- Two-Layer Authorization Concept ---

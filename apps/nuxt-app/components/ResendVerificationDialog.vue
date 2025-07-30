@@ -13,7 +13,7 @@
           <Label for="email">{{ $t('auth.signin.errors.emailNotVerified.emailLabel') }}</Label>
           <Input
             id="email"
-            :value="email"
+            :model-value="email"
             disabled
             class="bg-muted"
           />
@@ -130,10 +130,11 @@ const handleSubmit = async () => {
   try {
     const fetchOptions: any = {}
     
-    if (captchaEnabled.value && turnstileToken.value) {
-      fetchOptions.headers = {
+    fetchOptions.headers = {
+      'x-resend-source': 'user-initiated', // 标识这是用户主动重发请求
+      ...(captchaEnabled.value && turnstileToken.value ? {
         'x-captcha-response': turnstileToken.value
-      }
+      } : {})
     }
 
     await authClientVue.sendVerificationEmail({

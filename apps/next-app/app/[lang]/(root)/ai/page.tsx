@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight'
 import { useChat } from '@ai-sdk/react';
 import { Send } from 'lucide-react';
+import { toast } from 'sonner';
+import { useTranslation } from '@/hooks/use-translation';
 import {
   Select,
   SelectContent,
@@ -18,30 +20,76 @@ import { Button } from '@/components/ui/button';
 import '@/app/highlight.css'
 
 export default function Chat() {
+  const { t, locale } = useTranslation();
   const initialMessages: any[] = [
     { id: '1', content: '你好，我是Grok，一个AI助手。', role: 'user' },
     { id: '2', content: `# Hello, Markdown!
-This is a **bold** text with some *italic* content.
+  This is a **bold** text with some *italic* content.
 
-- Item 1  
-- Item 2
+  - Item 1  
+  - Item 2
 
-\`\`\`javascript
-console.log("Code block");
-\`\`\`
-`, role: 'assistant' },
+  \`\`\`javascript
+  console.log("Code block");
+  \`\`\`
+  `, role: 'assistant' },
   ];
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
+  const { messages, input, handleInputChange, handleSubmit: originalHandleSubmit, setMessages } = useChat({
     initialMessages
   });
-  const [provider, setProvider] = useState<keyof typeof providerModels>('openai');
-  const [model, setModel] = useState('gpt-4o');
+  const [provider, setProvider] = useState<keyof typeof providerModels>('qwen');
+  const [model, setModel] = useState('qwen-turbo');
+  const [hasSubscription, setHasSubscription] = useState(true); // 默认允许，避免闪烁
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const providerModels = {
-    openai: ['gpt-4o', 'gpt-3.5', 'gpt-3'],
     qwen: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
     deepseek: ['deepseek-chat', 'deepseek-coder'],
+  };
+
+  // Check user subscription status once on page load
+  const checkSubscriptionStatus = async () => {
+    try {
+      const response = await fetch('/api/subscription/status', {
+        method: 'GET'
+      });
+      const data = await response.json();
+      setHasSubscription(data && data.hasSubscription);
+    } catch (error) {
+      console.error('Failed to check subscription status:', error);
+      setHasSubscription(false);
+    }
+  };
+
+  // New conversation function  
+  const startNewConversation = () => {
+    // Reset messages to initial state
+    setMessages([]);
+  };
+
+  // Enhanced form submission with subscription check
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!input.trim()) return;
+    
+    // Check subscription status (cached from page load)
+    if (!hasSubscription) {
+      // Show permission denied toast
+      toast.error(t.ai.chat.errors.subscriptionRequired, {
+        description: t.ai.chat.errors.subscriptionRequiredDescription,
+        action: {
+          label: t.common.viewPlans,
+          onClick: () => {
+            // Navigate to pricing page
+            window.location.href = `/${locale}/pricing`;
+          }
+        }
+      });
+      return;
+    }
+    
+    // Use the original handleSubmit from useChat
+    originalHandleSubmit(event, { body: { provider, model } });
   };
 
   // Auto-scroll to the latest message
@@ -49,17 +97,50 @@ console.log("Code block");
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Trigger scroll when messages change
+  // Trigger scroll when messages change and check subscription on mount
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    // Check subscription status once on page load
+    checkSubscriptionStatus();
+  }, []);
   return (
     <>
     <div className="flex flex-col h-screen">
+      {/* Header */}
+      <div className="flex-shrink-0 border-b border-border bg-background/95 backdrop-blur">
+        <div className="max-w-3xl mx-auto py-4 px-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">{t.ai.chat.title}</h1>
+              <p className="text-sm text-muted-foreground">{t.ai.chat.description}</p>
+            </div>
+            {messages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={startNewConversation}
+              >
+                {t.ai.chat.actions.newChat}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+      
       {/* Scrollable messages area */}
       <div className="flex-1 overflow-y-auto pb-24">
         <div className="max-w-3xl mx-auto py-6 px-4 space-y-4">
-          {messages.map((message) => (
+          {messages.length === 0 && (
+          <div className="text-center py-8">
+            <div className="text-muted-foreground text-sm">
+              {t.ai.chat.welcomeMessage}
+            </div>
+          </div>
+          )}
+          { messages.length > 0 && messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -93,14 +174,14 @@ console.log("Code block");
 
       {/* Fixed form at the bottom */}
       <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm">
-        <form onSubmit={(e) => handleSubmit(e, { body: { provider, model } })} className="max-w-3xl mx-auto py-4 px-4">
+        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto py-4 px-4">
           <div className="border border-border rounded-lg shadow-md bg-card">
             {/* Input field */}
             <div className="p-3 pb-2">
               <input
                 className="w-full bg-transparent outline-none text-card-foreground placeholder:text-muted-foreground"
                 value={input}
-                placeholder="需要Grok帮什么忙?"
+                placeholder={t.ai.chat.placeholder}
                 onChange={handleInputChange}
               />
             </div>
@@ -109,11 +190,13 @@ console.log("Code block");
             <div className="flex items-center justify-between p-2 border-t border-border">
               {/* Model selector */}
               <div className="flex items-center">
-                <Select onValueChange={(value) => {
-                  const [selectedProvider, selectedModel] = value.split(':');
-                  setProvider(selectedProvider as keyof typeof providerModels);
-                  setModel(selectedModel);
-                }}>
+                <Select 
+                  value={`${provider}:${model}`}
+                  onValueChange={(value) => {
+                    const [selectedProvider, selectedModel] = value.split(':');
+                    setProvider(selectedProvider as keyof typeof providerModels);
+                    setModel(selectedModel);
+                  }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Model" />
                   </SelectTrigger>
@@ -136,6 +219,7 @@ console.log("Code block");
                 size="icon"
                 variant="outline"
                 className="size-8"
+                disabled={!input.trim()}
               >
                 <Send/>
               </Button>

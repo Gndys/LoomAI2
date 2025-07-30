@@ -55,13 +55,14 @@ export function ResendVerificationDialog({
       await authClientReact.sendVerificationEmail({
         email,
         callbackURL: `/${locale}`,
-        ...(config.captcha.enabled && turnstileToken ? {
-          fetchOptions: {
-            headers: {
+        fetchOptions: {
+          headers: {
+            "x-resend-source": "user-initiated", // 标识这是用户主动重发请求
+            ...(config.captcha.enabled && turnstileToken ? {
               "x-captcha-response": turnstileToken,
-            },
-          }
-        } : {})
+            } : {})
+          },
+        }
       });
 
       toast.success(t.auth.signin.errors.emailNotVerified.resendSuccess);

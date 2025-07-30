@@ -5,7 +5,7 @@ import {
   ExternalLink,
   Package
 } from 'lucide-vue-next'
-
+import  { config } from '@config'
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
 
@@ -57,10 +57,16 @@ const openCustomerPortal = async (provider?: string) => {
  * Get plan name from config
  */
 const getPlanName = (planId: string) => {
-  // This would need to be imported from your config
-  // For now, return the planId as fallback
-  return planId
-}
+  const plan = config.payment.plans[planId as keyof typeof config.payment.plans];
+  if (!plan) return planId; // 如果找不到计划，则返回 planId
+  
+  // 使用当前语言的翻译
+  if (plan.i18n && plan.i18n[locale.value]) {
+    return plan.i18n[locale.value].name;
+  } else {
+    return plan.id
+  }
+};
 
 /**
  * Format date according to user locale

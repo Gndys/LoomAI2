@@ -253,7 +253,7 @@ export const columns: ColumnDef<Subscription>[] = [
     },
     cell: ({ row }) => {
       const date = row.getValue('periodStart') as Date
-      return h('div', { class: 'text-sm' }, formatDate(date))
+      return h('div', { class: 'text-sm text-muted-foreground' }, formatDate(date))
     },
   },
   {
@@ -272,7 +272,7 @@ export const columns: ColumnDef<Subscription>[] = [
       const date = row.getValue('periodEnd') as Date
       const isExpired = date && new Date(date) < new Date()
       return h('div', { 
-        class: `text-sm ${isExpired ? 'text-destructive font-medium' : ''}` 
+        class: `text-sm text-muted-foreground ${isExpired ? 'text-destructive font-medium' : ''}` 
       }, formatDate(date))
     },
   },
@@ -305,44 +305,44 @@ export const columns: ColumnDef<Subscription>[] = [
     },
     cell: ({ row }) => {
       const date = row.getValue('createdAt') as Date
-      return h('div', { class: 'text-sm' }, formatDateTime(date))
+      return h('div', { class: 'text-sm text-muted-foreground' }, formatDateTime(date))
     },
   },
-  {
-    id: 'actions',
-    enableHiding: false,
-    cell: ({ row }) => {
-      const { t } = useI18n()
-      const subscription = row.original
+  // {
+  //   id: 'actions',
+  //   enableHiding: false,
+  //   cell: ({ row }) => {
+  //     const { t } = useI18n()
+  //     const subscription = row.original
       
-      return h('div', { class: 'flex items-center justify-end' }, [
-        h(DropdownMenu, {}, {
-          default: () => [
-            h(DropdownMenuTrigger, { asChild: true }, () => [
-              h(Button, { variant: 'ghost', class: 'h-8 w-8 p-0' }, () => [
-                h('span', { class: 'sr-only' }, t('admin.subscriptions.table.actions.openMenu')),
-                h(MoreHorizontal, { class: 'h-4 w-4' })
-              ])
-            ]),
-            h(DropdownMenuContent, { align: 'end' }, () => [
-              h(DropdownMenuLabel, {}, () => t('admin.subscriptions.table.actions.actions')),
-              h(DropdownMenuItem, { 
-                onClick: () => console.log('View subscription:', subscription.id) 
-              }, () => [
-                h(ExternalLink, { class: 'mr-2 h-4 w-4' }),
-                t('admin.subscriptions.table.actions.viewSubscription')
-              ]),
-              h(DropdownMenuItem, { 
-                onClick: () => console.log('Cancel subscription:', subscription.id),
-                class: 'text-destructive'
-              }, () => [
-                h(RefreshCw, { class: 'mr-2 h-4 w-4' }),
-                t('admin.subscriptions.table.actions.cancelSubscription')
-              ])
-            ])
-          ]
-        })
-      ])
-    },
-  },
+  //     return h('div', { class: 'flex items-center justify-end' }, [
+  //       h(DropdownMenu, {}, {
+  //         default: () => [
+  //           h(DropdownMenuTrigger, { asChild: true }, () => [
+  //             h(Button, { variant: 'ghost', class: 'h-8 w-8 p-0' }, () => [
+  //               h('span', { class: 'sr-only' }, t('admin.subscriptions.table.actions.openMenu')),
+  //               h(MoreHorizontal, { class: 'h-4 w-4' })
+  //             ])
+  //           ]),
+  //           h(DropdownMenuContent, { align: 'end' }, () => [
+  //             h(DropdownMenuLabel, {}, () => t('admin.subscriptions.table.actions.actions')),
+  //             h(DropdownMenuItem, { 
+  //               onClick: () => console.log('View subscription:', subscription.id) 
+  //             }, () => [
+  //               h(ExternalLink, { class: 'mr-2 h-4 w-4' }),
+  //               t('admin.subscriptions.table.actions.viewSubscription')
+  //             ]),
+  //             h(DropdownMenuItem, { 
+  //               onClick: () => console.log('Cancel subscription:', subscription.id),
+  //               class: 'text-destructive'
+  //             }, () => [
+  //               h(RefreshCw, { class: 'mr-2 h-4 w-4' }),
+  //               t('admin.subscriptions.table.actions.cancelSubscription')
+  //             ])
+  //           ])
+  //         ]
+  //       })
+  //     ])
+  //   },
+  // },
 ] 
