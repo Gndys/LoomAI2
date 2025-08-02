@@ -10,6 +10,7 @@ const env = loadEnv(process.env.NODE_ENV || 'development', resolve(__dirname, '.
 Object.assign(process.env, env);
 
 import { config as appConfig } from '../../config';
+import { locales } from '@libs/i18n';
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
@@ -137,7 +138,7 @@ export default defineNuxtConfig({
   
   // Internationalization configuration
   i18n: {
-    locales: appConfig.app.i18n.locales.map(code => ({
+    locales: locales.map(code => ({
       code,
       name: code === 'en' ? 'English' : '中文',
     })),

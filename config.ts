@@ -1,5 +1,3 @@
-import { locales } from '@libs/i18n';
-
 // Function to get environment variables
 function getEnv(key: string): string | undefined {
   return process.env[key];
@@ -123,11 +121,6 @@ export const config = {
        * @type {'en' | 'zh-CN'}
        */
       defaultLocale: 'zh-CN' as const,
-
-      /**
-       * Available locales
-       */
-      locales,
 
       /**
        * Cookie key for locale persistence
