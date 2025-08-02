@@ -2,7 +2,9 @@
 
 import { SocialButton, type SocialProvider } from "@/components/ui/social-button";
 import { cn } from "@/lib/utils";
-import { authClientReact } from '@libs/auth/authClient'
+import { authClientReact } from '@libs/auth/authClient';
+import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/hooks/use-translation';
 
 interface SocialAuthProps extends React.HTMLAttributes<HTMLDivElement> {
   providers?: SocialProvider[];
@@ -15,16 +17,19 @@ export function SocialAuth({
   providers = defaultProviders,
   ...props
 }: SocialAuthProps) {
+  const router = useRouter();
+  const { locale: currentLocale } = useTranslation();
+
   const handleProviderClick = async (provider: SocialProvider) => {
     switch (provider) {
       case 'wechat':
-        window.location.href = '/wechat';
+        router.push(`/${currentLocale}/wechat`);
         break;
       case 'phone':
-        window.location.href = '/cellphone';
+        router.push(`/${currentLocale}/cellphone`);
         break;
       default:
-        // 其他提供商使用默认的social登录流程
+        // Use default social login flow for other providers
         authClientReact.signIn.social({
           provider,
         });

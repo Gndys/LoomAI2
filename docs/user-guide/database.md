@@ -70,7 +70,7 @@ pnpm run db:check
 
 ```bash
 # 将架构直接推送到数据库
-pnpm run push
+pnpm run db:push
 ```
 
 ### 4. 填充测试数据

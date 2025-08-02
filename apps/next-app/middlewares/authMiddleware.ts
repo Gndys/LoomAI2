@@ -260,11 +260,24 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
   }
 
   // --- 3. Authorization Check (Ability-Based) ---
-  console.log(`Authentication successful for: ${pathname}, User: ${session!.user?.id}`);
+  console.log(`Authentication successful for: ${pathname}, User: ${session?.user?.id || 'anonymous'}`);
   const requiredPermission = matchedRoute.requiredPermission;
 
   if (requiredPermission) {
-    const userFromSession = session!.user;
+    // If permission check is required but no session exists, deny access
+    if (!session) {
+      console.log(`Authorization failed (no session) for: ${pathname}`);
+      if (matchedRoute.type === 'page') {
+        const currentLocale = pathname.split('/')[1]; 
+        const loginUrl = new URL(`/${currentLocale}/signin`, request.url);
+        return NextResponse.redirect(loginUrl);
+      } else if (matchedRoute.type === 'api') {
+        return new NextResponse('Unauthorized', { status: 401 });
+      }
+      return; // This should never be reached, but adds safety
+    }
+    
+    const userFromSession = session.user;
     
     if (!userFromSession) {
        console.log(`Authorization failed (user object missing in session) for: ${pathname}`);

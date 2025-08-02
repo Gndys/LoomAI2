@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from 'geist/font/sans';
 
 import "../globals.css";
@@ -10,11 +10,18 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import { ThemeScript } from "@/components/theme-script";
 
 
+export async function generateViewport({ params }: { params: Promise<{ lang: string }> }): Promise<Viewport> {
+  return {
+    themeColor: '#3b82f6',
+  };
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
   const t = translations[lang as keyof typeof translations];
   
   return {
+    metadataBase: new URL(process.env.APP_BASE_URL || 'http://localhost:7001'),
     title: t.home.metadata.title,
     description: t.home.metadata.description,
     keywords: t.home.metadata.keywords,
@@ -34,7 +41,6 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
       ],
     },
     manifest: '/site.webmanifest',
-    themeColor: '#3b82f6',
     appleWebApp: {
       capable: true,
       statusBarStyle: 'default',

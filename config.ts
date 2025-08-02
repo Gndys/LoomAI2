@@ -1,3 +1,5 @@
+import { locales } from '@libs/i18n';
+
 // Function to get environment variables
 function getEnv(key: string): string | undefined {
   return process.env[key];
@@ -98,13 +100,13 @@ export const config = {
        * @type {'light' | 'dark'}
        */
       defaultTheme: 'light' as const,
-      
+
       /**
        * Default color scheme
        * @type {'default' | 'claude' | 'cosmic-night' | 'modern-minimal' | 'ocean-breeze'}
        */
       defaultColorScheme: 'claude' as const,
-      
+
       /**
        * Storage key for theme persistence
        */
@@ -121,18 +123,18 @@ export const config = {
        * @type {'en' | 'zh-CN'}
        */
       defaultLocale: 'zh-CN' as const,
-      
+
       /**
        * Available locales
        */
-      locales: ['en', 'zh-CN'] as const,
-      
+      locales,
+
       /**
        * Cookie key for locale persistence
        * Used by both Next.js middleware and Nuxt.js i18n module
        */
       cookieKey: 'NEXT_LOCALE',
-      
+
       /**
        * Auto-detect browser language
        * When true, detects user's browser language preference
@@ -163,7 +165,7 @@ export const config = {
    * Authentication Service Configuration
    */
   auth: {
-    requireEmailVerification: true,
+    requireEmailVerification: false,
 
     /**
      * Social Login Providers Configuration
@@ -565,7 +567,7 @@ export const config = {
         // 直接访问 process.env，不通过 getEnv 函数（因为客户端环境下 dotenv 不工作）
         const publicKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
         if (publicKey) return publicKey;
-        
+
         // 生产环境必须配置
         return getEnvForService('TURNSTILE_SITE_KEY', 'Cloudflare Turnstile');
       }
@@ -581,4 +583,4 @@ export const config = {
       return requireEnvForService('DATABASE_URL', 'Database', 'postgresql://username:password@localhost:5432/database_name');
     }
   },
-} as const; 
+} as const;

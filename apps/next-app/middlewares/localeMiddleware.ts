@@ -12,7 +12,6 @@ function getLocale(request: NextRequest): string {
   if (cookieLocale && i18n.locales.includes(cookieLocale as any)) {
     return cookieLocale;
   }
-
   // Check if auto-detection is enabled
   if (!config.app.i18n.autoDetect) {
     return i18n.defaultLocale;
@@ -45,7 +44,6 @@ export function localeMiddleware(request: NextRequest): NextResponse | undefined
   const pathnameIsMissingLocale = i18n.locales.every(
     (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
   );
-
   // Redirect if there is no locale (for pages)
   if (pathnameIsMissingLocale) {
     const locale = getLocale(request);

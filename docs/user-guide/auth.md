@@ -25,6 +25,24 @@ BETTER_AUTH_URL="http://localhost:7001"  # 7001端口是应用启动的默认端
 DATABASE_URL="postgresql://username:password@localhost:5432/tinyship"
 ```
 
+**生成 32 位随机字符串的方法：**
+
+命令行生成：
+```bash
+# 使用 openssl 生成（推荐）
+openssl rand -hex 32
+
+# 使用 Node.js 生成
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# 使用 Python 生成
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+在线生成器：
+- [RandomKeygen](https://randomkeygen.com/) - 提供多种格式的随机密钥生成
+- [Password Generator](https://passwordsgenerator.net/) - 可自定义长度和字符类型
+
 现在我们的应用应该就可以最小化运行了 🎉🎉🎉，可以在根目录运行如下命令来启动应用：
 
 ```bash
