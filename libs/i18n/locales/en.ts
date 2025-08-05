@@ -643,7 +643,24 @@ export const en: Locale = {
     },
     title: "Pricing",
     subtitle: "Choose the plan that's right for you",
+    description: "Choose the perfect plan for your TinyShip journey. Multiple payment methods, flexible billing models, providing secure and convenient payment experience for global users.",
     cta: "Get started",
+    recommendedBadge: "Recommended",
+    lifetimeBadge: "One-time purchase, lifetime access",
+    features: {
+      securePayment: {
+        title: "Multi-Provider Security",
+        description: "Support WeChat Pay, Stripe, Creem with enterprise-grade security"
+      },
+      flexibleSubscription: {
+        title: "Flexible Billing",
+        description: "Both one-time payments and recurring subscriptions supported"
+      },
+      globalCoverage: {
+        title: "Global Payment Coverage", 
+        description: "Multi-currency and regional payment methods for worldwide access"
+      }
+    },
     plans: {
       monthly: {
         name: "Monthly Plan",

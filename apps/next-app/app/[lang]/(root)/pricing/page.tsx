@@ -239,8 +239,7 @@ export default function PricingPage() {
               </h2>
               
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                选择最适合你的方案，开始你的 TinyShip 之旅。
-                一次购买，终身使用，早鸟价仅限前 100 名用户。
+                {t.pricing.description}
           </p>
             </motion.div>
         </div>
@@ -275,7 +274,7 @@ export default function PricingPage() {
                       <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                         <div className="inline-flex items-center space-x-2 px-3 py-1.5 bg-gradient-chart-warm text-white rounded-full shadow-md">
                           <Crown className="h-3.5 w-3.5" />
-                          <span className="text-xs font-medium">推荐选择</span>
+                          <span className="text-xs font-medium">{t.pricing.recommendedBadge}</span>
                         </div>
                       </div>
                     )}
@@ -313,7 +312,7 @@ export default function PricingPage() {
                       {isLifetime && (
                         <div className="mt-2 inline-flex items-center space-x-1 px-2.5 py-1 bg-chart-5-bg-15 text-chart-5 rounded-full text-xs font-medium">
                           <Heart className="h-3.5 w-3.5" />
-                          <span>一次购买，终身使用</span>
+                          <span>{t.pricing.lifetimeBadge}</span>
                         </div>
                       )}
                     </div>
@@ -389,24 +388,24 @@ export default function PricingPage() {
                   <div className="w-12 h-12 bg-chart-2-bg-15 rounded-xl flex items-center justify-center">
                     <Shield className="h-6 w-6 text-chart-2" />
                   </div>
-                  <h4 className="font-semibold text-foreground">安全支付</h4>
-                  <p className="text-sm text-muted-foreground text-center">支持微信支付、Stripe 等多种安全支付方式</p>
+                  <h4 className="font-semibold text-foreground">{t.pricing.features.securePayment.title}</h4>
+                  <p className="text-sm text-muted-foreground text-center">{t.pricing.features.securePayment.description}</p>
                 </div>
                 
                 <div className="flex flex-col items-center space-y-3">
                   <div className="w-12 h-12 bg-chart-1-bg-15 rounded-xl flex items-center justify-center">
-                    <Star className="h-6 w-6 text-chart-1" />
+                    <Zap className="h-6 w-6 text-chart-1" />
                   </div>
-                  <h4 className="font-semibold text-foreground">终身更新</h4>
-                  <p className="text-sm text-muted-foreground text-center">一次购买即可享受所有后续功能更新</p>
+                  <h4 className="font-semibold text-foreground">{t.pricing.features.flexibleSubscription.title}</h4>
+                  <p className="text-sm text-muted-foreground text-center">{t.pricing.features.flexibleSubscription.description}</p>
                 </div>
                 
                 <div className="flex flex-col items-center space-y-3">
                   <div className="w-12 h-12 bg-chart-3-bg-15 rounded-xl flex items-center justify-center">
-                    <Heart className="h-6 w-6 text-chart-3" />
+                    <Star className="h-6 w-6 text-chart-3" />
                   </div>
-                  <h4 className="font-semibold text-foreground">社区支持</h4>
-                  <p className="text-sm text-muted-foreground text-center">加入活跃的开发者社区，获得技术支持</p>
+                  <h4 className="font-semibold text-foreground">{t.pricing.features.globalCoverage.title}</h4>
+                  <p className="text-sm text-muted-foreground text-center">{t.pricing.features.globalCoverage.description}</p>
                 </div>
               </div>
             </motion.div>

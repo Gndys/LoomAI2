@@ -38,7 +38,12 @@
    - **商户号 (Mch ID)**: 微信支付分配的商户号
    - **API密钥 (API Key)**: 在商户平台的账户设置中生成
 
-3. **配置回调域名**
+3. **下载支付证书**
+   - 在商户平台的"账户中心" → "API安全"中下载证书
+   - 下载 `apiclient_key.pem`（私钥）和 `apiclient_cert.pem`（证书）
+   - 将证书内容转换为环境变量格式（见下方配置说明）
+
+4. **配置回调域名**
   - 在环境变量中设置，请看环境变量配置环节
 
 #### 🔑 环境变量配置
@@ -53,7 +58,25 @@ WECHAT_PAY_API_KEY=your-32-char-api-key # API密钥
 # 需要设置成为公网地址，使用内网穿透工具, 后面的 endpoint /api/payment/webhook/wechat 不需要修改
 # 具体工具教程请参看，下面的 本地开发测试 环节
 WECHAT_PAY_NOTIFY_URL=https://yourdomain.com/api/payment/webhook/wechat
+
+# 微信支付证书配置（将证书文件内容转换为单行格式）
+WECHAT_PAY_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----"
+WECHAT_PAY_PUBLIC_KEY="-----BEGIN CERTIFICATE-----\nMIIEpDCCA4ygAwIBAgIU...\n-----END CERTIFICATE-----"
 ```
+
+#### 📋 证书格式转换
+
+如果你已有证书文件，需要将其转换为单行格式：
+
+```bash
+# 转换私钥文件
+awk '{printf "%s\\n", $0}' apiclient_key.pem
+
+# 转换证书文件  
+awk '{printf "%s\\n", $0}' apiclient_cert.pem
+```
+
+将输出结果分别复制到 `WECHAT_PAY_PRIVATE_KEY` 和 `WECHAT_PAY_PUBLIC_KEY` 环境变量中。
 
 #### ⚠️ 注意事项
 
@@ -61,6 +84,7 @@ WECHAT_PAY_NOTIFY_URL=https://yourdomain.com/api/payment/webhook/wechat
 - 仅支持单次付费，不支持订阅模式
 - 需要企业资质，个人无法申请
 - 回调地址必须使用 HTTPS
+- 证书内容包含敏感信息，请确保环境变量安全
 
 ### 2. Stripe
 
@@ -162,6 +186,9 @@ WECHAT_PAY_APP_ID=wx1234567890abcdef
 WECHAT_PAY_MCH_ID=1234567890
 WECHAT_PAY_API_KEY=your-32-char-api-key
 WECHAT_PAY_NOTIFY_URL=https://yourdomain.com/api/payment/webhook/wechat
+# 微信支付证书（将证书文件转换为单行格式）
+WECHAT_PAY_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAK...\n-----END RSA PRIVATE KEY-----"
+WECHAT_PAY_PUBLIC_KEY="-----BEGIN CERTIFICATE-----\nMIIEpDCCA4y...\n-----END CERTIFICATE-----"
 
 # Stripe (全球)
 STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

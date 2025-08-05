@@ -228,6 +228,18 @@ export const config = {
         get notifyUrl() {
           // 需要设置成为公网地址，使用内网穿透工具
           return requireEnvForService('WECHAT_PAY_NOTIFY_URL', 'WeChat Pay');
+        },
+        /**
+         * WeChat Pay Certificates (PEM format with \n escape sequences)
+         * These replace the need for certificate files
+         */
+        get privateKey() {
+          const pemKey = requireEnvForService('WECHAT_PAY_PRIVATE_KEY', 'WeChat Pay');
+          return Buffer.from(pemKey, 'utf8');
+        },
+        get publicKey() {
+          const pemKey = requireEnvForService('WECHAT_PAY_PUBLIC_KEY', 'WeChat Pay');
+          return Buffer.from(pemKey, 'utf8');
         }
       },
 
@@ -300,7 +312,7 @@ export const config = {
         provider: 'stripe',
         id: 'monthly',
         amount: 10,
-        currency: 'CNY',
+        currency: 'USD',
         duration: {
           months: 1,
           type: 'recurring'
@@ -333,7 +345,7 @@ export const config = {
         provider: 'stripe',
         id: 'monthly-pro',
         amount: 20,
-        currency: 'CNY',
+        currency: 'USD',
         duration: {
           months: 1,
           type: 'recurring'
@@ -366,7 +378,7 @@ export const config = {
         provider: 'stripe',
         id: 'lifetime',
         amount: 999,
-        currency: 'CNY',
+        currency: 'USD',
         recommended: true,
         duration: {
           months: 999999,

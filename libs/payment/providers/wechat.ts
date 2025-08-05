@@ -5,19 +5,16 @@ import { order, orderStatus } from '@libs/database/schema/order';
 import { subscription, subscriptionStatus, paymentTypes } from '@libs/database/schema/subscription';
 import { eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import fs from 'fs';
 import crypto from 'crypto';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { X509Certificate } from '@peculiar/x509';
 import { ofetch } from 'ofetch';
 
 
 // 商户 API 证书，是用来证实商户身份的。证书中包含商户号、证书序列号、证书有效期等信息，由证书授权机构（Certificate Authority ，简称 CA）签发，以防证书被伪造或篡改。详情见 什么是商户API证书？如何获取商户API证书？ 。
 
-// 商户 API 私钥。你申请商户 API 证书时，会生成商户私钥，并保存在本地证书文件夹的文件 apiclient_key.pem 中。为了证明 API 请求是由你发送的，你应使用商户 API 私钥对请求进行签名。
+// 商户 API 私钥。你申请商户 API 证书时，会生成商户私钥。为了证明 API 请求是由你发送的，你应使用商户 API 私钥对请求进行签名。现在通过环境变量 WECHAT_PAY_PRIVATE_KEY_BASE64 提供。
 
-// 🔑 不要把私钥文件暴露在公共场合，如上传到 Github，写在 App 代码中等。
+// 🔑 私钥通过环境变量安全存储，避免在代码库中暴露敏感信息。
 
 // 微信支付平台证书。微信支付平台证书是指：由微信支付负责申请，包含微信支付平台标识、公钥信息的证书。你需使用微信支付平台证书中的公钥验证 API 应答和回调通知的签名。
 
@@ -28,25 +25,8 @@ import { ofetch } from 'ofetch';
 // 微信支付公钥ID，是微信支付公钥的唯一标识，可在 微信支付商户平台 -> 账户中心 -> API安全 直接查看。
 
 
-// 获取当前文件的目录路径
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-// 获取项目根目录（假设在 libs/payment/providers 文件夹中）
-// 直接从项目根目录定位证书路径
-// 不管在什么环境下，都从当前工作目录向上找到项目根目录
-const findProjectRoot = (startPath: string): string => {
-  let currentPath = startPath
-  while (currentPath !== path.dirname(currentPath)) {
-    if (fs.existsSync(path.join(currentPath, 'libs', 'payment', 'cert'))) {
-      return currentPath
-    }
-    currentPath = path.dirname(currentPath)
-  }
-  throw new Error('Could not find project root directory')
-}
-
-const projectRoot = findProjectRoot(process.cwd())
-const certPath = path.join(projectRoot, 'libs', 'payment', 'cert')
+// WeChat Pay certificates are now loaded from environment variables
+// This eliminates the need for certificate files and path resolution
 
 // 微信支付回调响应类型
 interface WechatPayNotification {
@@ -114,11 +94,12 @@ export class WechatPayProvider implements PaymentProvider {
     this.apiKey = config.payment.providers.wechat.apiKey;
     this.notifyUrl = config.payment.providers.wechat.notifyUrl;
     
-    console.log('Certificate path:', certPath);
+    console.log('Loading WeChat Pay certificates from environment variables');
     
     try {
-      this.privateKey = fs.readFileSync(path.join(certPath, 'apiclient_key.pem'));
-      this.publicKey = fs.readFileSync(path.join(certPath, 'apiclient_cert.pem'));
+      // Load certificates from environment variables via config
+      this.privateKey = config.payment.providers.wechat.privateKey;
+      this.publicKey = config.payment.providers.wechat.publicKey;
       
       // 从证书中获取序列号
       this.serialNo = this.getSerialNumber(this.publicKey);
@@ -130,8 +111,8 @@ export class WechatPayProvider implements PaymentProvider {
       });
       
     } catch (error) {
-      console.error('Error loading certificates:', error);
-      throw new Error('Failed to load WeChat Pay certificates');
+      console.error('Error loading certificates from environment variables:', error);
+      throw new Error('Failed to load WeChat Pay certificates. Please ensure WECHAT_PAY_PRIVATE_KEY_BASE64 and WECHAT_PAY_PUBLIC_KEY_BASE64 are set correctly.');
     }
   }
 

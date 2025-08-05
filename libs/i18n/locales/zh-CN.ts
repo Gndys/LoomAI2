@@ -650,7 +650,24 @@ export const zhCN: Locale = {
     },
     title: "定价",
     subtitle: "选择最适合您的方案",
+    description: "选择最适合你的方案，开始你的 TinyShip 之旅。支持多种支付方式，灵活的计费模式，为全球用户提供安全便捷的支付体验。",
     cta: "立即开始",
+    recommendedBadge: "推荐选择",
+    lifetimeBadge: "一次购买，终身使用",
+    features: {
+      securePayment: {
+        title: "多渠道安全支付",
+        description: "支持微信支付、Stripe、Creem 等多种企业级安全支付方式"
+      },
+      flexibleSubscription: {
+        title: "灵活计费模式",
+        description: "支持单次付费和订阅付费两种模式，满足不同需求"
+      },
+      globalCoverage: {
+        title: "全球支付覆盖",
+        description: "多币种和地区支付方式，为全球用户提供便捷支付体验"
+      }
+    },
     plans: {
       monthly: {
         name: "月度订阅",
