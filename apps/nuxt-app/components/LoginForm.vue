@@ -228,7 +228,7 @@ const onSubmit = handleSubmit(async (values) => {
     const result = await authClientVue.signIn.email({
       email: values.email,
       password: values.password,
-      callbackURL: `/${locale.value}`,
+      // callbackURL: `/${locale.value}`,
       ...(values.remember ? { rememberMe: true } : {}),
       fetchOptions
     })
@@ -245,9 +245,9 @@ const onSubmit = handleSubmit(async (values) => {
         errorMessage.value = t('auth.signin.errors.invalidCredentials')
         errorCode.value = 'UNKNOWN_ERROR'
       }
-    } else if (result && 'user' in result) {
+    } else if (result && 'data' in result && result.data.user) {
       // Login successful, redirect to dashboard
-      await navigateTo(localePath('/dashboard'))
+      await navigateTo(localePath('/'))
     } else {
       // Unknown response format
       errorMessage.value = t('auth.signin.errors.invalidCredentials')
