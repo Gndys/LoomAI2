@@ -117,7 +117,7 @@
                   :description="rt(feature.description)"
                   :icon="iconMap[index]"
                   :className="`${rt(feature.className)} group hover:scale-[1.02] transition-all duration-300 hover:shadow-xl bg-card border border-border hover:border-border/80 h-full`"
-                  :href="`/features/${rt(feature.title).toLowerCase().replace(/\s+/g, '-')}`"
+                  href="#"
                   :cta="t('home.common.learnMore')"
                 >
                   <template #background>

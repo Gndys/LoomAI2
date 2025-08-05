@@ -228,7 +228,7 @@ export default function Home() {
                       />
                     }
                     cta={t.home.common.learnMore}
-                    href={`/features/${feature.title.toLowerCase().replace(/\s+/g, '-')}`}
+                    href='#'
                   />
                 </motion.div>
               ))}
