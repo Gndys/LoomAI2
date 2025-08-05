@@ -85,7 +85,7 @@ pnpm run db:seed
 
 这将创建两个测试用户：
 - **管理员**: `admin@example.com` / `admin123` (角色: admin)
-- **普通用户**: `user@example.com` / `user123` (角色: user)
+- **普通用户**: `user@example.com` / `user123456` (角色: user)
 
 两个用户都已验证邮箱，可以直接登录系统进行测试。
 

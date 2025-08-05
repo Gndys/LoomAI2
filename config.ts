@@ -161,7 +161,7 @@ export const config = {
    * Authentication Service Configuration
    */
   auth: {
-    requireEmailVerification: false,
+    requireEmailVerification: true,
 
     /**
      * Social Login Providers Configuration
@@ -483,9 +483,15 @@ export const config = {
       get accessKeySecret() {
         return getEnvForService('ALIYUN_ACCESS_KEY_SECRET', 'Aliyun SMS');
       },
-      endpoint: 'dysmsapi.aliyuncs.com',
-      signName: '上海挚箴技术服务中心',
-      templateCode: 'SMS_235815655',
+      get endpoint() {
+        return getEnvForService('ALIYUN_SMS_ENDPOINT', 'Aliyun SMS') || 'dysmsapi.aliyuncs.com';
+      },
+      get signName() {
+        return getEnvForService('ALIYUN_SMS_SIGN_NAME', 'Aliyun SMS');
+      },
+      get templateCode() {
+        return getEnvForService('ALIYUN_SMS_TEMPLATE_CODE', 'Aliyun SMS');
+      },
     },
 
     /**
@@ -499,7 +505,9 @@ export const config = {
       get authToken() {
         return getEnvForService('TWILIO_AUTH_TOKEN', 'Twilio SMS');
       },
-      defaultFrom: '+1234567890',
+      get defaultFrom() {
+        return getEnvForService('TWILIO_DEFAULT_FROM', 'Twilio SMS');
+      },
     }
   },
 
@@ -515,7 +523,9 @@ export const config = {
     /**
      * Default Sender Email
      */
-    defaultFrom: 'noreply@tailwindresume.co',
+    get defaultFrom() {
+      return getEnvForService('EMAIL_DEFAULT_FROM', 'Email Service');
+    },
 
     /**
      * Resend Configuration

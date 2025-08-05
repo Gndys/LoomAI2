@@ -1,5 +1,5 @@
 {
-  "name": "@shipeasy/nuxt-app",
+  "name": "@tinyship/nuxt-app",
   "private": true,
   "type": "module",
   "scripts": {

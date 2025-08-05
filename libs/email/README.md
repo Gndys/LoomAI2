@@ -1,6 +1,21 @@
 # Email Service
 
-这个服务提供了一个统一的邮件发送接口，支持多个邮件服务提供商。目前支持 Resend，计划支持 SendGrid 和 SMTP。
+这个服务提供了一个统一的邮件发送接口，支持多个邮件服务提供商和国际化邮件模板。目前支持 Resend，计划支持 SendGrid 和 SMTP。
+
+## 邮件模板系统
+
+本模块使用内联 MJML 模板解决 monorepo 部署问题，支持多语言邮件模板：
+
+- **验证邮件** - 用户注册后的邮箱验证
+- **重置密码邮件** - 用户忘记密码时的重置链接
+- **支持语言** - 中文 (`zh-CN`) 和英文 (`en`)
+- **响应式设计** - 基于 MJML 的响应式邮件布局
+
+### MJML 资源
+
+- **[MJML 官网](https://mjml.io/)** - 了解 MJML 语法和最佳实践
+- **[MJML 在线编辑器](https://mjml.io/try-it-live/)** - 实时预览和调试邮件模板
+- **[MJML 文档](https://documentation.mjml.io/)** - 完整的组件和语法文档
 
 ## 配置
 
@@ -61,7 +76,37 @@ export const config = {
 
 ## 使用方法
 
-### 基本使用
+### 邮件模板使用
+
+#### 发送验证邮件
+
+```typescript
+import { sendVerificationEmail } from '@libs/email';
+
+// 用户注册后发送验证邮件
+await sendVerificationEmail('user@example.com', {
+  name: 'vikingmute',  // 用户名
+  verification_url: 'https://example.com/verify?token=123',
+  expiry_hours: 1,     // 过期时间（小时）
+  locale: 'zh-CN'      // 语言（'en' | 'zh-CN'）
+});
+```
+
+#### 发送重置密码邮件
+
+```typescript
+import { sendResetPasswordEmail } from '@libs/email';
+
+// 用户忘记密码后发送重置邮件
+await sendResetPasswordEmail('user@example.com', {
+  name: 'vikingmute',  // 用户名  
+  reset_url: 'https://example.com/reset?token=456',
+  expiry_hours: 1,     // 过期时间（小时）
+  locale: 'zh-CN'      // 语言（'en' | 'zh-CN'）
+});
+```
+
+### 基本邮件发送
 
 ```typescript
 import { sendEmail } from '@libs/email';
@@ -80,17 +125,6 @@ await sendEmail({
   html: '<h1>Welcome!</h1><p>Thanks for signing up.</p>',
   provider: 'sendgrid'
 });
-
-// 使用自定义发件人
-await sendEmail({
-  to: 'user@example.com',
-  from: 'support@example.com',
-  subject: 'Hello',
-  html: '<p>Hello World</p>',
-  cc: ['admin@example.com'],
-  bcc: ['archive@example.com'],
-  replyTo: 'support@example.com'
-});
 ```
 
 ### 响应格式
@@ -107,6 +141,33 @@ interface EmailResponse {
 }
 ```
 
+## 邮件模板开发
+
+### 模板结构
+
+模板文件位于 `templates/` 目录：
+```
+templates/
+├── index.ts         # 模板生成函数
+├── templates.ts     # MJML 模板内容
+└── README.md        # 模板文档
+```
+
+### 添加新模板
+
+1. 使用 [MJML 在线编辑器](https://mjml.io/try-it-live/) 设计和测试新模板
+2. 在 `templates.ts` 中添加新的 MJML 模板字符串
+3. 在 `index.ts` 中添加对应的接口和生成函数
+4. 在 `i18n/locales/` 中添加相应的翻译文本
+5. 在 `templates-sender.ts` 中添加发送函数
+
+### 模板特性
+
+- **内联部署** - 模板内容直接嵌入代码，解决 monorepo 部署问题
+- **多语言支持** - 基于 `@libs/i18n` 的翻译系统
+- **响应式设计** - 使用 MJML 确保邮件在各设备正常显示
+- **占位符替换** - 自动处理 `{{name}}`、`{{expiry_hours}}`、`{{year}}` 等变量
+
 ## 添加新的服务提供商
 
 1. 在 `.env.example` 和 `.env` 中添加新提供商所需的敏感信息
@@ -120,4 +181,5 @@ interface EmailResponse {
 - 确保在使用前正确配置所有必需的环境变量（仅敏感信息）
 - 在 `config.ts` 中直接配置非敏感信息
 - 不同提供商可能需要不同的配置参数
-- 建议在生产环境中使用错误处理和重试机制 
+- 建议在生产环境中使用错误处理和重试机制
+- 模板使用内联方式，无需担心 monorepo 构建时的文件路径问题 

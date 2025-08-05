@@ -97,6 +97,8 @@ auth: {
 #### 环境变量配置
 ```env
 RESEND_API_KEY="re_123456789_abcdefghijklmnop"
+# 默认发送邮件地址, 按照你验证的网址进行配置, 这里你需要任意一个域名进行验证
+EMAIL_DEFAULT_FROM="noreply@tinyship.cn"
 ```
 
 #### 修改配置文件
@@ -109,11 +111,6 @@ RESEND_API_KEY="re_123456789_abcdefghijklmnop"
      * 默认 email 发送提供商
      */
     defaultProvider: 'resend',
-
-    /**
-     * 默认发送邮件地址, 按照你验证的网址进行配置, 这里你需要任意一个域名进行验证
-     */
-    defaultFrom: 'noreply@tinyship.cn',
   },
 ```
 
@@ -148,7 +145,19 @@ emailAndPassword: {
 }
 ```
 
-**开发环境建议**: 在本地开发时，调试成功以后，建议先注释掉邮件发送代码，直接把 url 打印出来，然后在浏览器中打开，在生产环境再启用。
+**开发环境建议**: 在本地开发时，调试成功以后，建议先注释掉邮件发送代码，如果想获得最终的数据，我们的代码代码中已经将它添加到一个临时字段中：
+
+```typescript
+// 开发环境：将验证链接存储到 context 中，通过 hooks 返回
+if (process.env.NODE_ENV === 'development') {
+  // 将验证链接存储到全局上下文中，hooks 可以访问
+  (request as any).context = (request as any).context || {};
+  (request as any).context.verificationUrl = url;
+  console.log('🔗 [DEVELOPMENT MODE] Verification URL stored in context:', url);
+}
+```
+
+你可以查看 network，将对应的 url 复制出来，然后在浏览器中打开即可，在生产环境再启用。
 
 ### 扩展邮件功能
 
@@ -242,12 +251,15 @@ Better Auth 支持几乎所有主流 OAuth 提供商。参考 [Better Auth 文�
 ```env
 ALIYUN_ACCESS_KEY_ID="your_aliyun_key_id"
 ALIYUN_ACCESS_KEY_SECRET="your_aliyun_key_secret"
+ALIYUN_SMS_SIGN_NAME="your-sms-sign-name" #签名名称
+ALIYUN_SMS_TEMPLATE_CODE="SMS_000000000" #模版Code
 ```
 
 2. Twilio 短信服务
 ```env
 TWILIO_ACCOUNT_SID="your_twilio_account_sid"
 TWILIO_AUTH_TOKEN="your_twilio_auth_token"
+TWILIO_DEFAULT_FROM="+1234567890"
 ```
 
 ### 修改配置文件
@@ -264,24 +276,6 @@ TWILIO_AUTH_TOKEN="your_twilio_auth_token"
      * Default SMS Provider
      */
     defaultProvider: 'aliyun',
-
-    /**
-     * Aliyun SMS Configuration
-     */
-    aliyun: {
-      ...
-      endpoint: 'dysmsapi.aliyuncs.com',
-      signName: '签名名称',
-      templateCode: '阿里云模板 ID',
-    },
-
-    /**
-     * Twilio SMS Configuration
-     */
-    twilio: {
-      ...
-      defaultFrom: '+1234567890',
-    }
   },
 ```
 
@@ -324,6 +318,18 @@ phoneNumber: {
 ```
 
 **开发环境建议**: 测试完成后，建议在开发环境注释掉短信发送代码，直接保留 `console.log(`准备向 ${phoneNumber} 发送验证码: ${code}`);` 输入打印出的 code 即可，避免产生不必要的费用。
+同时如果想在 HTTP 相应中查看：我们的代码代码中已经将它添加到一个临时字段中：
+
+```typescript
+// 开发环境：将 OTP 代码存储到 context 中，通过 hooks 返回
+if (process.env.NODE_ENV === 'development') {
+  (request as any).context = (request as any).context || {};
+  (request as any).context.otpCode = code;
+  console.log('📱 [DEVELOPMENT MODE] OTP code stored in context:', code);
+}
+```
+
+你可以查看 network 来获取对应的信息详情。
 
 ### 扩展短信功能
 除了认证邮件，你还可以扩展短信服务用于：

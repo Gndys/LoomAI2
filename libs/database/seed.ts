@@ -87,7 +87,7 @@ async function seedDatabase() {
         console.log("✓ 普通用户已存在: user@example.com");
       } else {
         // 生成密码哈希
-        const userPasswordHash = await ctx.password.hash("user123");
+        const userPasswordHash = await ctx.password.hash("user123456");
         const normalUserId = generateUserId();
         
         // 插入普通用户
@@ -124,7 +124,7 @@ async function seedDatabase() {
     console.log("\n✅ 数据填充完成!");
     console.log("测试账户信息:");
     console.log("管理员 - 邮箱: admin@example.com, 密码: admin123");
-    console.log("普通用户 - 邮箱: user@example.com, 密码: user123");
+    console.log("普通用户 - 邮箱: user@example.com, 密码: user123456");
     
     return true;
   } catch (error) {

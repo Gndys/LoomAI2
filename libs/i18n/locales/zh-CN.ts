@@ -69,12 +69,12 @@ export const zhCN: Locale = {
       subject: "验证您的 TinyShip 账号",
       title: "请验证您的邮箱地址",
       greeting: "您好 {{name}}，",
-      message: "感谢您注册 ShipEasy。要完成注册，请点击下方按钮验证您的电子邮箱地址。",
+      message: "感谢您注册 TinyShip。要完成注册，请点击下方按钮验证您的电子邮箱地址。",
       button: "验证邮箱地址",
       alternativeText: "或者，您可以复制并粘贴以下链接到浏览器中：",
       expiry: "此链接将在 {{expiry_hours}} 小时后过期。",
       disclaimer: "如果您没有请求此验证，请忽略此邮件。",
-      signature: "祝您使用愉快，<br>TinyShip 团队",
+      signature: "祝您使用愉快，TinyShip 团队",
       copyright: "© {{year}} TinyShip. 保留所有权利。"
     },
     resetPassword: {
@@ -86,7 +86,7 @@ export const zhCN: Locale = {
       alternativeText: "或者，您可以复制并粘贴以下链接到浏览器中：",
       expiry: "此链接将在 {{expiry_hours}} 小时后过期。",
       disclaimer: "如果您没有请求重置密码，无需进行任何操作。",
-      signature: "祝您使用愉快，<br>TinyShip 团队",
+      signature: "祝您使用愉快，TinyShip 团队",
       copyright: "© {{year}} TinyShip. 保留所有权利。"
     }
   },

@@ -16,7 +16,9 @@
 
 - **中国大陆用户**：推荐 WeChat Pay
 - **国际用户**：推荐 Stripe 
-- **需要更灵活定价**：推荐 Creem
+- **审核通过更容易**：推荐 Creem
+
+**特别注意：在本地开发阶段我们要使用这些平台的测试/沙盒模式（Stripe 和 Creem 支持，微信支付不支持），所以微信支付如果想测试都是使用真实 0.01 元真实支付进行测试。**
 
 ## 🔧 环境变量申请和配置
 
@@ -176,6 +178,7 @@ CREEM_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ## 📦 配置付款计划
 
 通过 `config.ts` 中的 **payment.plans** 配置产品定价方案。这里配置的计划会自动显示在 `/pricing` 页面中。
+默认项目有所有三种支付方式的六种价格条目供参考。
 
 ### 💰 计划类型
 

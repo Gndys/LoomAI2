@@ -9,7 +9,7 @@ import { sendSMS } from '@libs/sms';
 import { emailSignInSchema, emailSignUpSchema } from '@libs/validators/user'
 import { wechatPlugin } from './plugins/wechat'
 import { sendVerificationEmail, sendResetPasswordEmail } from '@libs/email'
-import { locales, defaultLocale } from '@libs/email/templates'
+import { locales, defaultLocale } from '@libs/i18n'
 import { config } from '@config'
 export { toNextJsHandler } from "better-auth/next-js";
 /**
@@ -30,7 +30,7 @@ function getRefererInfo(request?: Request): { locale: string; lastSegment: strin
     const lastSegment = pathParts[pathParts.length - 1] || '';
     // 检查是否是支持的语言
     return {
-      locale: locale in locales ? locale : defaultLocale,
+      locale: locales.includes(locale as any) ? locale : defaultLocale,
       lastSegment
     };
   } catch (error) {
@@ -215,7 +215,7 @@ export const auth = betterAuth({
     // https://www.better-auth.com/docs/plugins/phone-number
     phoneNumber({
       //otpLength: 4,
-      sendOTP: async ({ phoneNumber, code }, request) => { 
+      sendOTP: async ({ phoneNumber, code }, request) => {
         console.log(`Attempting to send OTP to ${phoneNumber} with code ${code}`);
         
         // 开发环境：将 OTP 代码存储到 context 中，通过 hooks 返回

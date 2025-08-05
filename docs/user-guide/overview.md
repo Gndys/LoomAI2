@@ -63,41 +63,31 @@ tinyship/
 * 1 [安装依赖](./install.md)
 * 2 [数据库配置](./database.md)
 * 3 [身份认证配置](./auth.md)
-* 4 启动开发服务器
-
-### 4. 启动开发服务器
-```bash
-# 启动 Next.js 应用
-pnpm run dev:next
-
-# 或启动 Nuxt.js 应用
-pnpm run dev:nuxt
-```
+* 4 [付款方式配置](./payment.md)
 
 ## 📚 深入了解
 
 ### 核心功能模块
 
-- **[身份认证](./auth.md)**：完整的用户认证和授权系统
-- **[数据库](./database.md)**：数据库架构和迁移管理
-- **[支付集成](./payment.md)**：多平台支付解决方案
-- **[权限管理](./permissions.md)**：基于角色的访问控制
-- **[国际化](./i18n.md)**：多语言支持系统
-- **[AI 功能](./ai.md)**：AI 服务集成和开发指南
+- **[身份认证](../../libs/auth/README.md)**：完整的用户认证和授权系统
+- **[数据库](../../libs/database/README.md)**：数据库架构和迁移管理
+- **[支付集成](../../libs/payment/README.md)**：多平台支付解决方案
+- **[邮件服务](../../libs/email/README.md)**：邮件发送和模板管理系统
+- **[短信服务](../../libs/sms/README.md)**：短信发送和验证码服务
+- **[UI 组件](../../libs/ui/README.md)**：通用 UI 组件库和主题系统
+- **[权限管理](../../libs/permissions/README.md)**：基于角色的访问控制
+- **[数据验证](../../libs/validators/README.md)**：类型安全的数据验证
+- **[国际化](../../libs/i18n/README.md)**：多语言支持系统
+- **[AI 功能](../../libs/ai/README.md)**：AI 服务集成和开发指南
 
 ### 开发指南
 
 - **[开发最佳实践](./best-practices.md)**：代码规范和开发建议
-- **[UI 组件库](./ui-components.md)**：组件使用和自定义指南
-- **[主题系统](./themes.md)**：多主题切换和自定义
-- **[数据验证](./validators.md)**：类型安全的数据验证
 - **[部署指南](./deployment.md)**：生产环境部署配置
 
 ## 🤝 社区与支持
 
-- **文档**：[完整文档](../README.md)
-- **示例**：查看 `apps/` 目录下的示例应用
-- **问题反馈**：[GitHub Issues](https://github.com/your-repo/tinyship/issues)
+- **问题反馈**：[GitHub Issues](https://github.com/TinyshipCN)
 
 ---
 

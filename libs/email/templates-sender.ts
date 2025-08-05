@@ -1,10 +1,11 @@
 import { sendEmailByResend, ShipEasyEmailOptions, ResendResponse } from './resend';
-import { templates, VerificationEmailParams, ResetPasswordEmailParams, EmailTemplate } from './templates';
+import { templates, VerificationEmailParams, ResetPasswordEmailParams, EmailTemplate } from './templates/index';
+import { config } from '@config';
 
 /**
  * 默认发件人邮箱
  */
-const DEFAULT_FROM = 'noreply@tailwindresume.co';
+const DEFAULT_FROM = config.email.defaultFrom || 'noreply@tinyship.co';
 
 /**
  * 邮件发送服务提供商类型

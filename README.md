@@ -93,7 +93,7 @@
 
 ## 🚀 Getting Started
 
-For detailed setup instructions and configuration guides, please refer to our [Start Guide](./START_GUIDE.md).
+For detailed setup instructions and configuration guides, please refer to our [Start Guide](./docs/user-guide/overview.md).
 
 ## 📦 Tech Stack
 
@@ -124,18 +124,3 @@ For detailed setup instructions and configuration guides, please refer to our [S
 4. **Framework Freedom**: Choose between React and Vue while keeping all the powerful features
 5. **Production Ready**: Enterprise-grade security and scalability built-in
 6. **AI-Powered Development**: Enhanced development experience with Cursor and AI tools
-
-## 📚 Documentation
-
-- [Start Guide](./START_GUIDE.md)
-- [Architecture Overview](./docs/arch.md)
-- [API Documentation](./docs/api.md)
-- [Deployment Guide](./docs/deployment.md)
-
-## 🤝 Contributing
-
-We welcome contributions! Please read our [Contributing Guide](./CONTRIBUTING.md) for details.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details. 

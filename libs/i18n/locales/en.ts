@@ -74,8 +74,8 @@ export const en: Locale = {
       alternativeText: "Or, copy and paste the following link into your browser:",
       expiry: "This link will expire in {{expiry_hours}} hours.",
       disclaimer: "If you didn't request this verification, please ignore this email.",
-      signature: "Happy Shipping,<br>The TinyShip Team",
-      copyright: "© {{year}} TinyShip. All rights reserved."
+      signature: "Happy Shipping, The TinyShip Team",
+    copyright: "© {{year}} TinyShip. All rights reserved."
     },
     resetPassword: {
       subject: "Reset your TinyShip password",
@@ -86,7 +86,7 @@ export const en: Locale = {
       alternativeText: "Or, copy and paste the following link into your browser:",
       expiry: "This link will expire in {{expiry_hours}} hours.",
       disclaimer: "If you didn't request a password reset, no action is required.",
-      signature: "Happy Shipping,<br>The TinyShip Team",
+      signature: "Happy Shipping, The TinyShip Team",
       copyright: "© {{year}} TinyShip. All rights reserved."
     }
   },

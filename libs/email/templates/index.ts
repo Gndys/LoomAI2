@@ -1,77 +1,9 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import mjml2html from 'mjml';
 import Handlebars from 'handlebars';
-import { Locale } from '../../i18n/locales/types';
-import { en } from '../../i18n/locales/en';
-import { zhCN } from '../../i18n/locales/zh-CN';
+import { translations, defaultLocale, type SupportedLocale } from '@libs/i18n';
+import { VERIFICATION_TEMPLATE, RESET_PASSWORD_TEMPLATE } from './templates';
 
-// Get directory name for the current module
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-/**
- * Find project root directory by looking for the libs/email/templates directory
- */
-const findProjectRoot = (startPath: string): string => {
-  let currentPath = startPath;
-  while (currentPath !== path.dirname(currentPath)) {
-    if (fs.existsSync(path.join(currentPath, 'libs', 'email', 'templates'))) {
-      return currentPath;
-    }
-    currentPath = path.dirname(currentPath);
-  }
-  throw new Error('Could not find project root directory with libs/email/templates');
-};
-
-/**
- * Get template file path using project root detection
- */
-function getTemplatePath(templateName: string): string {
-  try {
-    // Find project root starting from current working directory
-    const projectRoot = findProjectRoot(process.cwd());
-    const templatePath = path.join(projectRoot, 'libs', 'email', 'templates', templateName);
-    
-    if (fs.existsSync(templatePath)) {
-      console.log(`📧 Found email template at: ${templatePath}`);
-      return templatePath;
-    }
-    
-    throw new Error(`Template file ${templateName} does not exist at ${templatePath}`);
-  } catch (error) {
-    // Fallback: try starting from __dirname
-    try {
-      const projectRoot = findProjectRoot(__dirname);
-      const templatePath = path.join(projectRoot, 'libs', 'email', 'templates', templateName);
-      
-      if (fs.existsSync(templatePath)) {
-        console.log(`📧 Found email template at: ${templatePath} (fallback)`);
-        return templatePath;
-      }
-      
-      throw new Error(`Template file ${templateName} does not exist at ${templatePath}`);
-    } catch (fallbackError) {
-      console.error('❌ Failed to find project root from process.cwd():', process.cwd());
-      console.error('❌ Failed to find project root from __dirname:', __dirname);
-      throw new Error(`Could not locate email template ${templateName}. Ensure libs/email/templates directory exists.`);
-    }
-  }
-}
-
-// 支持的语言包
-export const locales: Record<string, Locale> = {
-  en,
-  'zh-CN': zhCN
-};
-
-// 默认语言
-export const defaultLocale = 'en';
-
-// 获取当前年份，用于版权信息
-const getCurrentYear = () => new Date().getFullYear().toString();
-
-// 模板类型定义
+// 邮件模板类型定义
 export interface EmailTemplate {
   subject: string;
   html: string;
@@ -93,20 +25,23 @@ export interface ResetPasswordEmailParams {
   locale?: string; // 指定使用哪种语言
 }
 
+// 获取当前年份，用于版权信息
+const getCurrentYear = () => new Date().getFullYear().toString();
+
 /**
  * 为Handlebars模板准备翻译数据
  */
 function prepareTranslationData(params: VerificationEmailParams | ResetPasswordEmailParams, template: 'verification' | 'resetPassword') {
-  const locale = params.locale && locales[params.locale] ? params.locale : defaultLocale;
-  const translations = locales[locale];
+  const locale = params.locale && params.locale in translations ? params.locale as SupportedLocale : defaultLocale;
+  const localeTranslations = translations[locale];
   
   // 处理特殊的格式化变量
   const year = getCurrentYear();
-  const expiry = translations.email[template].expiry.replace(
+  const expiry = localeTranslations.email[template].expiry.replace(
     '{{expiry_hours}}', 
     params.expiry_hours.toString()
   );
-  const greeting = translations.email[template].greeting.replace(
+  const greeting = localeTranslations.email[template].greeting.replace(
     '{{name}}', 
     params.name
   );
@@ -114,14 +49,14 @@ function prepareTranslationData(params: VerificationEmailParams | ResetPasswordE
   // 返回处理后的翻译对象
   return {
     translations: {
-      ...translations,
+      ...localeTranslations,
       email: {
-        ...translations.email,
+        ...localeTranslations.email,
         [template]: {
-          ...translations.email[template],
+          ...localeTranslations.email[template],
           expiry,
           greeting,
-          copyright: translations.email[template].copyright.replace('{{year}}', year)
+          copyright: localeTranslations.email[template].copyright.replace('{{year}}', year)
         }
       }
     }
@@ -132,15 +67,11 @@ function prepareTranslationData(params: VerificationEmailParams | ResetPasswordE
  * 生成验证邮件模板
  */
 export function generateVerificationEmail(params: VerificationEmailParams): EmailTemplate {
-  // 读取MJML模板
-  const templatePath = getTemplatePath('verification.mjml');
-  const mjmlTemplate = fs.readFileSync(templatePath, 'utf8');
-  
   // 准备翻译数据
   const translationData = prepareTranslationData(params, 'verification');
   
   // 编译MJML为HTML
-  const { html: mjmlHtml } = mjml2html(mjmlTemplate);
+  const { html: mjmlHtml } = mjml2html(VERIFICATION_TEMPLATE);
   
   // 使用Handlebars替换变量
   const template = Handlebars.compile(mjmlHtml);
@@ -150,8 +81,8 @@ export function generateVerificationEmail(params: VerificationEmailParams): Emai
   });
   
   // 获取对应语言的主题
-  const locale = params.locale && locales[params.locale] ? params.locale : defaultLocale;
-  const subject = locales[locale].email.verification.subject;
+  const locale = params.locale && params.locale in translations ? params.locale as SupportedLocale : defaultLocale;
+  const subject = translations[locale].email.verification.subject;
   
   return {
     subject,
@@ -163,15 +94,11 @@ export function generateVerificationEmail(params: VerificationEmailParams): Emai
  * 生成重置密码邮件模板
  */
 export function generateResetPasswordEmail(params: ResetPasswordEmailParams): EmailTemplate {
-  // 读取MJML模板
-  const templatePath = getTemplatePath('reset-password.mjml');
-  const mjmlTemplate = fs.readFileSync(templatePath, 'utf8');
-  
   // 准备翻译数据
   const translationData = prepareTranslationData(params, 'resetPassword');
   
   // 编译MJML为HTML
-  const { html: mjmlHtml } = mjml2html(mjmlTemplate);
+  const { html: mjmlHtml } = mjml2html(RESET_PASSWORD_TEMPLATE);
   
   // 使用Handlebars替换变量
   const template = Handlebars.compile(mjmlHtml);
@@ -181,8 +108,8 @@ export function generateResetPasswordEmail(params: ResetPasswordEmailParams): Em
   });
   
   // 获取对应语言的主题
-  const locale = params.locale && locales[params.locale] ? params.locale : defaultLocale;
-  const subject = locales[locale].email.resetPassword.subject;
+  const locale = params.locale && params.locale in translations ? params.locale as SupportedLocale : defaultLocale;
+  const subject = translations[locale].email.resetPassword.subject;
   
   return {
     subject,
