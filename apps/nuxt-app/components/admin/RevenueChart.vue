@@ -1,28 +1,54 @@
 <template>
-  <!-- Use ClientOnly to prevent SSR issues with chart library -->
-  <ClientOnly>
-    <!-- Re-render the component on theme change -->
-    <AreaChart
-      :key="`${theme}-${colorScheme}`"
-      :data="chartData"
-      :height="300"
-      :categories="categories"
-      :y-grid-line="true"
-      :x-formatter="xFormatter"
-      :curve-type="CurveType.MonotoneX"
-      :legend-position="LegendPosition.Top"
-      :hide-legend="false"
-    />
-    <template #fallback>
-      <div class="h-[300px] flex items-center justify-center border rounded-lg bg-muted/50">
-        <div class="text-muted-foreground">Loading chart...</div>
-      </div>
-    </template>
-  </ClientOnly>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Revenue Chart -->
+    <div class="space-y-2">
+      <ClientOnly>
+        <AreaChart
+          :key="`revenue-${theme}-${colorScheme}`"
+          :data="chartData"
+          :height="250"
+          :categories="revenueCategories"
+          :y-grid-line="true"
+          :x-formatter="xFormatter"
+          :curve-type="CurveType.MonotoneX"
+          :legend-position="LegendPosition.Top"
+          :hide-legend="false"
+        />
+        <template #fallback>
+          <div class="h-[250px] flex items-center justify-center border rounded-lg bg-muted/50">
+            <div class="text-muted-foreground">Loading revenue chart...</div>
+          </div>
+        </template>
+      </ClientOnly>
+    </div>
+
+    <!-- Orders Chart -->
+    <div class="space-y-2">
+      <ClientOnly>
+        <AreaChart
+          :key="`orders-${theme}-${colorScheme}`"
+          :data="chartData"
+          :height="250"
+          :categories="ordersCategories"
+          :y-grid-line="true"
+          :x-formatter="xFormatter"
+          :curve-type="CurveType.MonotoneX"
+          :legend-position="LegendPosition.Top"
+          :hide-legend="false"
+        />
+        <template #fallback>
+          <div class="h-[250px] flex items-center justify-center border rounded-lg bg-muted/50">
+            <div class="text-muted-foreground">Loading orders chart...</div>
+          </div>
+        </template>
+      </ClientOnly>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { oklch2hex } from 'colorizr'
+
 // Interface for chart data structure
 interface RevenueChartItem {
   month: string
@@ -107,16 +133,23 @@ const getChartColor = (colorVar: string): string => {
   return colorVar === 'chart-1' ? '#D97706' : '#009689'
 }
 
-// Define chart categories with CSS variable colors (auto-converted using colorizr)
-const categories = computed(() => {
+// Define chart categories for revenue chart only
+const revenueCategories = computed(() => {
   const revenueColor = getChartColor('chart-1')
-  const ordersColor = getChartColor('chart-2')
   
   return {
     revenue: {
       name: 'Revenue',
       color: revenueColor, // Auto-converts CSS variable --chart-1 from OKLCH to RGB hex
     },
+  }
+})
+
+// Define chart categories for orders chart only
+const ordersCategories = computed(() => {
+  const ordersColor = getChartColor('chart-2')
+  
+  return {
     orders: {
       name: 'Orders', 
       color: ordersColor, // Auto-converts CSS variable --chart-2 from OKLCH to RGB hex

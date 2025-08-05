@@ -22,8 +22,8 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
-// 自定义 Tooltip 组件
-const CustomTooltip = ({ active, payload, label }: any) => {
+// Revenue chart tooltip
+const RevenueTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-card p-3 border border-border rounded-lg shadow-lg">
@@ -31,11 +31,21 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="text-sm text-chart-1">
           {`收入: ¥${payload[0]?.value?.toLocaleString() || 0}`}
         </p>
-        {payload[1] && (
-          <p className="text-sm text-chart-2">
-            {`订单: ${payload[1].value}`}
-          </p>
-        )}
+      </div>
+    );
+  }
+  return null;
+};
+
+// Orders chart tooltip
+const OrdersTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-card p-3 border border-border rounded-lg shadow-lg">
+        <p className="text-sm font-medium text-card-foreground">{`${label}`}</p>
+        <p className="text-sm text-chart-2">
+          {`订单: ${payload[0]?.value}`}
+        </p>
       </div>
     );
   }
@@ -76,65 +86,85 @@ export default function RevenueChart({ data }: RevenueChartProps) {
   const mutedForegroundColor = getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground').trim();
 
   return (
-    <div className="h-80">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={chart1Color} stopOpacity={0.3}/>
-              <stop offset="95%" stopColor={chart1Color} stopOpacity={0}/>
-            </linearGradient>
-            <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={chart2Color} stopOpacity={0.3}/>
-              <stop offset="95%" stopColor={chart2Color} stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-          <XAxis 
-            dataKey="month" 
-            stroke={mutedForegroundColor}
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-          />
-          <YAxis 
-            yAxisId="revenue"
-            orientation="left"
-            stroke={mutedForegroundColor}
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(value) => `¥${formatNumber(value)}`}
-          />
-          <YAxis 
-            yAxisId="orders"
-            orientation="right"
-            stroke={mutedForegroundColor}
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Area
-            yAxisId="revenue"
-            type="monotone"
-            dataKey="revenue"
-            stroke={chart1Color}
-            strokeWidth={2}
-            fillOpacity={1}
-            fill="url(#colorRevenue)"
-          />
-          <Area
-            yAxisId="orders"
-            type="monotone"
-            dataKey="orders"
-            stroke={chart2Color}
-            strokeWidth={2}
-            fillOpacity={1}
-            fill="url(#colorOrders)"
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Revenue Chart */}
+      <div className="space-y-2">
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data}>
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={chart1Color} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={chart1Color} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
+              <XAxis 
+                dataKey="month" 
+                stroke={mutedForegroundColor}
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis 
+                stroke={mutedForegroundColor}
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `¥${formatNumber(value)}`}
+              />
+              <Tooltip content={<RevenueTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke={chart1Color}
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#colorRevenue)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Orders Chart */}
+      <div className="space-y-2">
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data}>
+              <defs>
+                <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={chart2Color} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={chart2Color} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
+              <XAxis 
+                dataKey="month" 
+                stroke={mutedForegroundColor}
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis 
+                stroke={mutedForegroundColor}
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip content={<OrdersTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="orders"
+                stroke={chart2Color}
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#colorOrders)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   );
 } 
