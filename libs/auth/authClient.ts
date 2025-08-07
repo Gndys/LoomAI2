@@ -1,6 +1,6 @@
 import { createAuthClient as createAuthClientVue } from "better-auth/vue"
 import { createAuthClient as createAuthClientReact } from "better-auth/react"
-import { genericOAuthClient, adminClient, phoneNumberClient,  } from "better-auth/client/plugins"
+import { genericOAuthClient, adminClient, phoneNumberClient  } from "better-auth/client/plugins"
 
 const plugins = [
   genericOAuthClient(),

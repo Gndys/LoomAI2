@@ -12,8 +12,6 @@ export async function POST(request: NextRequest) {
     const name = formData.get('name') as string
     const role = formData.get('role') as string
     const image = formData.get('image') as string
-    const provider = formData.get('provider') as string
-    const providerId = formData.get('providerId') as string
     const phoneNumber = formData.get('phoneNumber') as string
     const banReason = formData.get('banReason') as string
     const banExpires = formData.get('banExpires') as string
@@ -38,8 +36,6 @@ export async function POST(request: NextRequest) {
         name,
         role,
         image: image || null,
-        provider: provider || null,
-        providerId: providerId || null,
         phoneNumber: phoneNumber || null,
         emailVerified,
         banned,

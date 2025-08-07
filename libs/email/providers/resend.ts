@@ -10,7 +10,7 @@ const resend = new Resend(config.email.resend.apiKey);
 export async function sendEmailByResend(options: EmailOptions): Promise<EmailResponse> {
   try {
     const { data: responseData, error } = await resend.emails.send({
-      from: options.from || config.email.defaultFrom,
+      from: options.from || config.email.defaultFrom!,
       to: options.to,
       subject: options.subject,
       html: options.html,

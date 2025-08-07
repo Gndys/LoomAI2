@@ -1,8 +1,7 @@
 import { Resend, CreateEmailOptions } from 'resend';
-import * as dotenv from "dotenv";
+import { config } from '@config';
 
 // 加载环境变量
-dotenv.config();
 // 自定义类型，确保兼容性
 export type ShipEasyEmailOptions = {
   to: string;
@@ -24,11 +23,11 @@ export type ResendResponse = {
   } | null;
 };
 
-if (!process.env.RESEND_API_KEY) {
+if (!config.email.resend.apiKey) {
   throw new Error('Missing RESEND_API_KEY environment variable');
 }
-console.log('process.env.RESEND_API_KEY', process.env.RESEND_API_KEY);
-const resend = new Resend(process.env.RESEND_API_KEY);
+
+const resend = new Resend(config.email.resend.apiKey);
 
 export async function sendEmailByResend(options: ShipEasyEmailOptions): Promise<ResendResponse> {
   // 转换为Resend需要的格式

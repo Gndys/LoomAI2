@@ -240,7 +240,7 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
-export default async function AdminDashboard({ params }: { params: { lang: string } }) {
+export default async function AdminDashboard({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const t = translations[lang as keyof typeof translations];
 

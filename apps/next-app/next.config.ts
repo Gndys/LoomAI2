@@ -39,17 +39,17 @@ const nextConfig: NextConfig= {
     domains: [],
   },
   // https://github.com/vercel/next.js/issues/50042
-  serverExternalPackages: ['mjml'],
+  serverExternalPackages: ['mjml', 'handlebars'],
   experimental: {
     // 允许导入外部目录
     externalDir: true,
     nodeMiddleware: true,
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+  },
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
       },
     },
   },

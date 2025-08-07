@@ -6,7 +6,7 @@ import { SMSOptions, SMSResponse, AliyunSMSOptions } from '../types';
 import { config } from '@config';
 
 const aliyunConfig = config.sms.aliyun;
-console.log('aliyunConfig', aliyunConfig);
+
 // @ts-ignore
 // https://github.com/aliyun/alibabacloud-typescript-sdk/issues/30
 const Client = (Dysmsapi20170525_Module).default || Dysmsapi20170525_Module

@@ -10,13 +10,13 @@ interface PageProps {
   params: Promise<{
     lang: string;
   }>;
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export default async function OrdersPage({ params, searchParams }: PageProps) {
   const [{ lang }, rawParams] = await Promise.all([
     params,
-    Promise.resolve(searchParams)
+    searchParams
   ]);
   
   const t = translations[lang as keyof typeof translations];

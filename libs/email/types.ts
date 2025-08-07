@@ -1,7 +1,7 @@
 /**
  * 邮件服务提供商类型
  */
-export type EmailProvider = 'resend' | 'sendgrid' | 'smtp';
+export type EmailProvider = 'resend' | 'sendgrid' | 'mailchimp' | 'smtp';
 
 /**
  * 统一的邮件发送选项接口

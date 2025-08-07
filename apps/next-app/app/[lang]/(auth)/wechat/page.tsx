@@ -5,8 +5,7 @@ import Script from 'next/script';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/use-translation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { nanoid } from 'nanoid'
-import { config } from '@config';
+import { nanoid } from 'nanoid';
 
 declare global {
   interface Window {
@@ -16,8 +15,7 @@ declare global {
 
 export default function WeixinLoginPage() {
   const { t, locale } = useTranslation();
-  console.log('process.env.NEXT_PUBLIC_WECHAT_APP_ID', process.env.NEXT_PUBLIC_WECHAT_APP_ID)
-  console.log('process.env.NEXT_PUBLIC_WECHAT_REDIRECT_URI', process.env.NEXT_PUBLIC_WECHAT_REDIRECT_URI)
+  
   useEffect(() => {
 
     const initWxLogin = () => {
@@ -26,7 +24,7 @@ export default function WeixinLoginPage() {
           id: 'login_container',
           appid: process.env.NEXT_PUBLIC_WECHAT_APP_ID,
           scope: 'snsapi_login',
-          redirect_uri: encodeURIComponent(`${config.app.baseUrl}/api/auth/oauth2/callback/wechat`),
+          redirect_uri: encodeURIComponent(`${window.location.origin}/api/auth/oauth2/callback/wechat`),
           state: nanoid(10),
           style: 'black',
           href: 'https://api.easycv.cn/public/wxLogin.css',

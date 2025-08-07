@@ -4,7 +4,7 @@
   "private": true,
   "description": "Tinyship SaaS Template - A comprehensive monorepo for building subscription-based web applications",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "packageManager": "pnpm@8.6.0",
   "scripts": {
@@ -12,6 +12,8 @@
     "dev:nuxt": "turbo run dev --filter=@tinyship/nuxt-app",
     "build:next": "turbo run build --filter=@tinyship/next-app",
     "build:nuxt": "turbo run build --filter=@tinyship/nuxt-app",
+    "start:next": "turbo run start --filter=@tinyship/next-app",
+    "start:nuxt": "turbo run start --filter=@tinyship/nuxt-app",
     "clean": "turbo run clean && rm -rf node_modules",
     "db:check": "node libs/database/scripts.js check",
     "db:push": "node libs/database/scripts.js push",

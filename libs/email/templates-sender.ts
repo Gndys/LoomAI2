@@ -1,29 +1,12 @@
 import { sendEmailByResend, ShipEasyEmailOptions, ResendResponse } from './resend';
 import { templates, VerificationEmailParams, ResetPasswordEmailParams, EmailTemplate } from './templates/index';
+import { EmailProvider, EmailResponse } from './types';
 import { config } from '@config';
 
 /**
  * 默认发件人邮箱
  */
 const DEFAULT_FROM = config.email.defaultFrom || 'noreply@tinyship.co';
-
-/**
- * 邮件发送服务提供商类型
- */
-export type EmailProvider = 'resend' | 'sendgrid' | 'mailchimp' | 'smtp';
-
-/**
- * 统一的邮件发送响应类型
- */
-export type EmailResponse = {
-  success: boolean;
-  id?: string;
-  error?: {
-    message: string;
-    name: string;
-    provider?: EmailProvider;
-  } | null;
-};
 
 /**
  * 基础发送邮件配置，扩展自ShipEasyEmailOptions
