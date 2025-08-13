@@ -42,6 +42,30 @@ export const ALL_THEME_CLASSES = [
   'theme-ocean-breeze'
 ] as const
 
+// Theme configuration with UI display information
+export const THEME_CONFIG = {
+  default: {
+    name: 'Default',
+    color: '#343434' // oklch(0.205 0 0) - Classic gray
+  },
+  claude: {
+    name: 'Claude',
+    color: '#b45309' // oklch(0.6171 0.1375 39.0427) - Warm orange
+  },
+  'cosmic-night': {
+    name: 'Cosmic Night',
+    color: '#7c3aed' // oklch(0.5417 0.1790 288.0332) - Deep purple
+  },
+  'modern-minimal': {
+    name: 'Modern Minimal',
+    color: '#6366f1' // oklch(0.6231 0.1880 259.8145) - Modern purple-blue
+  },
+  'ocean-breeze': {
+    name: 'Ocean Breeze',
+    color: '#10b981' // oklch(0.7227 0.1920 149.5793) - Ocean teal-green
+  }
+} as const
+
 /**
  * Apply theme classes to document root
  * @param theme - Theme mode (light/dark)

@@ -85,20 +85,37 @@ Docker 容器中**不能使用 `localhost`** 连接宿主机服务：
 # ❌ 错误 - 容器内访问不到宿主机的 localhost
 DATABASE_URL=postgresql://localhost:5432/db
 
-# ✅ 正确 - 连接宿主机数据库（需要明确指定用户名）
+# ✅ 正确 - 连接宿主机数据库
+# Mac/Windows Docker Desktop:
 DATABASE_URL=postgresql://viking@host.docker.internal:5432/tinyship_dev
 
-# ✅ 正确 - 带密码的连接
-DATABASE_URL=postgresql://user:password@host.docker.internal:5432/db
+# Linux VPS (两种方式):
+# 方式1: 网桥模式 (默认)
+DATABASE_URL=postgresql://viking@172.17.0.1:5432/tinyship_dev
+# 方式2: 主机网络模式 (推荐，更可靠)
+# 使用 --network host 参数，然后可以直接用 localhost
+DATABASE_URL=postgresql://viking@localhost:5432/tinyship_dev
 
 # ✅ 正确 - 连接远程数据库
 DATABASE_URL=postgresql://user:pass@your-db-server.com:5432/db
 ```
 
+**Linux VPS 主机网络模式使用方法：**
+```bash
+# 使用主机网络运行容器
+docker run -d \
+  --name tinyship-nuxt \
+  --network host \
+  --env-file .env \
+  --restart unless-stopped \
+  tinyship-nuxt
+```
+
 **重要提示：**
 - 必须明确指定用户名，即使本地不需要用户名也要在 Docker 中指定
 - 对于 Homebrew 安装的 PostgreSQL，用户名通常是你的系统用户名
-- 只有数据库等后端服务需要修改为 `host.docker.internal`，应用的对外 URL (如 `APP_BASE_URL`) 不需要修改
+- **Linux VPS 推荐使用主机网络模式**，避免网关地址不一致问题
+- 只有数据库等后端服务需要修改连接地址，应用的对外 URL (如 `APP_BASE_URL`) 不需要修改
 
 ## 🐳 Docker Compose 详细说明
 
@@ -146,9 +163,14 @@ docker compose ps
 
 ```bash
 NODE_ENV=production
-# 数据库连接 - 使用 host.docker.internal 连接宿主机，必须指定用户名
-DATABASE_URL=postgresql://viking@host.docker.internal:5432/tinyship_dev
-# 应用 URL - 保持实际访问地址，不使用 host.docker.internal
+# 数据库连接 - 根据运行方式选择
+# Mac/Windows Docker Desktop:
+# DATABASE_URL=postgresql://viking@host.docker.internal:5432/tinyship_dev
+# Linux VPS 网桥模式:
+# DATABASE_URL=postgresql://viking@172.17.0.1:5432/tinyship_dev
+# Linux VPS 主机网络模式 (推荐):
+DATABASE_URL=postgresql://viking@localhost:5432/tinyship_dev
+# 应用 URL - 保持实际访问地址
 APP_BASE_URL=https://yourdomain.com
 BETTER_AUTH_SECRET=your-production-secret-key
 BETTER_AUTH_URL=https://yourdomain.com
