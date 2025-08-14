@@ -1,8 +1,8 @@
 # Nuxt.js Production Dockerfile
 FROM node:22-alpine AS base
 
-# Install dependencies only when needed
-FROM base AS deps
+# Build stage - install deps and build
+FROM base AS builder
 RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
@@ -10,31 +10,16 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 
-# Copy package files (从根目录构建时的路径)
+# Copy all files needed for build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json config.ts tsconfig.json ./
-COPY apps/nuxt-app/package.json ./apps/nuxt-app/
+COPY apps/nuxt-app ./apps/nuxt-app
 COPY libs ./libs
 
+# Set build-time environment variable
+ENV BUILD_TIME=true
 # Install dependencies
 RUN pnpm install --frozen-lockfile
-
-# Build the source code
-FROM base AS builder
-WORKDIR /app
-
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
-
-# Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/libs ./libs
-
-# Copy source code
-COPY apps/nuxt-app ./apps/nuxt-app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json config.ts tsconfig.json ./
-
-# Build the application
-ENV BUILD_TIME=true
+# Build the application with increased memory limit
 RUN pnpm build:nuxt
 
 # Production image, copy all the files and run nuxt
