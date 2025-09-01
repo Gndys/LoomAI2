@@ -25,7 +25,7 @@ docker compose down
 ### Next.js 部署
 
 ```bash
-# 1. 在项目根目录构建镜像
+# 1. 确保项目根目录有 .env 文件，然后构建镜像
 docker build -t tinyship-next -f apps/next-app/Dockerfile .
 
 # 2. 运行容器
@@ -40,7 +40,7 @@ docker run -d \
 ### Nuxt.js 部署
 
 ```bash
-# 1. 在项目根目录构建镜像
+# 1. 确保项目根目录有 .env 文件，然后构建镜像
 docker build -t tinyship-nuxt -f apps/nuxt-app/Dockerfile .
 
 # 2. 运行容器
@@ -73,9 +73,25 @@ Dockerfile 会自动复制这些必要的配置文件：
 - 在 Nuxt.js 中通过 `build.rollupOptions.external` 配置忽略 Next.js 模块
 
 ### 构建时环境变量
-- Dockerfile 中设置 `BUILD_TIME=true` 避免构建失败
-- 运行时环境变量 (如 API keys) 在构建时不是必需的
-- 实际部署时仍会在运行时验证必要的环境变量
+
+支持两种构建模式，**自动适配不同环境**：
+
+#### **本地开发构建**
+- Dockerfile 会自动复制项目根目录的 `.env` 文件 (如果存在)
+- **前端公开变量自动读取**：
+  - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` - Cloudflare Turnstile 验证码站点密钥  
+  - `NEXT_PUBLIC_WECHAT_APP_ID` - 微信登录应用 ID
+- **无需任何额外参数**，一行命令构建
+
+#### **CI/CD 环境构建**
+- 支持通过 `--build-arg` 传入环境变量
+- GitHub Actions/其他 CI 环境中没有 `.env` 文件也能正常构建
+- 优先级：构建参数 > .env 文件 > 默认值
+
+#### **环境变量优先级**
+1. Docker build args (CI/CD 环境)
+2. .env 文件内容 (本地开发)  
+3. nuxt.config.ts 中的默认值 (fallback)
 
 ## 🗃️ 数据库连接配置
 
@@ -177,6 +193,13 @@ BETTER_AUTH_URL=https://yourdomain.com
 RESEND_API_KEY=your-resend-api-key
 EMAIL_DEFAULT_FROM=noreply@yourdomain.com
 ```
+
+**重要说明：**
+- `NEXT_PUBLIC_*` 变量会在构建时自动从 `.env` 文件读取，编译到前端代码中
+- **本地构建**：构建时会自动复制 `.env` 文件，无需额外参数
+- **CI/CD 构建**：通过 secrets 和 build args 传入环境变量
+- 运行时仍需要 `--env-file .env` 用于其他环境变量（如数据库连接）
+
 
 ## 🔧 常用命令
 

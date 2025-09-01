@@ -93,14 +93,11 @@ export default defineNuxtConfig({
     
     // Public environment variables (accessible on client)
     public: {
-      betterAuthUrl: appConfig.app.baseUrl,
-      apiBaseUrl: appConfig.app.baseUrl,
       // Captcha configuration
       captchaEnabled: String(appConfig.captcha.enabled),
-      turnstileSiteKey: appConfig.captcha.cloudflare.siteKey,
+      turnstileSiteKey: appConfig.captcha.cloudflare.siteKey || '0x4AAAAAAABkMYinukNdH9ly', // Default development key
       // WeChat configuration
-      wechatAppId: process.env.WECHAT_APP_ID || 'your-wechat-app-id',
-      wechatRedirectUri: `${appConfig.app.baseUrl}/api/auth/oauth2/callback/wechat`,
+      wechatAppId: appConfig.auth.socialProviders.wechat.appId || 'wx_default_dev_key', // Safe default for development
       // Payment configuration
       paymentPlans: JSON.parse(JSON.stringify(appConfig.payment.plans))
     }

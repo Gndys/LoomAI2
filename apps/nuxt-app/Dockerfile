@@ -15,8 +15,19 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json config.ts tsconf
 COPY apps/nuxt-app ./apps/nuxt-app
 COPY libs ./libs
 
-# Set build-time environment variable
+# Accept build arguments for CI/CD environments
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
+ARG NEXT_PUBLIC_WECHAT_APP_ID
+
+# Copy .env file if it exists (for local builds)
+COPY .env* ./
+
+# Set build-time environment variables
+# Priority: build args > .env file > fallback defaults
 ENV BUILD_TIME=true
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+ENV NEXT_PUBLIC_WECHAT_APP_ID=${NEXT_PUBLIC_WECHAT_APP_ID}
+
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 # Build the application with increased memory limit

@@ -34,8 +34,20 @@ COPY --from=deps /app/libs ./libs
 COPY apps/next-app ./apps/next-app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json config.ts tsconfig.json ./
 
-# Build the application
+# Accept build arguments for CI/CD environments
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
+ARG NEXT_PUBLIC_WECHAT_APP_ID
+
+# Copy .env file if it exists (for local builds)
+COPY .env* ./
+
+# Set build-time environment variables
+# Priority: build args > .env file > fallback defaults
 ENV BUILD_TIME=true
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+ENV NEXT_PUBLIC_WECHAT_APP_ID=${NEXT_PUBLIC_WECHAT_APP_ID}
+
+# Build the application
 RUN pnpm build:next
 
 # Production image, copy all the files and run next

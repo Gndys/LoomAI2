@@ -82,10 +82,10 @@ const initWxLogin = () => {
       id: 'login_container',
       appid: config.public.wechatAppId,
       scope: 'snsapi_login',
-      redirect_uri: encodeURIComponent(config.public.wechatRedirectUri),
+      redirect_uri: encodeURIComponent(`${window.location.origin}/api/auth/oauth2/callback/wechat`),
       state: nanoid(10),
       style: 'black',
-      href: 'https://api.easycv.cn/public/wxLogin.css',
+                href: `${window.location.origin}/wxLogin.css`,
       onReady: (isReady: boolean) => {
         console.log('WeChat login iframe ready:', isReady);
       }

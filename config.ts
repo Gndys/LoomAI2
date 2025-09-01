@@ -201,7 +201,7 @@ export const config = {
        */
       wechat: {
         get appId() {
-          return getEnvForService('WECHAT_APP_ID', 'WeChat Auth');
+          return getEnvForService('NEXT_PUBLIC_WECHAT_APP_ID', 'WeChat Auth');
         },
         get appSecret() {
           return getEnvForService('WECHAT_APP_SECRET', 'WeChat Auth');
