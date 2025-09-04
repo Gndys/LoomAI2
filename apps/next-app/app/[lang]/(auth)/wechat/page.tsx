@@ -80,7 +80,7 @@ export default function WeixinLoginPage() {
         </CardContent>
       </Card>
       <Script 
-        src="http://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js"
+        src="https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js"
         strategy="afterInteractive"
       />
     </div>

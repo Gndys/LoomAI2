@@ -36,25 +36,13 @@
   
 
   
-  /* Chart color utilities - Claude Light mode */
-  --chart-1-bg: oklch(0.5583 0.1276 42.9956);
-  --chart-2-bg: oklch(0.6898 0.1581 290.4107);
-  --chart-3-bg: oklch(0.8816 0.0276 93.1280);
-  --chart-4-bg: oklch(0.8822 0.0403 298.1792);
-  --chart-5-bg: oklch(0.5608 0.1348 42.0584);
-  
+    /* Chart color utilities - Claude Light mode */
   --chart-1-bg-10: oklch(0.5583 0.1276 42.9956 / 0.1);
   --chart-1-bg-15: oklch(0.5583 0.1276 42.9956 / 0.15);
   --chart-2-bg-15: oklch(0.6898 0.1581 290.4107 / 0.15);
   --chart-3-bg-15: oklch(0.8816 0.0276 93.1280 / 0.15);
   --chart-4-bg-15: oklch(0.8822 0.0403 298.1792 / 0.15);
   --chart-5-bg-15: oklch(0.5608 0.1348 42.0584 / 0.15);
-  
-  --chart-1-text: oklch(0.5583 0.1276 42.9956);
-  --chart-2-text: oklch(0.6898 0.1581 290.4107);
-  --chart-3-text: oklch(0.8816 0.0276 93.1280);
-  --chart-4-text: oklch(0.8822 0.0403 298.1792);
-  --chart-5-text: oklch(0.5608 0.1348 42.0584);
   
   /* Chart color gradients for Claude theme - Light mode */
   --gradient-chart-warm: linear-gradient(to right, oklch(0.5583 0.1276 42.9956), oklch(0.5608 0.1348 42.0584));
@@ -98,25 +86,13 @@
   
 
   
-  /* Chart color utilities - Claude Dark mode */
-  --chart-1-bg: oklch(0.5583 0.1276 42.9956);
-  --chart-2-bg: oklch(0.6898 0.1581 290.4107);
-  --chart-3-bg: oklch(0.2130 0.0078 95.4245);
-  --chart-4-bg: oklch(0.3074 0.0516 289.3230);
-  --chart-5-bg: oklch(0.5608 0.1348 42.0584);
-  
+    /* Chart color utilities - Claude Dark mode */
   --chart-1-bg-10: oklch(0.5583 0.1276 42.9956 / 0.1);
   --chart-1-bg-15: oklch(0.5583 0.1276 42.9956 / 0.15);
   --chart-2-bg-15: oklch(0.6898 0.1581 290.4107 / 0.15);
   --chart-3-bg-15: oklch(0.2130 0.0078 95.4245 / 0.15);
   --chart-4-bg-15: oklch(0.3074 0.0516 289.3230 / 0.15);
   --chart-5-bg-15: oklch(0.5608 0.1348 42.0584 / 0.15);
-  
-  --chart-1-text: oklch(0.5583 0.1276 42.9956);
-  --chart-2-text: oklch(0.6898 0.1581 290.4107);
-  --chart-3-text: oklch(0.2130 0.0078 95.4245);
-  --chart-4-text: oklch(0.3074 0.0516 289.3230);
-  --chart-5-text: oklch(0.5608 0.1348 42.0584);
   
   /* Dark mode chart color gradients for Claude theme */
   --gradient-chart-warm: linear-gradient(to right, oklch(0.5583 0.1276 42.9956), oklch(0.5608 0.1348 42.0584));

@@ -73,4 +73,19 @@ export function getAvailableActions(user: AppUser, subject: Subject): Action[] {
   const allActions = Object.values(Action);
   
   return allActions.filter(action => ability.can(action, subject));
+}
+
+/**
+ * 将数据库用户转换为带有角色的AppUser
+ * @param user 数据库用户对象
+ * @param defaultRole 默认角色
+ * @returns AppUser对象
+ */
+export function createAppUser(user: any, defaultRole = 'normal'): AppUser {
+  if (!user) return null as unknown as AppUser;
+
+  return {
+    ...user,
+    role: mapDatabaseRoleToAppRole(user.role || defaultRole)
+  };
 } 

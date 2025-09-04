@@ -97,7 +97,7 @@ const initWxLogin = () => {
 onMounted(async () => {
   // Load WeChat login script
   const script = document.createElement('script')
-  script.src = 'http://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js'
+  script.src = 'https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js'
   script.async = true
   
   script.onload = () => {

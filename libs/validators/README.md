@@ -241,29 +241,6 @@ const onSubmit = handleSubmit((values) => {
 </script>
 ```
 
-### 手机登录表单
-
-```typescript
-import { createValidators, countryCodes } from '@libs/validators'
-
-const { phoneLoginSchema, phoneVerifySchema } = createValidators(tWithParams)
-
-// 第一步：验证手机号并发送验证码
-const phoneForm = useForm({
-  resolver: zodResolver(phoneLoginSchema),
-  mode: 'onBlur',
-  defaultValues: {
-    countryCode: '+86',
-    phone: ''
-  }
-})
-
-// 第二步：验证验证码
-const verifyForm = useForm({
-  resolver: zodResolver(phoneVerifySchema),
-  mode: 'onBlur'
-})
-```
 
 ## 🛠️ 架构设计
 
@@ -304,22 +281,6 @@ const tWithParams = createNextTranslationFunction(t)
 const { loginFormSchema } = createValidators(tWithParams)
 ```
 
-## 🧪 测试和调试
-
-### 测试页面
-
-- **Next.js**: 访问 `/test-validator-nextjs` 测试验证器功能
-- **Nuxt.js**: 访问 `/test-validator` 测试验证器功能
-
-### 运行单元测试
-
-```bash
-# 运行所有验证器测试
-pnpm test tests/unit/validators/
-
-# 运行集成测试
-pnpm test tests/unit/validators/integration.test.ts
-```
 
 ## 📚 API 参考
 
@@ -408,10 +369,6 @@ type SignupFormData = z.infer<typeof signupFormSchema>
 1. 在 `libs/i18n/locales/` 中添加新语言文件
 2. 添加 `validators.user.*` 翻译键
 3. 测试参数插值功能
-
-## 📄 许可证
-
-MIT License
 
 ---
 

@@ -1,4 +1,6 @@
-# 认证服务
+# TinyShip 认证服务
+
+[中文文档](./README.md) | [English](./README_EN.md)
 
 这个服务使用 [Better Auth](https://www.better-auth.com/) 提供完整的身份认证和授权功能。支持多种认证方式，包括邮箱密码、社交登录、手机号码验证等。
 
@@ -30,20 +32,22 @@
 复制 `.env.example` 文件为 `.env`，并填入敏感信息：
 
 ```env
+# 认证配置
+BETTER_AUTH_SECRET="your-secret-key-here-32-characters-minimum"
+BETTER_AUTH_URL="http://localhost:7001"
+
 # Google OAuth
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
 # GitHub OAuth
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
+GITHUB_CLIENT_ID="your-github-client-id"
+GITHUB_CLIENT_SECRET="your-github-client-secret"
 
 # 微信 OAuth
-WECHAT_APP_ID=your_wechat_app_id
-WECHAT_APP_SECRET=your_wechat_app_secret
-
-# 基础 URL（可选，默认为 http://localhost:3000）
-AUTH_BASE_URL=your_base_url
+WECHAT_APP_ID="your-wechat-app-id"
+NEXT_PUBLIC_WECHAT_APP_ID="your-wechat-app-id"  # Next.js 客户端需要
+WECHAT_APP_SECRET="your-wechat-app-secret"
 ```
 
 ### 配置文件
@@ -53,51 +57,172 @@ AUTH_BASE_URL=your_base_url
 ```typescript
 export const config = {
   auth: {
-    // 应用名称
-    appName: 'shipeasy',
-
-    // 基础 URL
-    baseURL: 'http://localhost:3000',
+    // 邮箱验证要求
+    requireEmailVerification: true,
 
     // 社交登录提供商配置
     socialProviders: {
       google: {
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET
+        get clientId() {
+          return getEnvForService('GOOGLE_CLIENT_ID', 'Google Auth');
+        },
+        get clientSecret() {
+          return getEnvForService('GOOGLE_CLIENT_SECRET', 'Google Auth');
+        }
       },
       github: {
-        clientId: process.env.GITHUB_CLIENT_ID,
-        clientSecret: process.env.GITHUB_CLIENT_SECRET
+        get clientId() {
+          return getEnvForService('GITHUB_CLIENT_ID', 'GitHub Auth');
+        },
+        get clientSecret() {
+          return getEnvForService('GITHUB_CLIENT_SECRET', 'GitHub Auth');
+        }
       },
       wechat: {
-        appId: process.env.WECHAT_APP_ID,
-        appSecret: process.env.WECHAT_APP_SECRET
+        get appId() {
+          return getEnvForService('NEXT_PUBLIC_WECHAT_APP_ID', 'WeChat Auth');
+        },
+        get appSecret() {
+          return getEnvForService('WECHAT_APP_SECRET', 'WeChat Auth');
+        }
       }
-    },
-
-    // 邮件验证配置
-    emailVerification: {
-      enabled: true,
-      autoSignIn: false,
-      requireEmailVerification: true,
-      autoSignInAfterVerification: true,
-      expiryHours: 1
-    },
-
-    // 账户配置
-    account: {
-      accountLinking: {
-        enabled: true,
-        trustedProviders: ['google', 'github', 'wechat']
-      }
-    },
-
-    // 管理员配置
-    admin: {
-      roles: ['admin']
     }
   }
 };
+```
+
+## 使用方法
+
+### 服务端
+
+#### Next.js API 路由
+
+```typescript
+// app/api/auth/[...all]/route.ts
+import { auth, toNextJsHandler } from '@libs/auth';
+
+export const { GET, POST } = toNextJsHandler(auth);
+```
+
+#### Nuxt.js API 路由
+
+```typescript
+// server/api/auth/[...all].ts
+import { auth } from '@libs/auth';
+import { toNodeHandler } from 'better-auth/node';
+
+export default toNodeHandler(auth);
+```
+
+### 客户端（React）
+
+```typescript
+import { authClientReact } from '@libs/auth/authClient';
+
+// 获取会话状态
+const session = authClientReact.useSession();
+const user = session.data?.user;
+
+// 邮箱密码登录
+const { data, error } = await authClientReact.signIn.email({
+  email: 'user@example.com',
+  password: 'password123',
+  rememberMe: true // 可选：记住我功能
+});
+
+// 社交登录
+await authClientReact.signIn.social({
+  provider: 'google', // 'google' | 'github' | 'wechat'
+});
+
+// 手机号登录
+await authClientReact.signIn.phoneNumber({
+  phoneNumber: '+86 138 0000 0000',
+  otp: '123456'
+});
+
+// 退出登录
+await authClientReact.signOut();
+
+// 用户注册
+const { data, error } = await authClientReact.signUp.email({
+  email: 'user@example.com',
+  password: 'password123',
+  name: 'User Name'
+});
+
+// 密码重置
+await authClientReact.forgetPassword({
+  email: 'user@example.com',
+  redirectTo: '/reset-password'
+});
+
+// 会话管理
+const sessions = await authClientReact.listSessions();
+await authClientReact.revokeSession({ token: "session-token" });
+await authClientReact.revokeOtherSessions();
+
+// 用户信息管理
+await authClientReact.updateUser({
+  name: '新名称',
+  image: 'https://example.com/avatar.jpg'
+});
+
+// 获取关联账户
+const accounts = await authClientReact.listAccounts();
+
+// 删除用户账户
+await authClientReact.deleteUser();
+```
+
+### 客户端（Vue）
+
+```typescript
+import { authClientVue } from '@libs/auth/authClient';
+
+// 获取会话状态
+const session = authClientVue.useSession();
+const user = computed(() => session.value?.data?.user);
+
+// 邮箱密码登录
+const { data, error } = await authClientVue.signIn.email({
+  email: 'user@example.com',
+  password: 'password123',
+  rememberMe: true
+});
+
+// 社交登录
+await authClientVue.signIn.social({
+  provider: 'google', // 'google' | 'github' | 'wechat'
+});
+
+// 手机号登录
+await authClientVue.signIn.phoneNumber({
+  phoneNumber: '+86 138 0000 0000',
+  otp: '123456'
+});
+
+// 退出登录
+await authClientVue.signOut();
+
+// 用户注册
+const { data, error } = await authClientVue.signUp.email({
+  email: 'user@example.com',
+  password: 'password123',
+  name: 'User Name'
+});
+
+// 或者使用 Nuxt.js composable (推荐)
+import { useAuth } from '@/composables/useAuth';
+
+const { 
+  isAuthenticated, 
+  user, 
+  signOut, 
+  isAdmin,
+  hasRole,
+  requireAuth 
+} = useAuth();
 ```
 
 ## 认证错误国际化
@@ -116,7 +241,7 @@ function LoginForm() {
   const { t } = useTranslation();
   
   const handleLogin = async (email: string, password: string) => {
-    const { error } = await authClientReact.signIn.email({
+    const { data, error } = await authClientReact.signIn.email({
       email,
       password
     });
@@ -125,6 +250,9 @@ function LoginForm() {
       // 使用国际化错误消息
       const authErrorMessage = t.auth.authErrors[error.code as keyof typeof t.auth.authErrors] || t.auth.authErrors.UNKNOWN_ERROR;
       setErrorMessage(authErrorMessage);
+    } else if (data?.user) {
+      // 登录成功
+      console.log('Login successful:', data.user);
     }
   };
 }
@@ -137,9 +265,10 @@ function LoginForm() {
 import { authClientVue } from '@libs/auth/authClient';
 
 const { t } = useI18n();
+const localePath = useLocalePath();
 
 const handleLogin = async (email, password) => {
-  const { error } = await authClientVue.signIn.email({
+  const { data, error } = await authClientVue.signIn.email({
     email,
     password
   });
@@ -148,6 +277,9 @@ const handleLogin = async (email, password) => {
     // 使用国际化错误消息
     const authErrorMessage = t('auth.authErrors.' + error.code) || t('auth.authErrors.UNKNOWN_ERROR');
     errorMessage.value = authErrorMessage;
+  } else if (data?.user) {
+    // 登录成功，跳转到首页
+    await navigateTo(localePath('/'));
   }
 };
 </script>
@@ -192,93 +324,6 @@ const handleLogin = async (email, password) => {
 - **类型安全**：利用 TypeScript 确保错误代码的类型安全
 - **回退机制**：未知错误代码会回退到通用错误消息
 - **可扩展性**：支持未来添加更多语言，不硬编码语言类型
-
-## 使用方法
-
-### 服务端
-
-```typescript
-import { auth } from '@libs/auth';
-import { toNextJsHandler } from "better-auth/next-js";
-
-// Next.js API 路由处理
-export const { GET, POST } = auth.createHandler(
-  toNextJsHandler()
-);
-```
-
-### 客户端（React）
-
-```typescript
-import { authClientReact } from '@libs/auth/authClient';
-
-// 在组件中使用
-const { signIn, signOut, user } = authClientReact.useAuth();
-
-// 邮箱密码登录
-await signIn.emailAndPassword({
-  email: 'user@example.com',
-  password: 'password123'
-});
-
-// 社交登录
-await signIn.socialProvider('google');
-
-// 退出登录
-await signOut();
-
-// 获取当前会话
-const { data: session } = await authClientReact.getSession();
-
-// 响应式会话访问
-const { data: session } = authClientReact.useSession();
-
-// 会话管理
-const sessions = await authClientReact.listSessions(); // 获取所有会话
-await authClientReact.revokeSession({ token: "session-token" }); // 撤销指定会话
-await authClientReact.revokeOtherSessions(); // 撤销其他会话
-await authClientReact.revokeSessions(); // 撤销所有会话
-
-// 密码管理
-await authClientReact.changePassword({
-  newPassword: 'newPassword123',
-  currentPassword: 'currentPassword123',
-  revokeOtherSessions: true // 更改密码时撤销其他会话
-});
-
-// 用户信息管理
-await authClientReact.updateUser({
-  name: '新名称',
-  image: 'https://example.com/avatar.jpg'
-});
-
-// 获取关联账户
-const accountsResponse = await authClientReact.listAccounts();
-
-// 删除用户账户
-await authClientReact.deleteUser({});
-```
-
-### 客户端（Vue）
-
-```typescript
-import { authClientVue } from '@libs/auth/authClient';
-
-// 在组件中使用
-const { signIn, signOut, user } = authClientVue.useAuth();
-
-// 邮箱密码登录
-await signIn.emailAndPassword({
-  email: 'user@example.com',
-  password: 'password123'
-});
-
-// 社交登录
-await signIn.socialProvider('google');
-
-// 退出登录
-await signOut();
-```
 
 ## 高级功能
 
@@ -326,21 +371,153 @@ Better Auth 支持自定义插件开发，可以扩展认证功能。
 ## 数据库模型
 
 认证服务使用 Drizzle ORM，包含以下数据表：
-- `user`: 用户基本信息
-- `account`: 关联的社交账号信息
-- `session`: 用户会话信息
-- `verification`: 验证记录（如邮箱验证、手机验证等）
+
+### 核心表结构
+- **`user`**: 用户基本信息，包括邮箱、角色、手机号等
+- **`account`**: 关联的社交账号信息，存储 OAuth 令牌
+- **`session`**: 用户会话信息，包括过期时间和设备信息
+- **`verification`**: 验证记录，支持邮箱验证、手机验证等
+
+### 字段说明
+详细的数据库模型请参考 [数据库文档](../database/README.md)。
 
 ## 插件系统
 
 服务使用了以下 Better Auth 插件：
-- `admin`: 提供管理员角色和权限控制
-- `phoneNumber`: 提供手机号码验证功能
-- `validator`: 提供输入验证功能
-- 自定义的 `wechat` 插件：提供微信登录功能
 
-## 更多文档
+### 官方插件
+- **`admin`**: 提供管理员角色和权限控制
+- **`phoneNumber`**: 提供手机号码验证功能
+- **`captcha`**: 提供验证码保护（Cloudflare Turnstile）
 
-- [Better Auth 官方文档](https://www.better-auth.com/docs)
-- [Drizzle ORM 文档](https://orm.drizzle.team/docs/overview)
-- [微信开放平台文档](https://developers.weixin.qq.com/doc/oplatform/Website_App/WeChat_Login/Wechat_Login.html) 
+### 第三方插件
+- **`validator`**: 输入验证插件（来自 validation-better-auth）
+
+### 自定义插件
+- **`wechat`**: 自定义微信扫码登录插件，支持网站应用登录
+
+### 插件配置
+
+```typescript
+// 插件配置示例
+plugins: [
+  admin({
+    adminRoles: ["admin"],
+  }),
+  
+  // 验证码插件（根据配置启用）
+  ...(config.captcha.enabled ? [
+    captcha({
+      provider: "cloudflare-turnstile",
+      secretKey: config.captcha.cloudflare.secretKey!,
+      endpoints: ["/sign-up/email", "/sign-in/email", "/forget-password"]
+    })
+  ] : []),
+  
+  // 微信登录插件
+  wechatPlugin({
+    appId: config.auth.socialProviders.wechat.appId!,
+    appSecret: config.auth.socialProviders.wechat.appSecret!,
+  }),
+  
+  // 手机号插件
+  phoneNumber({
+    sendOTP: async ({ phoneNumber, code }) => {
+      // 发送短信验证码的实现
+    },
+    signUpOnVerification: {
+      getTempEmail: (phoneNumber) => `${phoneNumber}@tinyship.co`,
+      getTempName: (phoneNumber) => phoneNumber.slice(-4)
+    }
+  })
+]
+```
+
+## 开发环境调试
+
+### 开发模式特性
+
+在开发环境中，认证系统提供了特殊的调试功能：
+
+#### 邮箱验证链接
+当需要邮箱验证时，验证链接会通过以下方式提供：
+- 控制台日志输出
+- 开发环境下，API 响应中包含 `dev.verificationUrl` 字段
+
+```typescript
+// 开发环境响应示例
+{
+  "user": { /* 用户信息 */ },
+  "dev": {
+    "verificationUrl": "http://localhost:7001/api/auth/verify-email?token=...",
+    "message": "Development mode: Use this verification URL instead of checking email"
+  }
+}
+```
+
+#### 短信验证码
+手机验证码会通过以下方式提供：
+- 控制台日志输出
+- 开发环境下，API 响应中包含 `dev.otpCode` 字段
+
+```typescript
+// 开发环境响应示例
+{
+  "data": { /* 响应数据 */ },
+  "dev": {
+    "otpCode": "123456",
+    "message": "Development mode: Use this OTP code for verification"
+  }
+}
+```
+
+#### 密码重置链接
+密码重置链接在开发环境下同样可通过 API 响应获取：
+
+```typescript
+// 开发环境响应示例
+{
+  "success": true,
+  "dev": {
+    "resetUrl": "http://localhost:7001/api/auth/reset-password?token=...",
+    "message": "Development mode: Use this reset URL instead of checking email"
+  }
+}
+```
+
+### 速率限制
+
+认证系统包含以下速率限制：
+
+```typescript
+rateLimit: {
+  enabled: true,
+  customRules: {
+    "/send-verification-email": {
+      window: 60, // 60秒窗口
+      max: 1,     // 最多1次请求
+    },
+    "/forget-password": {
+      window: 60, // 60秒窗口
+      max: 1,     // 最多1次请求
+    },
+  },
+}
+```
+
+## 参考文档
+
+### 官方文档
+- [Better Auth 官方文档](https://www.better-auth.com/docs) - 完整的 Better Auth 功能说明
+- [Better Auth 插件](https://www.better-auth.com/docs/plugins) - 所有可用插件列表
+- [Drizzle ORM 文档](https://orm.drizzle.team/docs/overview) - 数据库 ORM 使用指南
+
+### 第三方服务
+- [微信开放平台文档](https://developers.weixin.qq.com/doc/oplatform/Website_App/WeChat_Login/Wechat_Login.html) - 微信扫码登录接入
+- [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) - 验证码服务文档
+
+### 项目文档
+- [数据库配置指南](../../docs/user-guide/database.md) - 数据库设置说明
+- [认证配置指南](../../docs/user-guide/auth.md) - 详细的认证配置步骤
+- [邮件服务文档](../email/README.md) - 邮件发送配置
+- [短信服务文档](../sms/README.md) - 短信发送配置 

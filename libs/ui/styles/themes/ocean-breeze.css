@@ -35,24 +35,12 @@
   --radius: 0.5rem;
 
   /* Chart color utilities - Light mode */
-  --chart-1-bg: oklch(0.7227 0.1920 149.5793);
-  --chart-2-bg: oklch(0.6959 0.1491 162.4796);
-  --chart-3-bg: oklch(0.5960 0.1274 163.2254);
-  --chart-4-bg: oklch(0.5081 0.1049 165.6121);
-  --chart-5-bg: oklch(0.4318 0.0865 166.9128);
-  
   --chart-1-bg-10: oklch(0.7227 0.1920 149.5793 / 0.1);
   --chart-1-bg-15: oklch(0.7227 0.1920 149.5793 / 0.15);
   --chart-2-bg-15: oklch(0.6959 0.1491 162.4796 / 0.15);
   --chart-3-bg-15: oklch(0.5960 0.1274 163.2254 / 0.15);
   --chart-4-bg-15: oklch(0.5081 0.1049 165.6121 / 0.15);
   --chart-5-bg-15: oklch(0.4318 0.0865 166.9128 / 0.15);
-  
-  --chart-1-text: oklch(0.7227 0.1920 149.5793);
-  --chart-2-text: oklch(0.6959 0.1491 162.4796);
-  --chart-3-text: oklch(0.5960 0.1274 163.2254);
-  --chart-4-text: oklch(0.5081 0.1049 165.6121);
-  --chart-5-text: oklch(0.4318 0.0865 166.9128);
   
   /* Gradients - Light mode */
   --gradient-chart-warm: linear-gradient(to right, oklch(0.7227 0.1920 149.5793), oklch(0.6959 0.1491 162.4796));
@@ -95,24 +83,12 @@
   --radius: 0.5rem;
 
   /* Chart color utilities - Dark mode */
-  --chart-1-bg: oklch(0.7729 0.1535 163.2231);
-  --chart-2-bg: oklch(0.7845 0.1325 181.9120);
-  --chart-3-bg: oklch(0.7227 0.1920 149.5793);
-  --chart-4-bg: oklch(0.6959 0.1491 162.4796);
-  --chart-5-bg: oklch(0.5960 0.1274 163.2254);
-  
   --chart-1-bg-10: oklch(0.7729 0.1535 163.2231 / 0.1);
   --chart-1-bg-15: oklch(0.7729 0.1535 163.2231 / 0.15);
   --chart-2-bg-15: oklch(0.7845 0.1325 181.9120 / 0.15);
   --chart-3-bg-15: oklch(0.7227 0.1920 149.5793 / 0.15);
   --chart-4-bg-15: oklch(0.6959 0.1491 162.4796 / 0.15);
   --chart-5-bg-15: oklch(0.5960 0.1274 163.2254 / 0.15);
-  
-  --chart-1-text: oklch(0.7729 0.1535 163.2231);
-  --chart-2-text: oklch(0.7845 0.1325 181.9120);
-  --chart-3-text: oklch(0.7227 0.1920 149.5793);
-  --chart-4-text: oklch(0.6959 0.1491 162.4796);
-  --chart-5-text: oklch(0.5960 0.1274 163.2254);
   
   /* Dark mode gradients */
   --gradient-chart-warm: linear-gradient(to right, oklch(0.7729 0.1535 163.2231), oklch(0.7845 0.1325 181.9120));

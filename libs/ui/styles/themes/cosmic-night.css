@@ -35,24 +35,12 @@
   --radius: 0.5rem;
 
   /* Chart color utilities - Cosmic Night Light mode */
-  --chart-1-bg: oklch(0.5417 0.1790 288.0332);
-  --chart-2-bg: oklch(0.7042 0.1602 288.9880);
-  --chart-3-bg: oklch(0.5679 0.2113 276.7065);
-  --chart-4-bg: oklch(0.6356 0.1922 281.8054);
-  --chart-5-bg: oklch(0.4509 0.1758 279.3838);
-  
   --chart-1-bg-10: oklch(0.5417 0.1790 288.0332 / 0.1);
   --chart-1-bg-15: oklch(0.5417 0.1790 288.0332 / 0.15);
   --chart-2-bg-15: oklch(0.7042 0.1602 288.9880 / 0.15);
   --chart-3-bg-15: oklch(0.5679 0.2113 276.7065 / 0.15);
   --chart-4-bg-15: oklch(0.6356 0.1922 281.8054 / 0.15);
   --chart-5-bg-15: oklch(0.4509 0.1758 279.3838 / 0.15);
-  
-  --chart-1-text: oklch(0.5417 0.1790 288.0332);
-  --chart-2-text: oklch(0.7042 0.1602 288.9880);
-  --chart-3-text: oklch(0.5679 0.2113 276.7065);
-  --chart-4-text: oklch(0.6356 0.1922 281.8054);
-  --chart-5-text: oklch(0.4509 0.1758 279.3838);
   
   /* Cosmic Night gradients - Light mode */
   --gradient-chart-warm: linear-gradient(to right, oklch(0.5417 0.1790 288.0332), oklch(0.5679 0.2113 276.7065));
@@ -95,24 +83,12 @@
   --radius: 0.5rem;
 
   /* Chart color utilities - Cosmic Night Dark mode */
-  --chart-1-bg: oklch(0.7162 0.1597 290.3962);
-  --chart-2-bg: oklch(0.6382 0.1047 274.9117);
-  --chart-3-bg: oklch(0.7482 0.1235 244.7492);
-  --chart-4-bg: oklch(0.7124 0.0977 186.6761);
-  --chart-5-bg: oklch(0.7546 0.1831 346.8124);
-  
   --chart-1-bg-10: oklch(0.7162 0.1597 290.3962 / 0.1);
   --chart-1-bg-15: oklch(0.7162 0.1597 290.3962 / 0.15);
   --chart-2-bg-15: oklch(0.6382 0.1047 274.9117 / 0.15);
   --chart-3-bg-15: oklch(0.7482 0.1235 244.7492 / 0.15);
   --chart-4-bg-15: oklch(0.7124 0.0977 186.6761 / 0.15);
   --chart-5-bg-15: oklch(0.7546 0.1831 346.8124 / 0.15);
-  
-  --chart-1-text: oklch(0.7162 0.1597 290.3962);
-  --chart-2-text: oklch(0.6382 0.1047 274.9117);
-  --chart-3-text: oklch(0.7482 0.1235 244.7492);
-  --chart-4-text: oklch(0.7124 0.0977 186.6761);
-  --chart-5-text: oklch(0.7546 0.1831 346.8124);
   
   /* Dark mode gradients for Cosmic Night theme */
   --gradient-chart-warm: linear-gradient(to right, oklch(0.7162 0.1597 290.3962), oklch(0.7482 0.1235 244.7492));

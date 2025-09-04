@@ -1,4 +1,5 @@
 // Theme management module for consistent theme handling across the application
+// Built on shadcn/ui theme system with 5 color schemes, light/dark modes, and tweakcn.com integration
 export type Theme = 'light' | 'dark'
 export type ColorScheme = 'default' | 'claude' | 'cosmic-night' | 'modern-minimal' | 'ocean-breeze'
 
@@ -7,7 +8,8 @@ export interface ThemeState {
   colorScheme: ColorScheme
 }
 
-// Available themes configuration
+// Available themes configuration (shadcn/ui compatible)
+// Add new themes here and update theme files in libs/ui/styles/themes/
 export const THEMES: readonly Theme[] = ['light', 'dark'] as const
 export const COLOR_SCHEMES: readonly ColorScheme[] = [
   'default',
@@ -42,7 +44,8 @@ export const ALL_THEME_CLASSES = [
   'theme-ocean-breeze'
 ] as const
 
-// Theme configuration with UI display information
+// shadcn/ui theme configuration with UI display information
+// Colors match the primary color of each theme for theme selector UI
 export const THEME_CONFIG = {
   default: {
     name: 'Default',

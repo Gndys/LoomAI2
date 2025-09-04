@@ -35,15 +35,18 @@
 # 阿里云短信配置
 ALIYUN_ACCESS_KEY_ID=your_access_key_id
 ALIYUN_ACCESS_KEY_SECRET=your_access_key_secret
+ALIYUN_SMS_SIGN_NAME=your_sms_sign_name
+ALIYUN_SMS_TEMPLATE_CODE=SMS_000000000
 
 # Twilio短信配置
 TWILIO_ACCOUNT_SID=your_account_sid
 TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_DEFAULT_FROM=+1234567890
 ```
 
 ### 配置文件
 
-`config.ts` 中的 SMS 配置：
+`config.ts` 中的 SMS 配置（作为可选服务）：
 
 ```typescript
 export const config = {
@@ -51,16 +54,35 @@ export const config = {
     defaultProvider: 'aliyun',
 
     aliyun: {
-      accessKeyId: getEnvForService('ALIYUN_ACCESS_KEY_ID', 'Aliyun SMS'),
-      accessKeySecret: getEnvForService('ALIYUN_ACCESS_KEY_SECRET', 'Aliyun SMS'),
-      endpoint: 'dysmsapi.aliyuncs.com',
-      signName: '您的签名名称',
+      // 可选服务，缺失时显示警告而非错误
+      get accessKeyId() {
+        return getEnvForService('ALIYUN_ACCESS_KEY_ID', 'Aliyun SMS');
+      },
+      get accessKeySecret() {
+        return getEnvForService('ALIYUN_ACCESS_KEY_SECRET', 'Aliyun SMS');
+      },
+      get endpoint() {
+        return getEnvForService('ALIYUN_SMS_ENDPOINT', 'Aliyun SMS') || 'dysmsapi.aliyuncs.com';
+      },
+      get signName() {
+        return getEnvForService('ALIYUN_SMS_SIGN_NAME', 'Aliyun SMS');
+      },
+      get templateCode() {
+        return getEnvForService('ALIYUN_SMS_TEMPLATE_CODE', 'Aliyun SMS');
+      },
     },
 
     twilio: {
-      accountSid: getEnvForService('TWILIO_ACCOUNT_SID', 'Twilio SMS'),
-      authToken: getEnvForService('TWILIO_AUTH_TOKEN', 'Twilio SMS'),
-      defaultFrom: '+1234567890',
+      // 可选服务，缺失时显示警告而非错误
+      get accountSid() {
+        return getEnvForService('TWILIO_ACCOUNT_SID', 'Twilio SMS');
+      },
+      get authToken() {
+        return getEnvForService('TWILIO_AUTH_TOKEN', 'Twilio SMS');
+      },
+      get defaultFrom() {
+        return getEnvForService('TWILIO_DEFAULT_FROM', 'Twilio SMS');
+      },
     }
   }
 };
@@ -76,7 +98,7 @@ import { sendSMS } from '@libs/sms';
 // 使用阿里云发送短信（需要指定 provider）
 await sendSMS({
   to: '+8613800138000',
-  templateCode: 'SMS_235815655',
+  templateCode: 'SMS_235815655',      // 可选，未提供时使用配置中的默认模板
   templateParams: { code: '123456' },
   provider: 'aliyun'
 });
@@ -97,9 +119,28 @@ await sendSMS({
 // 使用配置中的默认服务商（如果设置了 defaultProvider: 'aliyun'）
 await sendSMS({
   to: '+8613800138000',
-  templateCode: 'SMS_235815655',
   templateParams: { code: '123456' }
+  // templateCode 可以省略，使用环境变量 ALIYUN_SMS_TEMPLATE_CODE
   // provider 可以省略，会使用默认的
+});
+```
+
+### 阿里云配置优化使用
+
+```typescript
+// 如果已在环境变量中配置了默认模板代码，可以简化调用
+await sendSMS({
+  to: '+8613800138000',
+  templateParams: { code: '123456' },
+  provider: 'aliyun'  // 使用环境变量中的模板代码
+});
+
+// 也可以显式指定模板代码覆盖默认值
+await sendSMS({
+  to: '+8613800138000',
+  templateCode: 'SMS_CUSTOM_TEMPLATE',  // 覆盖环境变量中的默认值
+  templateParams: { code: '123456' },
+  provider: 'aliyun'
 });
 ```
 
@@ -186,13 +227,34 @@ SMS发送器 (验证和分发)
 ```typescript
 const result = await sendSMS({
   to: '+8613800138000',
-  templateCode: 'SMS_235815655',
-  templateParams: { code: '123456' }
+  templateParams: { code: '123456' },
+  provider: 'aliyun'  // 或使用默认服务商
 });
 
 if (!result.success) {
   console.error('SMS发送失败:', result.error?.message);
+  console.error('错误类型:', result.error?.name);
   console.error('提供商:', result.error?.provider);
+  
+  // 根据错误类型进行相应处理
+  switch (result.error?.name) {
+    case 'MissingProvider':
+      console.error('未指定SMS服务商');
+      break;
+    case 'AliyunSMSError':
+      console.error('阿里云SMS服务错误');
+      break;
+    case 'TwilioSMSError':
+      console.error('Twilio SMS服务错误');
+      break;
+    default:
+      console.error('未知错误');
+  }
+} else {
+  console.log('SMS发送成功:', result.messageId);
+  if (result.requestId) {
+    console.log('请求ID:', result.requestId);  // 阿里云提供
+  }
 }
 ```
 
@@ -233,11 +295,13 @@ if (!result.success) {
 ## ⚠️ 注意事项
 
 - **服务商选择**：必须明确指定 `provider` 或在配置中设置 `defaultProvider`
-- **阿里云**：只支持中国大陆手机号，使用模板机制
+- **阿里云**：只支持中国大陆手机号，使用模板机制，支持环境变量默认模板
 - **Twilio**：支持全球手机号，但成本相对较高
 - **号码格式**：系统会自动处理不同格式，无需手动转换
-- **模板配置**：在调用时直接传递templateCode，确保在阿里云后台配置好相应的短信模板
+- **模板配置**：阿里云可在环境变量中设置默认模板代码，也可在调用时覆盖
 - **环境变量**：生产环境中务必正确配置所有必需的环境变量
+- **配置获取器**：配置使用getter函数，支持运行时环境变量获取
+- **错误类型**：提供详细的错误类型和提供商信息便于调试
 
 ## 📊 使用统计
 
