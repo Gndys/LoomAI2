@@ -166,7 +166,7 @@ export const config = {
    * Authentication Service Configuration
    */
   auth: {
-    requireEmailVerification: true,
+    requireEmailVerification: false,
 
     /**
      * Social Login Providers Configuration

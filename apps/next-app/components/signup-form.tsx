@@ -100,12 +100,21 @@ export function SignupForm({
     }
 
     console.log('Sign up successful', data);
-    setVerificationEmail(formData.email);
-    setIsVerificationEmailSent(true);
+    
+    // Check if email verification is required
+    if (config.auth.requireEmailVerification) {
+      // Show email verification prompt
+      setVerificationEmail(formData.email);
+      setIsVerificationEmailSent(true);
+    } else {
+      // Redirect directly to dashboard if verification is not required
+      router.push(`/${locale}`);
+    }
+    
     setLoading(false);
   };
 
-  if (isVerificationEmailSent) {
+  if (isVerificationEmailSent && config.auth.requireEmailVerification) {
     return (
       <div className={cn("flex flex-col gap-4", className)} {...props}>
         <Alert className="my-4">

@@ -64,7 +64,8 @@ tinyship/
 * 2 [数据库配置](./database.md)
 * 3 [身份认证配置](./auth.md)
 * 4 [付款方式配置](./payment.md)
-* 5 [应用部署](./deployment-overview.md)
+* 5 [更多配置](./additional-config.md)
+* 6 [应用部署](./deployment-overview.md)
 
 ## 📚 深入了解
 

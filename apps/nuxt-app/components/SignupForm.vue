@@ -12,7 +12,7 @@
   -->
   
       <!-- Email verification prompt state -->
-  <div v-if="isVerificationEmailSent" :class="cn('flex flex-col gap-4', className)">
+  <div v-if="isVerificationEmailSent && requireEmailVerification" :class="cn('flex flex-col gap-4', className)">
     <Alert class="my-4">
       <Inbox class="h-4 w-4" />
       <AlertTitle>{{ t('auth.signup.verification.title') }}</AlertTitle>
@@ -174,6 +174,7 @@ import { authClientVue } from '@libs/auth/authClient'
 import { cn } from '@/lib/utils'
 import VueTurnstile from 'vue-turnstile'
 import { Inbox } from 'lucide-vue-next'
+import { config } from '@config'
 
 interface Props {
   className?: string
@@ -198,6 +199,9 @@ const showResendDialog = ref(false)
 
 // Get runtime configuration
 const runtimeConfig = useRuntimeConfig()
+
+// Auth configuration - directly from config
+const requireEmailVerification = config.auth.requireEmailVerification
 
 // Captcha related state
 const captchaEnabled = computed(() => {
@@ -313,8 +317,17 @@ const onSubmit = handleSubmit(async (values) => {
     }
 
     console.log('Sign up successful', result)
-    verificationEmail.value = values.email
-    isVerificationEmailSent.value = true
+    
+    // Check if email verification is required
+    if (requireEmailVerification) {
+      // Show email verification prompt
+      verificationEmail.value = values.email
+      isVerificationEmailSent.value = true
+    } else {
+      // Redirect directly to dashboard if verification is not required
+      await navigateTo(localePath('/'))
+    }
+    
     loading.value = false
   } catch (err) {
     errorMessage.value = t('common.unexpectedError')

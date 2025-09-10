@@ -103,7 +103,7 @@ export const auth = betterAuth({
   // https://www.better-auth.com/docs/concepts/email
   emailAndPassword: {
     enabled: true,
-    autoSignIn: false,
+    autoSignIn: true,
     requireEmailVerification: config.auth.requireEmailVerification,
     sendResetPassword: async ({user, url, token}, request) => {
       // 从 referer 中获取语言信息
