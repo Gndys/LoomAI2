@@ -585,9 +585,9 @@ export const en: Locale = {
           allPaymentTypes: "All Types",
           active: "Active",
           canceled: "Canceled",
-          pastDue: "Past Due",
-          unpaid: "Unpaid",
+          expired: "Expired",
           trialing: "Trialing",
+          inactive: "Inactive",
           oneTime: "One Time",
           recurring: "Recurring"
         },
@@ -625,8 +625,7 @@ export const en: Locale = {
         trialing: "Trialing",
         canceled: "Canceled",
         cancelled: "Canceled",
-        past_due: "Past Due",
-        unpaid: "Unpaid",
+        expired: "Expired",
         inactive: "Inactive"
       },
       paymentType: {

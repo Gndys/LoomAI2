@@ -50,26 +50,31 @@ const [confirmPassword, confirmPasswordAttrs] = defineField('confirmPassword', {
  */
 const onSubmit = handleSubmit(async (values) => {
   loading.value = true
-  try {
-    await authClientVue.changePassword({
-      newPassword: values.newPassword,
-      currentPassword: values.currentPassword,
-      revokeOtherSessions: true
-    })
-    
-    // Show success message
-    toast.success(t('dashboard.accountManagement.changePassword.success'))
-    
-    // Reset form and close dialog
-    resetForm()
-    emit('update:open', false)
-    
-  } catch (error) {
+  
+  const { data, error } = await authClientVue.changePassword({
+    newPassword: values.newPassword,
+    currentPassword: values.currentPassword,
+    revokeOtherSessions: true
+  })
+  
+  if (error) {
     console.error('Failed to change password:', error)
-    toast.error(t('dashboard.accountManagement.changePassword.errors.failed'))
-  } finally {
+    const errorMessage = error.message 
+      ? `${t('dashboard.accountManagement.changePassword.errors.failed')}: ${error.message}`
+      : t('dashboard.accountManagement.changePassword.errors.failed')
+    toast.error(errorMessage)
+    resetForm()
     loading.value = false
+    return
   }
+  
+  // Show success message
+  toast.success(t('dashboard.accountManagement.changePassword.success'))
+  
+  // Reset form and close dialog
+  resetForm()
+  emit('update:open', false)
+  loading.value = false
 })
 
 /**
@@ -91,7 +96,7 @@ const handleCancel = () => {
         </DialogDescription>
       </DialogHeader>
       
-      <form @submit.prevent="onSubmit" class="space-y-4">
+      <form @submit.prevent="onSubmit" class="space-y-6">
         <!-- Current password -->
         <div class="grid gap-2">
           <Label for="current-password">

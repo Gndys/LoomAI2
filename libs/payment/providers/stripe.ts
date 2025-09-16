@@ -16,6 +16,7 @@ import { order, orderStatus } from '@libs/database/schema/order';
 import { and, eq } from 'drizzle-orm';
 import { user } from '@libs/database/schema/user';
 import { randomUUID } from 'crypto';
+import { utcNow } from '@libs/database/utils/utc';
 
 // 添加一个简单的支付计划接口，只包含我们需要的属性
 interface PaymentPlan {
@@ -146,10 +147,12 @@ export class StripeProvider implements PaymentProvider {
     const subscription = await this.stripe.subscriptions.retrieve(session.subscription as string, {
       expand: ['latest_invoice']
     });    
-    // 使用 Stripe 的订阅周期
+    // 使用 Stripe 的订阅周期（Unix时间戳转UTC）
     const subscriptionItem = subscription.items.data[0];
     const periodStart = new Date(subscriptionItem.current_period_start * 1000);
     const periodEnd = new Date(subscriptionItem.current_period_end * 1000);
+    
+    console.log(`Stripe subscription created - Period: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
 
     // 更新订单状态
     await db.update(order)
@@ -179,22 +182,20 @@ export class StripeProvider implements PaymentProvider {
   private async handleOneTimePayment(session: Stripe.Checkout.Session): Promise<WebhookVerification> {
     if (!session.metadata?.orderId) return { success: false };
 
-    const now = new Date();
+    const now = utcNow();
     const plan = config.payment.plans[session.metadata.planId as keyof typeof config.payment.plans] as PaymentPlan;
     
-    // 处理终身会员的情况
-    const isLifetime = plan.duration.months >= 9999;
-    let periodEnd;
-    
-    if (isLifetime) {
-      // 设置一个固定的远期日期，但在合理范围内 (100年)
-      periodEnd = new Date(now);
+    // 计算期末时间
+    const periodEnd = new Date(now);
+    if (plan.duration.months >= 9999) {
+      // 终身订阅：设置为100年后
       periodEnd.setFullYear(periodEnd.getFullYear() + 100);
     } else {
-      // 普通订阅
-      periodEnd = new Date(now);
+      // 普通订阅：添加月数
       periodEnd.setMonth(periodEnd.getMonth() + plan.duration.months);
     }
+    
+    console.log(`Stripe one-time payment - Period: ${now.toISOString()} to ${periodEnd.toISOString()}`);
 
     // 更新订单状态
     await db.update(order)
@@ -214,7 +215,7 @@ export class StripeProvider implements PaymentProvider {
       cancelAtPeriodEnd: true,
       metadata: JSON.stringify({
         sessionId: session.id,
-        isLifetime: isLifetime
+        isLifetime: plan.duration.months >= 9999
       })
     });
 
@@ -235,10 +236,12 @@ export class StripeProvider implements PaymentProvider {
       return { success: false };
     }
 
-    // 使用 Stripe 的订阅周期
+    // 使用 Stripe 的订阅周期（Unix时间戳转UTC）
     const subscriptionItem = stripeSubscription.items.data[0];
     const periodStart = new Date(subscriptionItem.current_period_start * 1000);
     const periodEnd = new Date(subscriptionItem.current_period_end * 1000);
+    
+    console.log(`Stripe subscription updated - Period: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
     
     // 获取 price ID，用于确定当前计划
     const priceId = subscriptionItem.price.id;
@@ -286,15 +289,17 @@ export class StripeProvider implements PaymentProvider {
   private mapStripeStatus(status: string): string {
     switch (status) {
       case 'active':
-        return subscriptionStatus.ACTIVE;
+        return subscriptionStatus.ACTIVE;        // 活跃订阅
       case 'canceled':
-        return subscriptionStatus.CANCELED;
+        return subscriptionStatus.CANCELED;      // 用户主动取消
       case 'past_due':
-        return subscriptionStatus.PAST_DUE;
+        return subscriptionStatus.EXPIRED;       // 付款逾期 → 统一为过期
       case 'unpaid':
-        return subscriptionStatus.UNPAID;
+        return subscriptionStatus.EXPIRED;       // 付款失败 → 统一为过期
       case 'trialing':
-        return subscriptionStatus.TRIALING;
+        return subscriptionStatus.TRIALING;      // 试用期
+      case 'incomplete_expired':
+        return subscriptionStatus.EXPIRED;       // 不完整订阅过期
       default:
         return subscriptionStatus.ACTIVE;
     }

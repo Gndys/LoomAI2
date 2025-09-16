@@ -290,7 +290,7 @@ export function PhoneLoginForm({
                   onChange={(value) => setOtp(value)}
                   disabled={loading}
                 >
-                  <InputOTPGroup className="gap-2">
+                  <InputOTPGroup>
                     <InputOTPSlot index={0} />
                     <InputOTPSlot index={1} />
                     <InputOTPSlot index={2} />

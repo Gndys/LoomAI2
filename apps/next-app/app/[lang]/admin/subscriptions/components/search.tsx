@@ -9,7 +9,7 @@ import { Search as SearchIcon } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 
 type SearchField = "id" | "userId" | "planId" | "userEmail";
-type SubscriptionStatus = "active" | "canceled" | "past_due" | "unpaid" | "trialing" | "all";
+type SubscriptionStatus = "active" | "canceled" | "expired" | "trialing" | "inactive" | "all";
 type PaymentType = "one_time" | "recurring" | "all";
 
 export function Search() {
@@ -132,9 +132,9 @@ export function Search() {
           <SelectItem value="all">{t.admin.subscriptions.table.search.allStatus}</SelectItem>
           <SelectItem value="active">{t.admin.subscriptions.table.search.active}</SelectItem>
           <SelectItem value="canceled">{t.admin.subscriptions.table.search.canceled}</SelectItem>
-          <SelectItem value="past_due">{t.admin.subscriptions.table.search.pastDue}</SelectItem>
-          <SelectItem value="unpaid">{t.admin.subscriptions.table.search.unpaid}</SelectItem>
+          <SelectItem value="expired">{t.admin.subscriptions.table.search.expired}</SelectItem>
           <SelectItem value="trialing">{t.admin.subscriptions.table.search.trialing}</SelectItem>
+          <SelectItem value="inactive">{t.admin.subscriptions.table.search.inactive}</SelectItem>
         </SelectContent>
       </Select>
 

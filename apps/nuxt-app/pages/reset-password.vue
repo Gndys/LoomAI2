@@ -22,7 +22,7 @@
       
       <CardContent class="flex flex-col gap-6">
         <form @submit="onSubmit">
-          <div class="grid gap-4">
+          <div class="grid gap-6">
             <!-- Password input -->
             <div class="grid gap-2">
               <Label for="password">{{ t('auth.resetPassword.password') }}</Label>

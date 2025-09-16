@@ -17,6 +17,7 @@ import { order, orderStatus } from '@libs/database/schema/order';
 import { user } from '@libs/database/schema/user';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { utcNow } from '@libs/database/utils/utc';
 import crypto from 'crypto';
 
 // 添加一个简单的支付计划接口，只包含我们需要的属性
@@ -58,21 +59,31 @@ export interface CreemWebhookEvent {
 
 export interface CreemWebhookObject {
   id: string;
-  object: 'checkout';
+  object: 'checkout' | 'subscription';
   request_id?: string;
   order?: CreemOrder;
-  product?: CreemProduct;
-  customer?: CreemCustomer;
+  product?: CreemProduct | string;
+  customer?: CreemCustomer | string;
   subscription?: CreemSubscription;
+  // 当 object 为 'subscription' 时，周期信息直接在这个级别
+  collection_method?: 'charge_automatically';
+  status?: 'completed' | 'pending' | 'failed' | 'active' | 'canceled' | 'past_due' | 'unpaid';
+  last_transaction_id?: string;
+  last_transaction_date?: string;
+  next_transaction_date?: string;
+  current_period_start_date?: string;
+  current_period_end_date?: string;
+  canceled_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
   custom_fields?: any[];
-  status: 'completed' | 'pending' | 'failed';
   metadata?: {
     orderId?: string;
     userId?: string;
     planId?: string;
     [key: string]: any;
   };
-  mode: 'test' | 'live' | 'local';
+  mode?: 'test' | 'live' | 'local';
 }
 
 export interface CreemOrder {
@@ -120,10 +131,15 @@ export interface CreemCustomer {
 export interface CreemSubscription {
   id: string;
   object: 'subscription';
-  product: string;
-  customer: string;
+  product: string | CreemProduct;
+  customer: string | CreemCustomer;
   collection_method: 'charge_automatically';
   status: 'active' | 'canceled' | 'past_due' | 'unpaid';
+  last_transaction_id?: string;
+  last_transaction_date?: string;
+  next_transaction_date?: string;
+  current_period_start_date?: string;
+  current_period_end_date?: string;
   canceled_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -281,9 +297,27 @@ export class CreemProvider implements PaymentProvider {
 
     if (plan.duration.type === 'recurring') {
       // 处理订阅
-      const now = new Date();
-      const periodEnd = new Date(now);
-      periodEnd.setMonth(periodEnd.getMonth() + plan.duration.months);
+      // 优先使用Creem提供的周期信息，如果没有则fallback到计算方式
+      let periodStart: Date;
+      let periodEnd: Date;
+      
+      if (webhookData.object.subscription?.current_period_start_date && webhookData.object.subscription?.current_period_end_date) {
+        // 使用Creem提供的准确周期信息（ISO字符串转UTC）
+        periodStart = new Date(webhookData.object.subscription.current_period_start_date);
+        periodEnd = new Date(webhookData.object.subscription.current_period_end_date);
+        console.log(`Using Creem provided period dates - Period: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
+      } else {
+        // Fallback: 基于当前时间和计划配置计算周期
+        const now = utcNow();
+        periodStart = now;
+        periodEnd = new Date(now);
+        if (plan.duration.months >= 9999) {
+          periodEnd.setFullYear(periodEnd.getFullYear() + 100);
+        } else {
+          periodEnd.setMonth(periodEnd.getMonth() + plan.duration.months);
+        }
+        console.log(`Using calculated period dates - Period: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
+      }
 
       const subscriptionData = {
         id: randomUUID(),
@@ -291,9 +325,11 @@ export class CreemProvider implements PaymentProvider {
         planId: planId,
         status: subscriptionStatus.ACTIVE,
         paymentType: paymentTypes.RECURRING,
-        creemCustomerId: webhookData.object.customer?.id || null,
+        creemCustomerId: typeof webhookData.object.customer === 'string' 
+          ? webhookData.object.customer 
+          : webhookData.object.customer?.id || null,
         creemSubscriptionId: webhookData.object.subscription?.id || null,
-        periodStart: now,
+        periodStart: periodStart,
         periodEnd: periodEnd,
         cancelAtPeriodEnd: false,
         metadata: JSON.stringify({
@@ -303,17 +339,17 @@ export class CreemProvider implements PaymentProvider {
       await db.insert(userSubscription).values(subscriptionData);
     } else {
       // 处理一次性支付
-      const now = new Date();
-      const isLifetime = plan.duration.months >= 9999;
-      let periodEnd;
-      
-      if (isLifetime) {
-        periodEnd = new Date(now);
+      const now = utcNow();
+      const periodEnd = new Date(now);
+      if (plan.duration.months >= 9999) {
+        // 终身订阅：设置为100年后
         periodEnd.setFullYear(periodEnd.getFullYear() + 100);
       } else {
-        periodEnd = new Date(now);
+        // 普通订阅：添加月数
         periodEnd.setMonth(periodEnd.getMonth() + plan.duration.months);
       }
+      
+      console.log(`Creem one-time payment - Period: ${now.toISOString()} to ${periodEnd.toISOString()}`);
 
       const oneTimeSubscriptionData = {
         id: randomUUID(),
@@ -321,13 +357,15 @@ export class CreemProvider implements PaymentProvider {
         planId: planId,
         status: subscriptionStatus.ACTIVE,
         paymentType: paymentTypes.ONE_TIME,
-        creemCustomerId: webhookData.object.customer?.id || null,
+        creemCustomerId: typeof webhookData.object.customer === 'string' 
+          ? webhookData.object.customer 
+          : webhookData.object.customer?.id || null,
         periodStart: now,
         periodEnd: periodEnd,
         cancelAtPeriodEnd: true,
         metadata: JSON.stringify({
           checkoutId: webhookData.object.id,
-          isLifetime: isLifetime
+          isLifetime: plan.duration.months >= 9999
         })
       };
       await db.insert(userSubscription).values(oneTimeSubscriptionData);
@@ -359,15 +397,37 @@ export class CreemProvider implements PaymentProvider {
         return { success: true }; // 不报错，可能是首次付款
       }
       
-      // 更新订阅状态为 ACTIVE（续费成功）
+    // 从Creem webhook获取准确的订阅周期信息（ISO字符串转UTC）
+    const periodStartStr = webhookData.object.current_period_start_date;
+    const periodEndStr = webhookData.object.current_period_end_date;
+    
+    if (!periodStartStr || !periodEndStr) {
+      console.error('Missing period dates in Creem webhook:', { periodStartStr, periodEndStr });
+      return { success: false };
+    }
+    
+    const newPeriodStart = new Date(periodStartStr);
+    const newPeriodEnd = new Date(periodEndStr);
+    
+    // 验证日期有效性
+    if (isNaN(newPeriodStart.getTime()) || isNaN(newPeriodEnd.getTime())) {
+      console.error('Invalid period dates from Creem webhook:', { periodStartStr, periodEndStr });
+      return { success: false };
+    }
+    
+    console.log(`Creem subscription renewal - Period: ${newPeriodStart.toISOString()} to ${newPeriodEnd.toISOString()}`);
+      
+      // 更新订阅状态为 ACTIVE（续费成功）并更新订阅周期
       await db.update(userSubscription)
         .set({
           status: subscriptionStatus.ACTIVE,
+          periodStart: newPeriodStart,
+          periodEnd: newPeriodEnd,
           updatedAt: new Date()
         })
         .where(eq(userSubscription.id, subscription.id));
 
-      console.log(`Subscription renewal successful for ${subscriptionId}`);
+      console.log(`Subscription renewal successful for ${subscriptionId}, new period: ${newPeriodStart.toISOString()} - ${newPeriodEnd.toISOString()}`);
       return { success: true };
     } catch (error) {
       console.error('Error handling subscription renewal:', error);
@@ -467,7 +527,7 @@ export class CreemProvider implements PaymentProvider {
       // 更新订阅状态为过期
       await db.update(userSubscription)
         .set({
-          status: subscriptionStatus.CANCELLED, // 使用 CANCELLED 作为过期状态
+          status: subscriptionStatus.EXPIRED, // 使用 EXPIRED 表示订阅过期
           updatedAt: new Date()
         })
         .where(eq(userSubscription.id, subscription.id));
@@ -482,15 +542,17 @@ export class CreemProvider implements PaymentProvider {
   private mapCreemStatus(status: string): string {
     switch (status) {
       case 'active':
-        return subscriptionStatus.ACTIVE;
+        return subscriptionStatus.ACTIVE;       // 活跃订阅
       case 'canceled':
-        return subscriptionStatus.CANCELLED;
+        return subscriptionStatus.CANCELED;     // 用户主动取消
+      case 'expired':
+        return subscriptionStatus.EXPIRED;      // 订阅过期
       case 'past_due':
-        return subscriptionStatus.PAST_DUE;
+        return subscriptionStatus.EXPIRED;      // 付款逾期 → 统一为过期
       case 'unpaid':
-        return subscriptionStatus.UNPAID;
+        return subscriptionStatus.EXPIRED;      // 付款失败 → 统一为过期
       default:
-        return subscriptionStatus.INACTIVE;
+        return subscriptionStatus.INACTIVE;     // 默认状态
     }
   }
 

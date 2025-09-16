@@ -116,18 +116,20 @@ export const auth = betterAuth({
         console.log('🔗 [DEVELOPMENT MODE] Reset password URL stored in context:', url);
       }
       
-      try {
-        // 使用我们的邮件模块发送重置密码邮件
-        await sendResetPasswordEmail(user.email, {
-          name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
-          reset_url: url,
-          expiry_hours: 1,
-          locale: locale as 'en' | 'zh-CN' // 类型转换
-        });
-        
+      // 使用我们的邮件模块发送重置密码邮件
+      const emailResult = await sendResetPasswordEmail(user.email, {
+        name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
+        reset_url: url,
+        expiry_hours: 1,
+        locale: locale as 'en' | 'zh-CN' // 类型转换
+      });
+      
+      if (emailResult.success) {
         console.log(`Reset password email sent to ${user.email} in ${locale} language`);
-      } catch (error) {
-        console.error('Failed to send reset password email:', error);
+      } else {
+        console.error('Failed to send reset password email:', emailResult.error);
+        // 可以根据需要决定是否要抛出错误或其他处理方式
+        // 这里我们只记录错误但不阻止重置密码流程
       }
     },
   },
@@ -158,18 +160,20 @@ export const auth = betterAuth({
         console.log('🔗 [DEVELOPMENT MODE] Verification URL stored in context:', url);
       }
       
-      try {
-        // 使用我们的邮件模块发送验证邮件
-        await sendVerificationEmail(user.email, {
-          name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
-          verification_url: url,
-          expiry_hours: 1,
-          locale: locale as 'en' | 'zh-CN' // 类型转换
-        });
-        
+      // 使用我们的邮件模块发送验证邮件
+      const emailResult = await sendVerificationEmail(user.email, {
+        name: user.name || user.email.split('@')[0], // 如果没有名字，使用邮箱前缀
+        verification_url: url,
+        expiry_hours: 1,
+        locale: locale as 'en' | 'zh-CN' // 类型转换
+      });
+      
+      if (emailResult.success) {
         console.log(`Verification email sent to ${user.email} in ${locale} language`);
-      } catch (error) {
-        console.error('Failed to send verification email:', error);
+      } else {
+        console.error('Failed to send verification email:', emailResult.error);
+        // 可以根据需要决定是否要抛出错误或其他处理方式
+        // 这里我们只记录错误但不阻止用户注册流程
       }
     },
     autoSignInAfterVerification: true,
@@ -258,7 +262,7 @@ export const auth = betterAuth({
       },
       signUpOnVerification: {
         getTempEmail: (phoneNumber) => {
-            return `${phoneNumber}@tinyship.co`
+            return `${phoneNumber}@tinyship.cn`
         },
         //optionally, you can also pass `getTempName` function to generate a temporary name for the user
         getTempName: (phoneNumber) => {

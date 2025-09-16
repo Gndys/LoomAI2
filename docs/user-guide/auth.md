@@ -218,7 +218,7 @@ GITHUB_CLIENT_SECRET="your_github_client_secret"
 
 #### 环境变量配置
 ```env
-WECHAT_APP_ID="your_wechat_app_id"
+NEXT_PUBLIC_WECHAT_APP_ID="your_wechat_app_id"
 WECHAT_APP_SECRET="your_wechat_app_secret"
 ```
 

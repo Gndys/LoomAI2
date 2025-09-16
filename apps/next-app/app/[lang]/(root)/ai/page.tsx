@@ -26,7 +26,7 @@ export default function Chat() {
     { id: '2', content: `# Hello, Markdown!
   This is a **bold** text with some *italic* content.
 
-  - Item 1  
+  - Item 1
   - Item 2
 
   \`\`\`javascript
@@ -56,12 +56,13 @@ export default function Chat() {
       const data = await response.json();
       setHasSubscription(data && data.hasSubscription);
     } catch (error) {
-      console.error('Failed to check subscription status:', error);
+      // Handle both network errors and JSON parsing errors (like 401 Unauthorized)
+      console.warn('Subscription check failed, setting to false');
       setHasSubscription(false);
     }
   };
 
-  // New conversation function  
+  // New conversation function
   const startNewConversation = () => {
     // Reset messages to initial state
     setMessages([]);
@@ -71,7 +72,7 @@ export default function Chat() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!input.trim()) return;
-    
+
     // Check subscription status (cached from page load)
     if (!hasSubscription) {
       // Show permission denied toast
@@ -87,7 +88,7 @@ export default function Chat() {
       });
       return;
     }
-    
+
     // Use the original handleSubmit from useChat
     originalHandleSubmit(event, { body: { provider, model } });
   };
@@ -129,7 +130,7 @@ export default function Chat() {
           </div>
         </div>
       </div>
-      
+
       {/* Scrollable messages area */}
       <div className="flex-1 overflow-y-auto pb-24">
         <div className="max-w-3xl mx-auto py-6 px-4 space-y-4">
@@ -155,8 +156,8 @@ export default function Chat() {
                 {message.parts.map((part, i) => {
                   switch (part.type) {
                     case 'text':
-                      return <div className="prose prose-headings:my-2 prose-li:my-0 prose-ul:my-1 prose-p:my-2 
-                prose-pre:p-0 prose-pre:my-1 
+                      return <div className="prose prose-headings:my-2 prose-li:my-0 prose-ul:my-1 prose-p:my-2
+                prose-pre:p-0 prose-pre:my-1
             dark:prose-invert prose-pre:bg-muted prose-pre:text-muted-foreground" key={`${message.id}-${i}`}>
                           <ReactMarkdown rehypePlugins={[rehypeHighlight]}>{part.text}</ReactMarkdown>
                         </div>;
@@ -185,12 +186,12 @@ export default function Chat() {
                 onChange={handleInputChange}
               />
             </div>
-            
+
             {/* Toolbar */}
             <div className="flex items-center justify-between p-2 border-t border-border">
               {/* Model selector */}
               <div className="flex items-center">
-                <Select 
+                <Select
                   value={`${provider}:${model}`}
                   onValueChange={(value) => {
                     const [selectedProvider, selectedModel] = value.split(':');
@@ -212,9 +213,9 @@ export default function Chat() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Submit button */}
-              <Button 
+              <Button
                 type="submit"
                 size="icon"
                 variant="outline"
@@ -230,4 +231,4 @@ export default function Chat() {
     </div>
     </>
   );
-} 
+}

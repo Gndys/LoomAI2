@@ -5,6 +5,7 @@ import { order, orderStatus } from '@libs/database/schema/order';
 import { subscription, subscriptionStatus, paymentTypes } from '@libs/database/schema/subscription';
 import { eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { utcNow } from '@libs/database/utils/utc';
 import crypto from 'crypto';
 import { X509Certificate } from '@peculiar/x509';
 import { ofetch } from 'ofetch';
@@ -546,7 +547,7 @@ export class WechatPayProvider implements PaymentProvider {
         
         if (orderRecord) {
           const plan = config.payment.plans[orderRecord.planId as keyof typeof config.payment.plans];
-          const now = new Date();
+          const now = utcNow();
           
           // 检查用户是否已有有效订阅
           const existingSubscription = await db.query.subscription.findFirst({
@@ -558,31 +559,29 @@ export class WechatPayProvider implements PaymentProvider {
             orderBy: [desc(subscription.periodEnd)]
           });
           
-          // 处理终身会员的情况
-          const isLifetime = plan.duration.months >= 9999;
-          
-          const newPeriodEnd = new Date();
-          if (isLifetime) {
-            // 设置一个固定的远期日期，但在合理范围内 (100年)
+          // 计算新的期末时间
+          const newPeriodEnd = new Date(now);
+          if (plan.duration.months >= 9999) {
+            // 终身订阅：设置为100年后
             newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 100);
           } else {
-            // 普通订阅
+            // 普通订阅：添加月数
             newPeriodEnd.setMonth(newPeriodEnd.getMonth() + plan.duration.months);
           }
           
           if (existingSubscription) {
             // 如果已有订阅，更新现有订阅的结束日期
             // 如果现有订阅还未过期，则在其基础上延长时间
-            const extensionStart = existingSubscription.periodEnd > now 
-              ? existingSubscription.periodEnd 
+            const existingPeriodEnd = existingSubscription.periodEnd;
+            const extensionStart = existingPeriodEnd > now 
+              ? existingPeriodEnd 
               : now;
             
+            // 基于延长开始时间计算新的期末时间
             const extensionEnd = new Date(extensionStart);
-            if (isLifetime) {
-              // 终身会员直接设置为固定的远期日期
-              extensionEnd.setFullYear(now.getFullYear() + 100);
+            if (plan.duration.months >= 9999) {
+              extensionEnd.setFullYear(extensionEnd.getFullYear() + 100);
             } else {
-              // 普通订阅按月数延长
               extensionEnd.setMonth(extensionEnd.getMonth() + plan.duration.months);
             }
             
@@ -597,7 +596,7 @@ export class WechatPayProvider implements PaymentProvider {
                   lastTradeState: decryptedData.trade_state,
                   lastTradeStateDesc: decryptedData.trade_state_desc,
                   lastSuccessTime: decryptedData.success_time,
-                  isLifetime: isLifetime
+                  isLifetime: plan.duration.months >= 9999
                 })
               })
               .where(eq(subscription.id, existingSubscription.id));
@@ -609,15 +608,15 @@ export class WechatPayProvider implements PaymentProvider {
               planId: orderRecord.planId,
               status: subscriptionStatus.ACTIVE,
               paymentType: paymentTypes.ONE_TIME,
-              periodStart: now,
-              periodEnd: newPeriodEnd,
+                periodStart: now,
+                periodEnd: newPeriodEnd,
               cancelAtPeriodEnd: false,
               metadata: JSON.stringify({
                 transactionId: decryptedData.transaction_id,
                 tradeState: decryptedData.trade_state,
                 tradeStateDesc: decryptedData.trade_state_desc,
                 successTime: decryptedData.success_time,
-                isLifetime: isLifetime
+                isLifetime: plan.duration.months >= 9999
               })
             });
           }

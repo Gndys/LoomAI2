@@ -3,13 +3,12 @@ import { user } from "./user";
 
 // 订阅状态枚举
 export const subscriptionStatus = {
-  ACTIVE: "active",
-  CANCELED: "canceled",
-  CANCELLED: "canceled", // Alias for compatibility
-  PAST_DUE: "past_due",
-  UNPAID: "unpaid",
-  TRIALING: "trialing",
-  INACTIVE: "inactive"
+  ACTIVE: "active",           // 活跃订阅 - 用户可正常使用服务
+  CANCELED: "canceled",       // 用户主动取消订阅
+  CANCELLED: "canceled",      // Alias for compatibility
+  EXPIRED: "expired",         // 订阅失效（到期、续费失败、或其他原因）
+  TRIALING: "trialing",      // 试用期
+  INACTIVE: "inactive"       // 未激活
 } as const;
 
 // 支付类型枚举

@@ -53,21 +53,27 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   // 处理密码更改
   const onSubmit = async (formData: FormData) => {
     setLoading(true);
-    try {
-      await authClientReact.changePassword({
-        newPassword: formData.newPassword,
-        currentPassword: formData.currentPassword,
-        revokeOtherSessions: true,
-      });
+    
+    const { data, error } = await authClientReact.changePassword({
+      newPassword: formData.newPassword,
+      currentPassword: formData.currentPassword,
+      revokeOtherSessions: true,
+    });
 
-      toast.success(t.dashboard.accountManagement.changePassword.success);
-      handleClose();
-    } catch (error) {
+    if (error) {
       console.error('Failed to change password:', error);
-      toast.error(t.dashboard.accountManagement.changePassword.errors.failed);
-    } finally {
+      const errorMessage = error.message 
+        ? `${t.dashboard.accountManagement.changePassword.errors.failed}: ${error.message}`
+        : t.dashboard.accountManagement.changePassword.errors.failed;
+      toast.error(errorMessage);
+      reset();
       setLoading(false);
+      return;
     }
+
+    toast.success(t.dashboard.accountManagement.changePassword.success);
+    handleClose();
+    setLoading(false);
   };
 
   const handleClose = () => {

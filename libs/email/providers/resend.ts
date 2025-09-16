@@ -29,7 +29,6 @@ export async function sendEmailByResend(options: EmailOptions): Promise<EmailRes
     });
 
     if (error) {
-      console.error('Failed to send email:', error);
       return {
         success: false,
         error: {
@@ -55,4 +54,4 @@ export async function sendEmailByResend(options: EmailOptions): Promise<EmailRes
       }
     };
   }
-} 
+}

@@ -35,8 +35,10 @@ export default function DashboardPage() {
       setLoading(false);
     } else if (!isPending) {
       setLoading(false);
+      // Redirect to signin page when user is not authenticated
+      router.push(`/${currentLocale}/signin`);
     }
-  }, [user, refreshKey, isPending]);
+  }, [user, refreshKey, isPending, router, currentLocale]);
 
   // 格式化日期
   const formatDate = (dateString: string | Date) => {
@@ -126,7 +128,6 @@ export default function DashboardPage() {
   }
 
   if (!user) {
-    router.push(`/${currentLocale}/signin`);
     return null;
   }
 

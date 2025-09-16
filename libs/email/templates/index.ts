@@ -2,6 +2,7 @@ import mjml2html from 'mjml';
 import Handlebars from 'handlebars';
 import { translations, defaultLocale, type SupportedLocale } from '@libs/i18n';
 import { VERIFICATION_TEMPLATE, RESET_PASSWORD_TEMPLATE } from './templates';
+import { config } from '@config';
 
 // 邮件模板类型定义
 export interface EmailTemplate {
@@ -15,6 +16,7 @@ export interface VerificationEmailParams {
   verification_url: string;
   expiry_hours: number;
   locale?: string; // 指定使用哪种语言
+  base_url?: string; // 应用的基础URL，用于logo等资源
 }
 
 // 重置密码邮件所需变量类型
@@ -23,6 +25,7 @@ export interface ResetPasswordEmailParams {
   reset_url: string;
   expiry_hours: number;
   locale?: string; // 指定使用哪种语言
+  base_url?: string; // 应用的基础URL，用于logo等资源
 }
 
 // 获取当前年份，用于版权信息
@@ -77,6 +80,7 @@ export function generateVerificationEmail(params: VerificationEmailParams): Emai
   const template = Handlebars.compile(mjmlHtml);
   const html = template({
     ...params,
+    base_url: params.base_url || config.app.baseUrl,
     ...translationData
   });
   
@@ -104,6 +108,7 @@ export function generateResetPasswordEmail(params: ResetPasswordEmailParams): Em
   const template = Handlebars.compile(mjmlHtml);
   const html = template({
     ...params,
+    base_url: params.base_url || config.app.baseUrl,
     ...translationData
   });
   

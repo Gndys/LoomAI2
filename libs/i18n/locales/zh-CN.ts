@@ -592,9 +592,9 @@ export const zhCN: Locale = {
           allPaymentTypes: "所有类型",
           active: "活跃",
           canceled: "已取消",
-          pastDue: "逾期",
-          unpaid: "未支付",
+          expired: "已过期",
           trialing: "试用中",
+          inactive: "未激活",
           oneTime: "一次性",
           recurring: "循环订阅"
         },
@@ -632,8 +632,7 @@ export const zhCN: Locale = {
         trialing: "试用中",
         canceled: "已取消",
         cancelled: "已取消",
-        past_due: "逾期",
-        unpaid: "未支付",
+        expired: "已过期",
         inactive: "未激活"
       },
       paymentType: {

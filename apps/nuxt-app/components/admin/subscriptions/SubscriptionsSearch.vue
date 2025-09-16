@@ -52,8 +52,7 @@
         <SelectItem value="active">{{ t('admin.subscriptions.status.active') }}</SelectItem>
         <SelectItem value="trialing">{{ t('admin.subscriptions.status.trialing') }}</SelectItem>
         <SelectItem value="canceled">{{ t('admin.subscriptions.status.canceled') }}</SelectItem>
-        <SelectItem value="past_due">{{ t('admin.subscriptions.status.past_due') }}</SelectItem>
-        <SelectItem value="unpaid">{{ t('admin.subscriptions.status.unpaid') }}</SelectItem>
+        <SelectItem value="expired">{{ t('admin.subscriptions.status.expired') }}</SelectItem>
         <SelectItem value="inactive">{{ t('admin.subscriptions.status.inactive') }}</SelectItem>
       </SelectContent>
     </Select>

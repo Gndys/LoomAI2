@@ -43,10 +43,8 @@ const getStatusVariant = (status: string) => {
       return 'secondary'
     case 'canceled':
     case 'cancelled':
-      return 'destructive'
-    case 'past_due':
-      return 'destructive'
-    case 'unpaid':
+      return 'secondary'
+    case 'expired':
       return 'destructive'
     case 'inactive':
       return 'outline'

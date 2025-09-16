@@ -39,9 +39,9 @@ const getStatusBadge = (status: string, t: any) => {
   const statusConfig = {
     active: { label: t.admin.subscriptions.table.search.active, variant: "default" as const },
     canceled: { label: t.admin.subscriptions.table.search.canceled, variant: "secondary" as const },
-    past_due: { label: t.admin.subscriptions.table.search.pastDue, variant: "destructive" as const },
-    unpaid: { label: t.admin.subscriptions.table.search.unpaid, variant: "destructive" as const },
+    expired: { label: t.admin.subscriptions.table.search.expired, variant: "destructive" as const },
     trialing: { label: t.admin.subscriptions.table.search.trialing, variant: "outline" as const },
+    inactive: { label: t.admin.subscriptions.table.search.inactive, variant: "outline" as const },
   }
   
   const config = statusConfig[status as keyof typeof statusConfig] || { label: status, variant: "outline" as const }
