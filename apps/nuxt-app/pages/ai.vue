@@ -4,7 +4,7 @@
     <div class="flex-shrink-0 border-b border-border bg-background/95 backdrop-blur">
       <div class="max-w-3xl mx-auto py-4 px-4">
         <div class="flex items-center justify-between">
-          <div>
+          <div class="mr-4">
             <h1 class="text-xl font-semibold text-foreground">{{ $t('ai.chat.title') }}</h1>
             <p class="text-sm text-muted-foreground">{{ $t('ai.chat.description') }}</p>
           </div>

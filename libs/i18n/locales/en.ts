@@ -1231,7 +1231,7 @@ export const en: Locale = {
     },
     chat: {
       title: "AI Assistant",
-      description: "Chat with AI to get help with coding, writing, and problem-solving",
+      description: "A simple implementation of large model conversation with extensible design, using the latest technologies ai-sdk / ai-elements / streamdown to achieve very smooth chat effects, can be extended to more complex functions as needed",
       placeholder: "What can I help you with?",
       sending: "Sending...",
       thinking: "AI is thinking...",

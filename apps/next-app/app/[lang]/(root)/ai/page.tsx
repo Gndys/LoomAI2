@@ -1,22 +1,35 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight'
+import { useState, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { Send } from 'lucide-react';
+import { MessageSquareIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/use-translation';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from '@/components/ai-elements/conversation';
+import {
+  Message,
+  MessageContent,
+  MessageAvatar,
+} from '@/components/ai-elements/message';
+import { Response } from '@/components/ai-elements/response';
+import {
+  PromptInput,
+  PromptInputTextarea,
+  PromptInputToolbar,
+  PromptInputTools,
+  PromptInputSubmit,
+  PromptInputModelSelect,
+  PromptInputModelSelectTrigger,
+  PromptInputModelSelectContent,
+  PromptInputModelSelectItem,
+  PromptInputModelSelectValue,
+} from '@/components/ai-elements/prompt-input';
 import '@/app/highlight.css'
 
 export default function Chat() {
@@ -34,13 +47,12 @@ export default function Chat() {
   \`\`\`
   `, role: 'assistant' },
   ];
-  const { messages, input, handleInputChange, handleSubmit: originalHandleSubmit, setMessages } = useChat({
+  const { messages, append, setMessages, status } = useChat({
     initialMessages
   });
   const [provider, setProvider] = useState<keyof typeof providerModels>('qwen');
   const [model, setModel] = useState('qwen-turbo');
   const [hasSubscription, setHasSubscription] = useState(true); // 默认允许，避免闪烁
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const providerModels = {
     qwen: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
@@ -68,10 +80,9 @@ export default function Chat() {
     setMessages([]);
   };
 
-  // Enhanced form submission with subscription check
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!input.trim()) return;
+  // Enhanced form submission with subscription check for PromptInput
+  const handlePromptSubmit = async (message: { text?: string; files?: any[] }) => {
+    if (!message.text?.trim()) return;
 
     // Check subscription status (cached from page load)
     if (!hasSubscription) {
@@ -89,19 +100,17 @@ export default function Chat() {
       return;
     }
 
-    // Use the original handleSubmit from useChat
-    originalHandleSubmit(event, { body: { provider, model } });
+    // Use append from useChat with provider and model info
+    await append({
+      role: 'user',
+      content: message.text,
+    }, {
+      body: { provider, model }
+    });
   };
 
-  // Auto-scroll to the latest message
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // Trigger scroll when messages change and check subscription on mount
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  // Check subscription on mount
+  // Note: Scrolling is now handled automatically by AI Elements Conversation component
 
   useEffect(() => {
     // Check subscription status once on page load
@@ -114,7 +123,7 @@ export default function Chat() {
       <div className="flex-shrink-0 border-b border-border bg-background/95 backdrop-blur">
         <div className="max-w-3xl mx-auto py-4 px-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className='mr-4'>
               <h1 className="text-xl font-semibold text-foreground">{t.ai.chat.title}</h1>
               <p className="text-sm text-muted-foreground">{t.ai.chat.description}</p>
             </div>
@@ -131,102 +140,85 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Scrollable messages area */}
-      <div className="flex-1 overflow-y-auto pb-24">
-        <div className="max-w-3xl mx-auto py-6 px-4 space-y-4">
-          {messages.length === 0 && (
-          <div className="text-center py-8">
-            <div className="text-muted-foreground text-sm">
-              {t.ai.chat.welcomeMessage}
-            </div>
-          </div>
+      {/* AI Elements Conversation Container */}
+      <Conversation className="flex-1 pb-24">
+        <ConversationContent className="max-w-3xl mx-auto space-y-4 pb-24">
+          {messages.length === 0 ? (
+            <ConversationEmptyState
+              title={t.ai.chat.welcomeMessage}
+              description={t.ai.chat.description}
+              icon={<MessageSquareIcon className="size-6" />}
+            />
+          ) : (
+            messages.map((message) => (
+              <Message key={message.id} from={message.role}>
+                <MessageContent>
+                  {message.parts.map((part, i) => {
+                    switch (part.type) {
+                      case 'text':
+                        return (
+                          <Response key={`${message.id}-${i}`}>
+                            {part.text}
+                          </Response>
+                        );
+                      default:
+                        return null;
+                    }
+                  })}
+                </MessageContent>
+                <MessageAvatar
+                  src={message.role === 'user' ? '/user-avatar.png' : '/ai-avatar.png'}
+                  name={message.role === 'user' ? 'User' : 'AI'}
+                />
+              </Message>
+            ))
           )}
-          { messages.length > 0 && messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`px-2 py-1 rounded-sm shadow-sm border ${
-                  message.role === 'user'
-                    ? 'bg-secondary text-secondary-foreground border-secondary'
-                    : 'bg-card text-card-foreground border-border'
-                }`}
-              >
-                {message.parts.map((part, i) => {
-                  switch (part.type) {
-                    case 'text':
-                      return <div className="prose prose-headings:my-2 prose-li:my-0 prose-ul:my-1 prose-p:my-2
-                prose-pre:p-0 prose-pre:my-1
-            dark:prose-invert prose-pre:bg-muted prose-pre:text-muted-foreground" key={`${message.id}-${i}`}>
-                          <ReactMarkdown rehypePlugins={[rehypeHighlight]}>{part.text}</ReactMarkdown>
-                        </div>;
-                    default:
-                      return null;
-                  }
-                })}
-              </div>
-            </div>
-          ))}
-          {/* Empty div for scrolling reference */}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
 
-      {/* Fixed form at the bottom */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm">
-        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto py-4 px-4">
-          <div className="border border-border rounded-lg shadow-md bg-card">
-            {/* Input field */}
-            <div className="p-3 pb-2">
-              <input
-                className="w-full bg-transparent outline-none text-card-foreground placeholder:text-muted-foreground"
-                value={input}
-                placeholder={t.ai.chat.placeholder}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            {/* Toolbar */}
-            <div className="flex items-center justify-between p-2 border-t border-border">
-              {/* Model selector */}
-              <div className="flex items-center">
-                <Select
+      {/* AI Elements PromptInput */}
+      <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur-sm p-4 pb-safe">
+        <div className="max-w-3xl mx-auto">
+          <PromptInput onSubmit={handlePromptSubmit}>
+            <PromptInputTextarea placeholder={t.ai.chat.placeholder} />
+            
+            <PromptInputToolbar>
+              <PromptInputTools>
+                {/* Model selector */}
+                <PromptInputModelSelect
                   value={`${provider}:${model}`}
                   onValueChange={(value) => {
                     const [selectedProvider, selectedModel] = value.split(':');
                     setProvider(selectedProvider as keyof typeof providerModels);
                     setModel(selectedModel);
-                  }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(providerModels).map(([prov, models]) => (
-                      <SelectGroup key={prov}>
-                        <SelectLabel>{prov.charAt(0).toUpperCase() + prov.slice(1)}</SelectLabel>
+                  }}
+                >
+                  <PromptInputModelSelectTrigger>
+                    <PromptInputModelSelectValue placeholder="Select Model" />
+                  </PromptInputModelSelectTrigger>
+                  <PromptInputModelSelectContent>
+                    {Object.entries(providerModels).map(([prov, models], index) => (
+                      <div key={prov}>
+                        {index > 0 && <div className="h-px bg-border my-1" />}
+                        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          {prov.charAt(0).toUpperCase() + prov.slice(1)}
+                        </div>
                         {models.map((mod: string) => (
-                          <SelectItem key={mod} value={`${prov}:${mod}`}>{mod}</SelectItem>
+                          <PromptInputModelSelectItem key={mod} value={`${prov}:${mod}`}>
+                            {mod}
+                          </PromptInputModelSelectItem>
                         ))}
-                      </SelectGroup>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  </PromptInputModelSelectContent>
+                </PromptInputModelSelect>
+              </PromptInputTools>
 
-              {/* Submit button */}
-              <Button
-                type="submit"
-                size="icon"
-                variant="outline"
-                className="size-8"
-                disabled={!input.trim()}
-              >
-                <Send/>
-              </Button>
-            </div>
-          </div>
-        </form>
+              <PromptInputSubmit status={status} />
+            </PromptInputToolbar>
+          </PromptInput>
+        </div>
       </div>
     </div>
     </>

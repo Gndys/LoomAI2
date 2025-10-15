@@ -1045,7 +1045,7 @@ export const zhCN: Locale = {
     },
     chat: {
       title: "AI 助手",
-      description: "与 AI 聊天，获得编程、写作和问题解决的帮助",
+      description: "一个大模型对话简单实现，可扩展设计，使用了最新的技术 ai-sdk / ai-elements / streamdown 实现非常丝滑的聊天效果，可以按需求扩展为更复杂的功能",
       placeholder: "需要我帮什么忙？",
       sending: "发送中...",
       thinking: "AI 正在思考...",

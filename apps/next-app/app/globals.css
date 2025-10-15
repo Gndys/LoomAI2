@@ -5,6 +5,9 @@
 /* Import shared UI styles */
 @import "../../../libs/ui/styles/index.css";
 
+/* Import Streamdown styles */
+@source "../node_modules/streamdown/dist/index.js";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
