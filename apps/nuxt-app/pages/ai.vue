@@ -9,7 +9,7 @@
             <p class="text-sm text-muted-foreground">{{ $t('ai.chat.description') }}</p>
           </div>
           <Button
-            v-if="messages.length > 0"
+            v-if="messages && messages.length > 0"
             variant="outline"
             size="sm"
             @click="reloadConversation"
@@ -20,69 +20,41 @@
       </div>
     </div>
 
-    <!-- Scrollable messages area -->
-    <div ref="messagesContainer" class="flex-1 overflow-y-auto pb-24">
-      <div class="max-w-3xl mx-auto py-6 px-4 space-y-4">
+    <!-- AI Elements Conversation Container -->
+    <Conversation class="flex-1">
+      <ConversationContent class="max-w-3xl mx-auto space-y-4 pb-40">
         <!-- Welcome message when no messages -->
-        <div v-if="messages.length === 0" class="text-center py-8">
-          <div class="text-muted-foreground text-sm">
-            {{ $t('ai.chat.welcomeMessage') }}
-          </div>
-        </div>
-
-        <!-- Messages -->
-        <div
-          v-for="message in messages"
-          :key="message.id"
-          class="flex"
-          :class="message.role === 'user' ? 'justify-end' : 'justify-start'"
+        <ConversationEmptyState
+          v-if="!messages || messages.length === 0"
+          :title="$t('ai.chat.welcomeMessage')"
+          :description="$t('ai.chat.description')"
         >
-          <div
-            class="px-4 py-2 rounded-lg shadow-sm border max-w-[80%]"
-            :class="message.role === 'user'
-              ? 'bg-primary text-primary-foreground border-primary'
-              : 'bg-card text-card-foreground border-border'"
-          >
-            <!-- User message -->
-            <div v-if="message.role === 'user'" class="whitespace-pre-wrap">
-              {{ message.parts?.find(p => p.type === 'text')?.text || '' }}
-            </div>
-            
-            <!-- AI message with parts support -->
-            <div v-else>
-              <div v-for="(part, index) in message.parts" :key="index">
-                <!-- Text part with markdown rendering -->
-                <div v-if="part.type === 'text'" class="prose prose-headings:my-2 prose-li:my-0 prose-ul:my-1 prose-p:my-2 
-                prose-pre:p-0 prose-pre:my-1 
-            dark:prose-invert prose-pre:bg-muted prose-pre:text-muted-foreground">
-                  <VueMarkdownRender 
-                    :source="part.text" 
-                    :options="markdownOptions"
-                    :plugins="plugins"
-                  />
-                </div>
-                
-                <!-- Tool invocation part -->
-                <div v-else-if="part.type?.startsWith('tool-')" class="mt-2 p-2 bg-muted rounded text-sm">
-                  <div class="font-medium">{{ $t('ai.chat.toolCall') }}</div>
-                  <pre class="text-xs mt-1">{{ JSON.stringify(part, null, 2) }}</pre>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+          <template #icon>
+            <MessageSquareIcon class="size-6" />
+          </template>
+        </ConversationEmptyState>
 
-        <!-- Loading indicator -->
-        <div v-if="status === 'streaming'" class="flex justify-start">
-          <div class="px-4 py-2 rounded-lg bg-card text-card-foreground border border-border">
-            <div class="flex items-center space-x-2">
-              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-              <span class="text-sm text-muted-foreground">{{ $t('ai.chat.thinking') }}</span>
-            </div>
-          </div>
-        </div>
+        <!-- Messages using AI Elements -->
+        <Message
+          v-for="message in messages || []"
+          :key="message.id"
+          :from="message.role === 'system' ? 'assistant' : message.role"
+        >
+          <MessageContent>
+            <template v-if="message.parts && message.parts.length > 0">
+              <template v-for="(part, i) in message.parts" :key="i">
+                <Response v-if="part.type === 'text' && (part as any).text" :content="(part as any).text" />
+              </template>
+            </template>
+            <template v-else-if="(message as any).content">
+              <!-- Fallback for messages with content but no parts (like user messages) -->
+              <Response :content="(message as any).content" />
+            </template>
+            <!-- No fallback for empty messages during streaming -->
+          </MessageContent>
+        </Message>
 
-        <!-- Error message -->
+        <!-- Error State -->
         <div v-if="error" class="max-w-3xl mx-auto px-4 py-4">
           <div class="flex items-center justify-between p-4 bg-destructive/10 text-destructive border border-destructive/20 rounded-lg">
             <div class="flex-1">
@@ -104,8 +76,7 @@
                 variant="ghost"
                 size="sm"
                 @click="() => {
-                  // Clear error by removing the last message if it was an error
-                  if (messages.length > 0) {
+                  if (messages && messages.length > 0) {
                     messages.splice(-1, 1);
                   }
                 }"
@@ -115,80 +86,100 @@
             </div>
           </div>
         </div>
-
-        <!-- Scroll anchor -->
-        <div ref="scrollAnchor" />
-      </div>
-    </div>
+      </ConversationContent>
+      <ConversationScrollButton />
+    </Conversation>
 
     <!-- Fixed form at the bottom -->
-    <div class="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border">
-      <form @submit="handleSubmit" class="max-w-3xl mx-auto py-4 px-4">
-        <div class="border border-border rounded-lg shadow-md bg-card">
-          <!-- Input field -->
-          <div class="p-3 pb-2">
-            <textarea
-              v-model="input"
-              class="w-full bg-transparent outline-none text-card-foreground placeholder:text-muted-foreground resize-none"
-              :placeholder="error ? $t('ai.chat.errors.inputDisabled') : $t('ai.chat.placeholder')"
-              :disabled="status === 'streaming' || error != null"
-              rows="1"
-              @keydown="handleKeydown"
-              @input="adjustTextareaHeight"
-              ref="textareaRef"
-            />
-          </div>
-          
-          <!-- Toolbar -->
-          <div class="flex items-center justify-between p-2 border-t border-border">
-            <!-- Model selector -->
-            <div class="flex items-center space-x-2">
-              <Select v-model="selectedModel">
-                <SelectTrigger class="w-[200px]">
-                  <SelectValue :placeholder="$t('ai.chat.providers.title')" />
-                </SelectTrigger>
-                <SelectContent>
-                  <template v-for="(models, provider) in providerModels" :key="provider">
-                    <SelectLabel>{{ $t(`ai.chat.providers.${provider}`) }}</SelectLabel>
-                    <SelectItem 
-                      v-for="model in models" 
-                      :key="model" 
-                      :value="`${provider}:${model}`"
+    <div class="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur-sm p-4 pb-4 safe-area-inset-bottom">
+      <div class="max-w-3xl mx-auto">
+        <PromptInput @submit="handleSubmit">
+          <PromptInputTextarea 
+            :placeholder="error ? $t('ai.chat.errors.inputDisabled') : $t('ai.chat.placeholder')"
+            :disabled="status === 'streaming' || error != null"
+          />
+          <PromptInputToolbar>
+            <PromptInputTools>
+              <!-- Model selector -->
+              <PromptInputModelSelect v-model="selectedModel">
+                <PromptInputModelSelectTrigger>
+                  <PromptInputModelSelectValue placeholder="Select Model" />
+                </PromptInputModelSelectTrigger>
+                <PromptInputModelSelectContent>
+                  <template v-for="([prov, models], index) in Object.entries(providerModels)" :key="prov">
+                    <div v-if="index > 0" class="h-px bg-border my-1" />
+                    <div class="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      {{ $t(`ai.chat.providers.${prov}`) || prov.charAt(0).toUpperCase() + prov.slice(1) }}
+                    </div>
+                    <PromptInputModelSelectItem 
+                      v-for="mod in models" 
+                      :key="mod" 
+                      :value="`${prov}:${mod}`"
                     >
-                      {{ $t(`ai.chat.models.${model}`) || model }}
-                    </SelectItem>
+                      {{ $t(`ai.chat.models.${mod}`) || mod }}
+                    </PromptInputModelSelectItem>
                   </template>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <!-- Submit button -->
-            <Button 
-              type="submit"
-              size="icon"
-              variant="outline"
-              :disabled="!input.trim() || status === 'streaming' || error != null"
-            >
-              <Send v-if="status !== 'streaming'" class="h-4 w-4" />
-              <Loader2 v-else class="h-4 w-4 animate-spin" />
-            </Button>
-          </div>
-        </div>
-      </form>
+                </PromptInputModelSelectContent>
+              </PromptInputModelSelect>
+            </PromptInputTools>
+
+            <PromptInputSubmit 
+              :status="error ? 'error' : status"
+              :disabled="error != null"
+            />
+          </PromptInputToolbar>
+        </PromptInput>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, watch } from 'vue'
+import { ref, nextTick, onMounted, watch, h, defineComponent, toRef } from 'vue'
 import { Chat } from '@ai-sdk/vue'
 import { DefaultChatTransport } from 'ai'
-import { Send, X, Loader2 } from 'lucide-vue-next'
-import VueMarkdownRender from 'vue-markdown-render'
-import markdownItHighlightjs from 'markdown-it-highlightjs'
+import { Send, Loader2, MessageSquareIcon } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { authClientVue } from '@libs/auth/authClient'
-//import 'vue-markdown-render/dist/style.css'
+
+// AI Elements components
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from '@/components/ai-elements/conversation'
+import {
+  Message,
+  MessageContent,
+} from '@/components/ai-elements/message'
+import { Response } from '@/components/ai-elements/response'
+import {
+  PromptInput,
+  PromptInputTextarea,
+  PromptInputSubmit,
+  PromptInputToolbar,
+  PromptInputTools,
+  PromptInputModelSelect,
+  PromptInputModelSelectTrigger,
+  PromptInputModelSelectContent,
+  PromptInputModelSelectItem,
+  PromptInputModelSelectValue,
+} from '@/components/ai-elements/prompt-input'
+
+// ConversationEmptyState component
+const ConversationEmptyState = defineComponent({
+  props: {
+    title: String,
+    description: String,
+  },
+  setup(props, { slots }) {
+    return () => h('div', { class: 'text-center py-8' }, [
+      h('div', { class: 'mb-4' }, slots.icon?.()),
+      h('div', { class: 'text-muted-foreground text-sm' }, props.title),
+      props.description && h('div', { class: 'text-muted-foreground text-xs mt-1' }, props.description)
+    ])
+  }
+})
 
 // SEO and metadata
 const { t: $t } = useI18n()
@@ -200,10 +191,16 @@ useSeoMeta({
 })
 
 // Local reactive data
-const selectedModel = ref('qwen:qwen-turbo')
-const messagesContainer = ref<HTMLElement>()
-const scrollAnchor = ref<HTMLElement>()
-const textareaRef = ref<HTMLTextAreaElement>()
+const provider = ref<keyof typeof providerModels>('qwen')
+const model = ref('qwen-turbo')
+const selectedModel = computed({
+  get: () => `${provider.value}:${model.value}`,
+  set: (value: string) => {
+    const [selectedProvider, selectedModel] = value.split(':')
+    provider.value = selectedProvider as keyof typeof providerModels
+    model.value = selectedModel
+  }
+})
 const hasSubscription = ref(true) // 默认允许，避免闪烁
 
 // Provider models configuration
@@ -211,22 +208,18 @@ const providerModels = {
   qwen: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
   deepseek: ['deepseek-chat', 'deepseek-coder'],
 }
-const plugins = [markdownItHighlightjs]
-
-// Markdown rendering options
-const markdownOptions = {
-  html: false,
-  breaks: true,
-  linkify: true,
-  typographer: true,
-  highlight: (str: string, lang: string) => {
-    // Simple highlighting - you can enhance this with a proper highlighter
-    return `<pre><code class="language-${lang}">${str}</code></pre>`
-  }
-}
 const initialMessages: any[] = [
-    { id: '1', content: '你好，我是Grok，一个AI助手。', role: 'user' },
-    { id: '2', content: `# Hello, Markdown!
+  { 
+    id: '1', 
+    role: 'user',
+    parts: [{ type: 'text', text: '你好，我是用户，测试一下AI助手。' }]
+  },
+  { 
+    id: '2', 
+    role: 'assistant',
+    parts: [{ 
+      type: 'text', 
+      text: `# Hello, Markdown!
 This is a **bold** text with some *italic* content.
 
 - Item 1  
@@ -235,38 +228,34 @@ This is a **bold** text with some *italic* content.
 \`\`\`javascript
 console.log("Code block");
 \`\`\`
-`, role: 'assistant' },
-  ];
+`
+    }]
+  },
+];
 
 // Use the AI SDK's Chat class
-const input = ref('')
 const chat = new Chat({
   transport: new DefaultChatTransport({ 
     api: '/api/chat',
     prepareSendMessagesRequest: ({ messages }) => {
-      const [provider, model] = selectedModel.value.split(':')
-      return { body: { messages, provider, model } }
+      return { body: { messages, provider: provider.value, model: model.value } }
     }
   }),
   messages: initialMessages,
   onError: (error: any) => {
     console.error('Chat error:', error)
-  },
+  }
 })
 
 // Get reactive references from chat
-const messages = chat.messages
-const status = chat.status
-const error = chat.error
+const messages = toRef(chat, 'messages')
+const status = toRef(chat, 'status')
+const error = toRef(chat, 'error')
 
-// Auto-scroll to bottom
-const scrollToBottom = async () => {
-  await nextTick()
-  scrollAnchor.value?.scrollIntoView({ behavior: 'smooth' })
-}
+// New conversation function
 const reloadConversation = () => {
   // Clear messages by creating a new chat instance or resetting
-  messages.length = 0
+  messages.value.length = 0
 }
 
 // Check user subscription status once on page load
@@ -285,7 +274,13 @@ const checkSubscriptionStatus = async () => {
 // Enhanced form submission with subscription check
 const handleSubmit = (event: Event) => {
   event.preventDefault()
-  if (!input.value.trim() || status === 'streaming' || error != null) return
+  
+  // Get form data
+  const form = event.target as HTMLFormElement
+  const formData = new FormData(form)
+  const message = formData.get('message') as string
+  
+  if (!message?.trim() || status.value === 'streaming' || error.value != null) return
   
   // Check subscription status (cached from page load)
   if (!hasSubscription.value) {
@@ -303,15 +298,20 @@ const handleSubmit = (event: Event) => {
     })
     return
   }
-  
-  // Reset textarea height
-  if (textareaRef.value) {
-    textareaRef.value.style.height = 'auto'
-  }
 
   // Send message using Chat class
-  chat.sendMessage({ text: input.value })
-  input.value = ''
+  chat.sendMessage({ text: message })
+  
+  // Reset form and clear textarea
+  form.reset()
+  
+  // Also manually clear the textarea to ensure it's empty
+  const textarea = form.querySelector('textarea[name="message"]') as HTMLTextAreaElement
+  if (textarea) {
+    textarea.value = ''
+    // Trigger input event to update any reactive bindings
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+  }
   
   // Scroll to bottom after submission
   nextTick(() => scrollToBottom())
@@ -322,32 +322,17 @@ const regenerate = () => {
   chat.regenerate()
 }
 
-// Handle keyboard shortcuts
-const handleKeydown = (event: KeyboardEvent) => {
-  // 移除自动发送逻辑，只保留 Shift+Enter 换行
-  // 用户需要点击发送按钮来发送消息
+// Auto-scroll to bottom
+const scrollToBottom = async () => {
+  await nextTick()
 }
 
-// Auto-resize textarea
-const adjustTextareaHeight = () => {
-  if (textareaRef.value) {
-    textareaRef.value.style.height = 'auto'
-    textareaRef.value.style.height = Math.min(textareaRef.value.scrollHeight, 120) + 'px'
-  }
-}
 
 // Watch for messages changes to auto-scroll
 watch(messages, scrollToBottom, { deep: true })
 
-// Initialize on mount
 onMounted(() => {
-  // Check subscription status once on page load
   checkSubscriptionStatus()
-  
-  // Focus on input
-  if (textareaRef.value) {
-    textareaRef.value.focus()
-  }
 })
 
 // Middleware to check subscription (commented out for now)
@@ -378,6 +363,16 @@ onMounted(() => {
 /* Ensure textarea doesn't exceed max height */
 textarea {
   max-height: 120px;
+}
+
+/* Safe area handling for mobile devices */
+.safe-area-inset-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Ensure proper spacing for fixed bottom input */
+.fixed.bottom-0 {
+  min-height: 80px; /* Minimum height to ensure proper spacing */
 }
 
 /* Markdown content styling */

@@ -16,10 +16,14 @@ export function streamResponse({ messages, provider, model }: StreamOptions) {
     throw new Error('Invalid messages: messages must be an array');
   }
   
-  console.log('streamResponse called with:', {
-    messagesCount: messages.length,
-    provider: provider || 'openai',
-    model: model || 'default'
+  // Validate each message
+  messages.forEach((message, index) => {
+    if (!message || typeof message !== 'object') {
+      throw new Error(`Invalid message at index ${index}: message must be an object`);
+    }
+    if (!message.role || typeof message.role !== 'string') {
+      throw new Error(`Invalid message at index ${index}: role must be a string`);
+    }
   });
   
   const config = getProviderConfig(provider || 'openai');
