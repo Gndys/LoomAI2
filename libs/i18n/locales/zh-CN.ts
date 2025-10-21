@@ -1222,7 +1222,7 @@ export const zhCN: Locale = {
         {
           title: "核心平台搭建",
           description: "完成 TinyShip 核心平台的开发，包括双框架支持、身份认证、支付集成、国际化等基础功能模块。",
-          timeline: "2025 Q2",
+          timeline: "2025 Q3",
           status: "completed",
           statusText: "已完成",
           features: ["双框架支持", "身份认证系统", "支付集成", "国际化支持", "AI 开发就绪", "内置 Admin Panel"]
@@ -1230,7 +1230,7 @@ export const zhCN: Locale = {
         {
           title: "主题系统升级",
           description: "推出全新的主题系统，提供多种精美的 UI 主题和布局选择。支持深度定制和品牌化，让你的应用拥有独特的视觉体验。",
-          timeline: "2025 Q2",
+          timeline: "2025 Q3",
           status: "completed",
           statusText: "已完成",
           features: ["多套 UI 主题", "深色模式支持", "组件库扩展"]
@@ -1238,7 +1238,7 @@ export const zhCN: Locale = {
         {
           title: "第三方服务扩展",
           description: "大幅扩展第三方服务支持，覆盖更多云服务商和 SaaS 工具。通过统一的接口设计，让你轻松切换和集成各种服务提供商。",
-          timeline: "2025 Q3",
+          timeline: "2025 Q4",
           status: "in-progress",
           statusText: "开发中",
           features: ["更多支付网关", "云存储服务", "更多短信服务商"]
@@ -1246,7 +1246,7 @@ export const zhCN: Locale = {
         {
           title: "博客/文档系统",
           description: "内置完整的博客和文档管理系统，支持 Markdown 编辑、SEO 优化、评论系统等功能。让你的 SaaS 产品拥有完整的内容营销能力。",
-          timeline: "2025 Q4",
+          timeline: "2026 Q1",
           status: "planned",
           statusText: "计划中",
           features: ["博客系统", "文档系统", "知识库搜索"]
@@ -1255,7 +1255,7 @@ export const zhCN: Locale = {
         {
           title: "视频教程体系",
           description: "制作完整的视频教程系列，从基础使用到高级定制，帮助开发者快速掌握 TinyShip 的各项功能和最佳实践。",
-          timeline: "2026 Q2",
+          timeline: "2026 Q3",
           status: "planned",
           statusText: "计划中",
           features: ["入门教程", "进阶开发", "部署指南", "实战案例"]
@@ -1263,7 +1263,7 @@ export const zhCN: Locale = {
         {
           title: "行业模板库",
           description: "针对不同行业和应用场景，提供开箱即用的项目模板。每个模板都包含完整的业务逻辑、UI 设计和最佳实践，让你快速启动项目。作为基础版本的扩展包，需要单独购买，但基础版本用户享受大力度优惠。",
-          timeline: "2026 Q3",
+          timeline: "2026 Q4",
           status: "planned",
           statusText: "计划中",
           features: ["SaaS 应用模板", "软件售卖模板", "AI 项目模板", "电商平台模板", "企业官网模板", "基础版用户专享优惠"]

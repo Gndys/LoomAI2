@@ -1112,7 +1112,7 @@ export const en: Locale = {
         {
           title: "Core Platform Development",
           description: "Complete TinyShip core platform development, including dual framework support, authentication, payment integration, internationalization and other basic functional modules.",
-          timeline: "2025 Q2",
+          timeline: "2025 Q3",
           status: "completed",
           statusText: "Completed",
           features: ["Dual framework support", "Authentication system", "Payment integration", "Internationalization support", "AI development ready", "Built-in Admin Panel"]
@@ -1120,7 +1120,7 @@ export const en: Locale = {
         {
           title: "Theme System Upgrade",
           description: "Launch new theme system providing multiple beautiful UI themes and layout choices. Support deep customization and branding, making your application have unique visual experience.",
-          timeline: "2025 Q2",
+          timeline: "2025 Q3",
           status: "completed",
           statusText: "Completed",
           features: ["Multiple UI themes", "Dark mode support", "Component library expansion"]
@@ -1128,7 +1128,7 @@ export const en: Locale = {
         {
           title: "Third-party Service Expansion",
           description: "Greatly expand third-party service support, covering more cloud service providers and SaaS tools. Through unified interface design, let you easily switch and integrate various service providers.",
-          timeline: "2025 Q3",
+          timeline: "2025 Q4",
           status: "in-progress",
           statusText: "In Development",
           features: ["More payment gateways", "Cloud storage services", "More SMS service providers"]
@@ -1136,7 +1136,7 @@ export const en: Locale = {
         {
           title: "Blog/Documentation System",
           description: "Built-in complete blog and documentation management system, supporting Markdown editing, SEO optimization, comment system and other functions. Let your SaaS product have complete content marketing capabilities.",
-          timeline: "2025 Q4",
+          timeline: "2026 Q1",
           status: "planned",
           statusText: "Planned",
           features: ["Blog system", "Documentation system", "Knowledge base search"]
@@ -1144,7 +1144,7 @@ export const en: Locale = {
         {
           title: "Video Tutorial System",
           description: "Create complete video tutorial series, from basic usage to advanced customization, helping developers quickly master TinyShip's various functions and best practices.",
-          timeline: "2026 Q2",
+          timeline: "2026 Q3",
           status: "planned",
           statusText: "Planned",
           features: ["Getting started tutorials", "Advanced development", "Deployment guide", "Practical cases"]
@@ -1152,7 +1152,7 @@ export const en: Locale = {
         {
           title: "Industry Template Library",
           description: "For different industries and application scenarios, provide ready-to-use project templates. Each template includes complete business logic, UI design and best practices, allowing you to quickly start projects. As an expansion pack for the basic version, it needs to be purchased separately, but basic version users enjoy significant discounts.",
-          timeline: "2026 Q3",
+          timeline: "2026 Q4",
           status: "planned",
           statusText: "Planned",
           features: ["SaaS application templates", "Software sales templates", "AI project templates", "E-commerce platform templates", "Enterprise website templates", "Exclusive discounts for basic version users"]
