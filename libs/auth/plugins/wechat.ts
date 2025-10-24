@@ -147,7 +147,7 @@ export const wechatPlugin = (options: WeChatPluginOptions): BetterAuthPlugin => 
           // 创建会话
           const newSession = await ctx.context.internalAdapter.createSession(
             user.id,
-            ctx.request
+            ctx
           );
 
           // 设置会话 cookie
