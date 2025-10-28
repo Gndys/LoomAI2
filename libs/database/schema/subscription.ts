@@ -20,7 +20,7 @@ export const paymentTypes = {
 // 订阅表
 export const subscription = pgTable("subscription", {
   id: text("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => user.id),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: 'cascade' }),
   planId: text("plan_id").notNull(), // 对应 config.payment.plans 中的 id
   status: text("status").notNull(), // active, canceled, past_due, unpaid, trialing
   paymentType: text("payment_type").notNull(), // one_time, recurring

@@ -21,7 +21,7 @@ export const paymentProviders = {
 // 订单表
 export const order = pgTable("order", {
   id: text("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => user.id),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: 'cascade' }),
   amount: numeric("amount").notNull(),
   currency: text("currency").notNull(),
   planId: text("plan_id").notNull(), // 对应 config.payment.plans 中的 id

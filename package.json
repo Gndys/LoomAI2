@@ -66,6 +66,7 @@
     "formidable": "1.2.6",
     "handlebars": "4.7.8",
     "mjml": "4.15.3",
+    "nanoid": "5.1.5",
     "negotiator": "1.0.0",
     "ofetch": "1.4.1",
     "pg": "^8.14.1",

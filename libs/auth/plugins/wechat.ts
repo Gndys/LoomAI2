@@ -1,6 +1,7 @@
 import type { BetterAuthPlugin } from "better-auth";
 import { createAuthMiddleware, APIError, createAuthEndpoint } from "better-auth/api";
 import type { Account, User } from "better-auth";
+import { nanoid } from "nanoid";
 
 interface WeChatProfile {
   unionid?: string;
@@ -126,9 +127,12 @@ export const wechatPlugin = (options: WeChatPluginOptions): BetterAuthPlugin => 
             }
           } else {
             // 创建新用户
+            // Generate unique virtual email, only used during user creation
+            // Subsequent logins are found via account.accountId (openid/unionid)
+            // Using .internal TLD to indicate internal-use virtual email
             user = await ctx.context.internalAdapter.createUser({
               name: profile.nickname,
-              email: `${profile.openid}@wechat.com`,
+              email: `wechat.${nanoid(8)}@tinyship.internal`,
               emailVerified: true,
               image: profile.headimgurl,
             });

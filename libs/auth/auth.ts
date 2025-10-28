@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { phoneNumber, admin, captcha } from "better-auth/plugins"
 import { validator, StandardAdapter } from "validation-better-auth"
 import { createAuthMiddleware } from "better-auth/api"
+import { nanoid } from "nanoid";
 
 import { db, user, account, session, verification } from '@libs/database'
 import { sendSMS } from '@libs/sms';
@@ -262,7 +263,10 @@ export const auth = betterAuth({
       },
       signUpOnVerification: {
         getTempEmail: (phoneNumber) => {
-            return `${phoneNumber}@tinyship.cn`
+          // Generate unique virtual email, only used during user creation
+          // Subsequent logins are found via phoneNumber field
+          // Using .internal TLD to indicate internal-use virtual email
+          return `phone.${nanoid(8)}@tinyship.internal`;
         },
         //optionally, you can also pass `getTempName` function to generate a temporary name for the user
         getTempName: (phoneNumber) => {
@@ -270,7 +274,7 @@ export const auth = betterAuth({
           const cleanPhone = phoneNumber.replace(/\D/g, ''); // 移除非数字字符
           const suffix = cleanPhone.slice(-4); // 取后4位
           return suffix;
-        }
+      }
       }
     }),
     // https://github.com/Daanish2003/validation-better-auth
