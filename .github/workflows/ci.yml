@@ -26,13 +26,21 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
+      - name: Cache TurboRepo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml', 'turbo.json') }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
           BUILD_TIME: true
 
       - name: Build Next.js app
-        run: pnpm build:next
+        run: NODE_OPTIONS="--max-old-space-size=4096" pnpm build:next
         env:
           # Add any required environment variables here
           # These are typically set in GitHub Secrets for production
@@ -40,7 +48,7 @@ jobs:
           BUILD_TIME: true
 
       - name: Build Nuxt.js app
-        run: pnpm build:nuxt
+        run: NODE_OPTIONS="--max-old-space-size=4096" pnpm build:nuxt
         env:
           NODE_ENV: production
           BUILD_TIME: true
