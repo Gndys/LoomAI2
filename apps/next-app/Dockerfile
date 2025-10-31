@@ -1,8 +1,8 @@
 # Next.js Production Dockerfile
 FROM node:22-alpine AS base
 
-# Install dependencies only when needed
-FROM base AS deps
+# Build stage - install deps and build
+FROM base AS builder
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk add --no-cache libc6-compat
 
@@ -11,28 +11,10 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 
-# Copy package files (从根目录构建时的路径)
+# Copy all files needed for build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json config.ts tsconfig.json ./
-COPY apps/next-app/package.json ./apps/next-app/
-COPY libs ./libs
-
-# Install dependencies
-RUN pnpm install --frozen-lockfile
-
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
-
-# Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/libs ./libs
-
-# Copy source code
 COPY apps/next-app ./apps/next-app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json config.ts tsconfig.json ./
+COPY libs ./libs
 
 # Accept build arguments for CI/CD environments
 ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
@@ -52,6 +34,8 @@ ENV NEXT_PUBLIC_WECHAT_APP_ID=${NEXT_PUBLIC_WECHAT_APP_ID}
 # Set Node.js memory limit for build process (can be overridden via build arg)
 ENV NODE_OPTIONS=${NODE_OPTIONS}
 
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 # Build the application
 RUN pnpm build:next
 
