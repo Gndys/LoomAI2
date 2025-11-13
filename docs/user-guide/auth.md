@@ -237,7 +237,7 @@ GITHUB_CLIENT_SECRET="your_github_client_secret"
 4. 按邀请输入各种相关信息
 5. 获取 AppID 和 AppSecret
 6. 设置授权回调域: 网站应用 => 详情 => 开发配置 => 授权回调域:
-本地开发可以设置为：`http://localhost:7001/` 这里不需要写后面的后缀
+本地开发可以设置为：`localhost:7001` 这里不需要写后面的后缀
 
 #### 环境变量配置
 ```env
@@ -291,8 +291,6 @@ TWILIO_DEFAULT_FROM="+1234567890"
 
 ### 短信验证配置
 
-在 `libs/auth/auth.ts` 中配置短信发送：
-
 ```typescript
   sms: {
     /**
@@ -301,10 +299,10 @@ TWILIO_DEFAULT_FROM="+1234567890"
     defaultProvider: 'aliyun',
   },
 ```
-
+默认使用的是阿里云发送
 配置完毕以后应该就在注册的时候成功的发送验证短信了。
 
-目前应用中使用发送短信功能位置如下 `libs/auth.ts`，用于发送验证短信，供参考：
+目前应用中使用发送短信功能位置如下 `libs/auth/auth.ts`，用于发送验证短信，供参考：
 
 ```typescript
 phoneNumber: {

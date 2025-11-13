@@ -215,28 +215,38 @@
         </DialogHeader>
         <div class="flex flex-col items-center space-y-6">
           <!-- Payment Steps -->
-          <div class="w-full max-w-sm">
-            <div class="flex items-center justify-between mb-4">
-              <div
-                v-for="(step, index) in steps"
-                :key="index"
-                class="flex items-center"
-              >
-                <div :class="[
-                  'flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium',
-                  index <= currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                ]">
-                  {{ index + 1 }}
+          <div class="w-full max-w-md mx-auto">
+            <div class="relative after:absolute after:inset-x-0 after:top-5 after:block after:h-0.5 after:-translate-y-1/2 after:rounded-lg after:bg-muted">
+              <div class="relative z-10 flex justify-between">
+                <div
+                  v-for="(step, index) in steps"
+                  :key="index"
+                  class="flex flex-col items-center"
+                >
+                  <div :class="[
+                    'flex h-10 w-10 items-center justify-center rounded-full border-2 font-semibold',
+                    index <= currentStep
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-muted-foreground'
+                  ]">
+                    {{ index + 1 }}
+                  </div>
+                  <div class="mt-3 w-24 text-center">
+                    <div :class="[
+                      'text-sm font-semibold',
+                      index <= currentStep ? 'text-primary' : 'text-muted-foreground'
+                    ]">
+                      {{ step.title }}
+                    </div>
+                    <div :class="[
+                      'mt-1 text-xs',
+                      index <= currentStep ? 'text-foreground' : 'text-muted-foreground'
+                    ]">
+                      {{ step.description }}
+                    </div>
+                  </div>
                 </div>
-                <div v-if="index < steps.length - 1" :class="[
-                  'flex-1 h-0.5 mx-2',
-                  index < currentStep ? 'bg-primary' : 'bg-muted'
-                ]"></div>
               </div>
-            </div>
-            <div class="text-center">
-              <h4 class="font-medium">{{ steps[currentStep]?.title }}</h4>
-              <p class="text-sm text-muted-foreground">{{ steps[currentStep]?.description }}</p>
             </div>
           </div>
 
