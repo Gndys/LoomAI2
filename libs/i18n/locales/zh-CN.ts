@@ -1065,9 +1065,9 @@ export const zhCN: Locale = {
         deepseek: "DeepSeek"
       },
       models: {
-        "gpt-4o": "GPT-4o",
-        "gpt-3.5": "GPT-3.5",
-        "gpt-3": "GPT-3",
+        "gpt-5": "GPT-5",
+        "gpt-5-codex": "GPT-5 Codex",
+        "gpt-5-pro": "GPT-5 Pro",
         "qwen-max": "通义千问-Max",
         "qwen-plus": "通义千问-Plus", 
         "qwen-turbo": "通义千问-Turbo",

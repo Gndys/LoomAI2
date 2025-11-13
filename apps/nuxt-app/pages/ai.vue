@@ -155,6 +155,7 @@ import { MessageSquareIcon, ChevronDown } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 // Note: authClientVue import removed as it's not used
 import { useStickToBottom } from 'vue-stick-to-bottom'
+import { config } from '@config'
 
 // AI Elements components
 // Note: Using custom scroll button instead of ConversationScrollButton
@@ -200,15 +201,17 @@ useSeoMeta({
   keywords: $t('ai.metadata.keywords')
 })
 
-// Local reactive data
-const provider = ref<keyof typeof providerModels>('qwen')
-const model = ref('qwen-turbo')
+// Use centralized AI configuration from config.ts
+const providerModels = config.ai.availableModels
+type ProviderKey = keyof typeof providerModels
+const provider = ref<ProviderKey>(config.ai.defaultProvider)
+const model = ref<string>(config.ai.defaultModels[config.ai.defaultProvider])
 const selectedModel = computed({
-  get: () => `${provider.value}:${model.value}`,
+  get: () => `${String(provider.value)}:${model.value}`,
   set: (value: string) => {
     const [selectedProvider, selectedModel] = value.split(':')
-    provider.value = selectedProvider as keyof typeof providerModels
-    model.value = selectedModel
+    provider.value = selectedProvider as ProviderKey
+    model.value = selectedModel as string
   }
 })
 const hasSubscription = ref(true) // 默认允许，避免闪烁
@@ -227,11 +230,7 @@ const { scrollRef, contentRef, isAtBottom, scrollToBottom } = useStickToBottom({
   }
 })
 
-// Provider models configuration
-const providerModels = {
-  qwen: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
-  deepseek: ['deepseek-chat', 'deepseek-coder'],
-}
+// Initial example messages
 const initialMessages: any[] = [
   { 
     id: '1', 

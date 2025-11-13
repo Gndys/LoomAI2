@@ -7,6 +7,7 @@ import { MessageSquareIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/use-translation';
 import { Button } from '@/components/ui/button';
+import { config } from '@config';
 import {
   Conversation,
   ConversationContent,
@@ -68,14 +69,13 @@ export default function Chat() {
       console.error('Chat error:', error);
     },
   });
-  const [provider, setProvider] = useState<keyof typeof providerModels>('qwen');
-  const [model, setModel] = useState('qwen-turbo');
-  const [hasSubscription, setHasSubscription] = useState(true); // 默认允许，避免闪烁
 
-  const providerModels = {
-    qwen: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
-    deepseek: ['deepseek-chat', 'deepseek-coder'],
-  };
+  // Use centralized AI configuration from config.ts
+  const providerModels = config.ai.availableModels;
+  const [provider, setProvider] = useState<keyof typeof providerModels>(config.ai.defaultProvider);
+  const [model, setModel] = useState<string>(config.ai.defaultModels[config.ai.defaultProvider]);
+  const [hasSubscription, setHasSubscription] = useState(true); // 默认允许，避免闪烁
+  const [inputAreaHeight, setInputAreaHeight] = useState(160); // Default height for fixed input area
 
   // Check user subscription status once on page load
   const checkSubscriptionStatus = async () => {
@@ -126,12 +126,42 @@ export default function Chat() {
     });
   };
 
+  // Calculate input area height dynamically
+  const calculateInputHeight = () => {
+    const fixedInputElement = document.querySelector('.fixed.bottom-0');
+    if (fixedInputElement) {
+      const rect = fixedInputElement.getBoundingClientRect();
+      const computedStyle = window.getComputedStyle(fixedInputElement);
+      
+      // Get actual height including padding and border
+      const actualHeight = rect.height;
+      const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+      const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+      const borderTop = parseFloat(computedStyle.borderTopWidth) || 0;
+      const borderBottom = parseFloat(computedStyle.borderBottomWidth) || 0;
+      
+      const totalHeight = actualHeight + paddingTop + paddingBottom + borderTop + borderBottom + 40; // Extra margin for safety
+      
+      setInputAreaHeight(totalHeight);
+    }
+  };
+
   // Check subscription on mount
   // Note: Scrolling is now handled automatically by AI Elements Conversation component
 
   useEffect(() => {
     // Check subscription status once on page load
     checkSubscriptionStatus();
+    
+    // Calculate input height after component mounts
+    setTimeout(calculateInputHeight, 100);
+    
+    // Recalculate on window resize
+    window.addEventListener('resize', calculateInputHeight);
+    
+    return () => {
+      window.removeEventListener('resize', calculateInputHeight);
+    };
   }, []);
   return (
     <>
@@ -158,8 +188,8 @@ export default function Chat() {
       </div>
 
       {/* AI Elements Conversation Container */}
-      <Conversation className="flex-1 pb-24">
-        <ConversationContent className="max-w-3xl mx-auto space-y-4 pb-24">
+      <Conversation className="flex-1" style={{ paddingBottom: `${inputAreaHeight}px` }}>
+        <ConversationContent className="max-w-3xl mx-auto space-y-4">
           {messages.length === 0 ? (
             <ConversationEmptyState
               title={t.ai.chat.welcomeMessage}
@@ -261,11 +291,11 @@ export default function Chat() {
                       <div key={prov}>
                         {index > 0 && <div className="h-px bg-border my-1" />}
                         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          {prov.charAt(0).toUpperCase() + prov.slice(1)}
+                          {t.ai.chat.providers[prov as keyof typeof t.ai.chat.providers] || prov.charAt(0).toUpperCase() + prov.slice(1)}
                         </div>
                         {models.map((mod: string) => (
                           <PromptInputModelSelectItem key={mod} value={`${prov}:${mod}`}>
-                            {mod}
+                            {(t.ai.chat.models as Record<string, string>)[mod] || mod}
                           </PromptInputModelSelectItem>
                         ))}
                       </div>

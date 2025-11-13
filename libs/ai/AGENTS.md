@@ -138,7 +138,7 @@ const providers = {
 |----------|--------|-----------|----------------|
 | **Qwen** (Recommended) | `qwen-max`, `qwen-plus`, `qwen-turbo` | Chinese support, cost-effective | [Aliyun DashScope](https://dashscope.aliyun.com/) |
 | **DeepSeek** | `deepseek-chat`, `deepseek-coder` | Coding abilities, low cost | [DeepSeek Platform](https://platform.deepseek.com/) |
-| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo` | Performance, ecosystem | [OpenAI Platform](https://platform.openai.com/) |
+| **OpenAI** | `gpt-5`, `gpt-5-codex`, `gpt-5-pro` | Performance, ecosystem | [OpenAI Platform](https://platform.openai.com/) |
 
 ### Add New Provider
 
@@ -182,7 +182,7 @@ case 'new-provider':
 const modelOptions = {
   qwen: 'qwen-max',      // Chinese optimized
   deepseek: 'deepseek-chat', // General chat
-  openai: 'gpt-4o'       // High performance
+  openai: 'gpt-5'        // High performance
 };
 ```
 

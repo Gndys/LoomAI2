@@ -52,7 +52,7 @@ DEEPSEEK_API_KEY=your_deepseek_api_key
 - **Get API Key**: [DeepSeek Platform](https://platform.deepseek.com/)
 
 #### OpenAI
-- **Models**: `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo`
+- **Models**: `gpt-5`, `gpt-5-codex`, `gpt-5-pro`
 - **Advantages**: Excellent performance, mature ecosystem
 - **Get API Key**: [OpenAI Platform](https://platform.openai.com/)
 

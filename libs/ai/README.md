@@ -52,7 +52,7 @@ DEEPSEEK_API_KEY=your_deepseek_api_key
 - **获取 API Key**: [DeepSeek 开放平台](https://platform.deepseek.com/)
 
 #### OpenAI
-- **模型**: `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo`
+- **模型**: `gpt-5`, `gpt-5-codex`, `gpt-5-pro`
 - **优势**: 性能优秀，生态成熟
 - **获取 API Key**: [OpenAI 平台](https://platform.openai.com/)
 

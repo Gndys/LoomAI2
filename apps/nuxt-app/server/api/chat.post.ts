@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
     console.log('Chat API request:', { 
       messageCount: messages.length, 
       provider: provider || 'openai', 
-      model: model || 'gpt-4o' 
+      model: model || 'gpt-5' 
     })
 
     // Use the streamResponse function from libs/ai
