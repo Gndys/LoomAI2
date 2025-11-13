@@ -209,10 +209,15 @@ Stripe 是全球领先的在线支付平台，支持多种币种和支付方式�
    - 为每个产品创建价格 (Prices)
    - 记录价格ID，用于配置 `stripePriceId`
 
-4. **配置 Webhook**
+4. **配置 Webhook（生产环境）**
+   
+   > 💡 **开发环境提示**：如果是本地开发测试，可以先跳过此步骤，使用 Stripe CLI 进行 webhook 转发即可。详见下方的 [本地开发测试](#本地开发测试) 章节。
+   
+   **生产环境配置：**
    - 前往 "开发者" → "Webhooks"
    - 添加端点：`https://yourdomain.com/api/payment/webhook/stripe`
    - 选择事件：`checkout.session.completed`, `payment_intent.succeeded`
+   - 记录 Webhook 签名秘钥，用于环境变量 `STRIPE_WEBHOOK_SECRET`
 
 #### 🔑 环境变量配置
 
@@ -222,8 +227,12 @@ Stripe 是全球领先的在线支付平台，支持多种币种和支付方式�
 # Stripe 配置
 STRIPE_SECRET_KEY=sk_test_xxxxxxxx        # 秘密密钥 (生产环境用 sk_live_)
 STRIPE_PUBLIC_KEY=pk_test_xxxxxxxx        # 可发布密钥 (生产环境用 pk_live_)
-STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxx      # Webhook 签名秘钥
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxx      # Webhook 签名秘钥 (本地开发用 Stripe CLI 时会自动生成)
 ```
+
+> 📝 **开发环境说明**：
+> - 使用 Stripe CLI 进行本地开发时，`STRIPE_WEBHOOK_SECRET` 会在运行 `stripe listen` 命令时自动生成
+> - 生产环境部署时，需要在 Stripe Dashboard 创建 Webhook 端点并获取签名秘钥
 
 #### ✨ 特性
 
@@ -688,10 +697,12 @@ CREEM_API_KEY=creem_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ### 本地开发测试
 
+> 💡 **重要提示**：本地开发时推荐使用以下方式测试 webhook，无需先在生产环境配置 webhook 端点。
+
 我们需要使用真实的域名来接收 webhook 的数据，所以这里我们需要将本地服务映射到真实域名上。
 
-* 微信支付 和 Creem 需要使用内网穿透工具
-* Stripe 比较方便，它已经有对应的 CLI 工具
+* **Stripe**：使用 Stripe CLI（推荐），无需内网穿透
+* **微信支付 和 Creem**：需要使用内网穿透工具
 
 1. **启动本地隧道 针对微信支付和 Creem** (用于接收 Webhook)，这里可以选择 ngrok，cloudflare tunnel 等你喜欢的内网穿透工具。
 

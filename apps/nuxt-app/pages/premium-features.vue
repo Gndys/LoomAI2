@@ -21,13 +21,30 @@
           <div class="flex-1 space-y-4">
             <div class="inline-flex items-center gap-2">
               <h1 class="text-3xl font-bold tracking-tight">{{ $t('premiumFeatures.title') }}</h1>
-              <Badge v-if="userData?.isLifetime" variant="outline" class="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+              <Badge v-if="userData?.isLifetime" variant="outline" class="bg-chart-5-bg-15 text-chart-5 border-chart-5/20 hover:bg-chart-5-bg-15">
                 {{ $t('premiumFeatures.badges.lifetime') }}
               </Badge>
             </div>
             <p class="text-muted-foreground">
               {{ $t('premiumFeatures.description') }}
             </p>
+            
+            <!-- Template Demo Notice -->
+            <div class="rounded-lg border border-primary/20 bg-primary/5 p-4 mt-4">
+              <div class="flex items-start gap-3">
+                <div class="rounded-full bg-primary/10 p-2 mt-0.5">
+                  <Info class="h-4 w-4 text-primary" />
+                </div>
+                <div class="flex-1 space-y-1">
+                  <p class="text-sm font-medium text-foreground">
+                    {{ $t('premiumFeatures.demoNotice.title') }}
+                  </p>
+                  <p class="text-sm text-muted-foreground">
+                    {{ $t('premiumFeatures.demoNotice.description') }}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -42,9 +59,9 @@
               <div class="space-y-2">
                 <p class="text-sm font-medium">{{ $t('premiumFeatures.subscription.status') }}</p>
                 <div class="flex items-center space-x-2">
-                  <div v-if="userData.subscriptionActive" class="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div v-else class="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span :class="userData.subscriptionActive ? 'text-green-600' : 'text-red-600'">
+                  <div v-if="userData.subscriptionActive" class="w-2 h-2 bg-primary rounded-full"></div>
+                  <div v-else class="w-2 h-2 bg-destructive rounded-full"></div>
+                  <span :class="userData.subscriptionActive ? 'text-primary' : 'text-destructive'">
                     {{ userData.subscriptionActive ? $t('premiumFeatures.subscription.active') : $t('premiumFeatures.subscription.inactive') }}
                   </span>
                 </div>
@@ -91,7 +108,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Loader2, User, Sparkles, FileText, BarChart } from 'lucide-vue-next'
+import { Loader2, User, Sparkles, FileText, BarChart, Info } from 'lucide-vue-next'
 
 // Router and i18n
 const { t, locale } = useI18n()

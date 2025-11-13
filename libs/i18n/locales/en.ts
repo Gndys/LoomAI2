@@ -1306,6 +1306,10 @@ export const en: Locale = {
     badges: {
       lifetime: "Lifetime Member"
     },
+    demoNotice: {
+      title: "🎯 SaaS Template Demo Page",
+      description: "This is a demo page for testing route protection. Only paying users can access this page, demonstrating how to implement subscription-level access control in your SaaS application."
+    },
     features: {
       userManagement: {
         title: "Advanced User Management",

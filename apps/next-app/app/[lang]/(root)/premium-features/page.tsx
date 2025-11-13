@@ -4,7 +4,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, Sparkles, FileText, BarChart, Loader2 } from "lucide-react";
+import { User, Sparkles, FileText, BarChart, Loader2, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function PremiumFeaturesPage() {
@@ -88,7 +88,7 @@ export default function PremiumFeaturesPage() {
           <div className="inline-flex items-center gap-2">
             <h1 className="text-3xl font-bold tracking-tight">{t.premiumFeatures.title}</h1>
             {userData?.isLifetime && (
-              <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+              <Badge variant="outline" className="bg-chart-5-bg-15 text-chart-5 border-chart-5/20 hover:bg-chart-5-bg-15">
                 {t.premiumFeatures.badges.lifetime}
               </Badge>
             )}
@@ -96,6 +96,23 @@ export default function PremiumFeaturesPage() {
           <p className="text-muted-foreground">
             {t.premiumFeatures.description}
           </p>
+          
+          {/* Template Demo Notice */}
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 mt-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-primary/10 p-2 mt-0.5">
+                <Info className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  {t.premiumFeatures.demoNotice.title}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t.premiumFeatures.demoNotice.description}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -110,8 +127,11 @@ export default function PremiumFeaturesPage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-lg border p-3">
                 <div className="text-sm font-medium text-muted-foreground">{t.premiumFeatures.subscription.status}</div>
-                <div className="text-lg font-bold">
-                  {userData.subscriptionActive ? t.premiumFeatures.subscription.active : t.premiumFeatures.subscription.inactive}
+                <div className="flex items-center space-x-2 mt-2">
+                  <div className={`w-2 h-2 rounded-full ${userData.subscriptionActive ? 'bg-primary' : 'bg-destructive'}`}></div>
+                  <span className={`text-sm font-semibold ${userData.subscriptionActive ? 'text-primary' : 'text-destructive'}`}>
+                    {userData.subscriptionActive ? t.premiumFeatures.subscription.active : t.premiumFeatures.subscription.inactive}
+                  </span>
                 </div>
               </div>
               <div className="rounded-lg border p-3">
