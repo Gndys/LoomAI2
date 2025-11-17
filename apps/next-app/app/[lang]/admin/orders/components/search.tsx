@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Search as SearchIcon } from "lucide-react"
+import { Search as SearchIcon, X } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 
 type SearchField = "id" | "userId" | "planId" | "userEmail" | "providerOrderId";
@@ -81,6 +81,22 @@ export function Search() {
     onSearch()
   }
 
+  const handleClear = () => {
+    setSearchValue("")
+    setSearchField("userEmail")
+    setStatus("all")
+    setProvider("all")
+    router.push(
+      `${pathname}?${createQueryString({
+        searchValue: null,
+        searchField: null,
+        status: null,
+        provider: null,
+        page: "1",
+      })}`
+    )
+  }
+
   const getSearchPlaceholder = () => {
     const fieldMap: Record<SearchField, string> = {
       id: t.admin.orders.table.columns.id,
@@ -119,6 +135,10 @@ export function Search() {
       
       <Button type="submit" size="icon" className="shrink-0">
         <SearchIcon className="h-4 w-4" />
+      </Button>
+
+      <Button type="button" variant="outline" size="icon" className="shrink-0" onClick={handleClear}>
+        <X className="h-4 w-4" />
       </Button>
 
       <div className="mx-2 h-4 w-[1px] bg-border" />
