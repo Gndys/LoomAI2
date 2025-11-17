@@ -1,6 +1,5 @@
 import { headers } from 'next/headers'
 import Link from 'next/link'
-import { columns } from './columns';
 import { DataTable } from './data-table';
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react'
@@ -94,7 +93,6 @@ export default async function UserPage({ params, searchParams }: PageProps) {
         </div>
         <div className="flex flex-col gap-4">
           <DataTable 
-            columns={columns} 
             data={data?.users || []} 
             pagination={{
               currentPage: page,

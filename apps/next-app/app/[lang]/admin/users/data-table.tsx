@@ -27,13 +27,13 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { ColumnToggle } from "./components/column-toggle"
 import { Search } from "./components/search"
 import { useTranslation } from "@/hooks/use-translation"
+import { columns as getColumns } from "./columns"
 
 interface DataTableProps<TData, TValue> {
-  columns: () => ColumnDef<TData, TValue>[]
   data: TData[]
   pagination?: {
     currentPage: number
@@ -44,7 +44,6 @@ interface DataTableProps<TData, TValue> {
 }
 
 export function DataTable<TData, TValue>({
-  columns,
   data,
   pagination,
 }: DataTableProps<TData, TValue>) {
@@ -52,6 +51,9 @@ export function DataTable<TData, TValue>({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  
+  // Generate columns with translations
+  const columns = useMemo(() => getColumns(t) as ColumnDef<TData, TValue>[], [t])
   
   // Load column visibility from localStorage
   const COLUMN_VISIBILITY_KEY = 'admin-users-column-visibility'
@@ -98,7 +100,7 @@ export function DataTable<TData, TValue>({
 
   const table = useReactTable({
     data,
-    columns: columns(),
+    columns,
     getCoreRowModel: getCoreRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: (updater) => {
@@ -174,7 +176,7 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns().length} className="h-24 text-center">
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   {t.admin.users.table.noResults}
                 </TableCell>
               </TableRow>

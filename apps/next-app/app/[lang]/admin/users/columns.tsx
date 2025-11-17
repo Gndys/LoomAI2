@@ -277,9 +277,7 @@ const ActionsCellComponent = ({ user }: { user: User }) => {
   )
 }
 
-export const columns = () => {
-  const { t } = useTranslation()
-  
+export const columns = (t: any) => {
   return [
     {
       accessorKey: "id",
