@@ -107,7 +107,8 @@ export function SignupForm({
       setVerificationEmail(formData.email);
       setIsVerificationEmailSent(true);
     } else {
-      const returnTo = searchParams.get('returnTo');
+      const params = new URLSearchParams(window.location.search);
+      const returnTo = params.get('returnTo');
       router.push(returnTo || `/${locale}`);
     }
     

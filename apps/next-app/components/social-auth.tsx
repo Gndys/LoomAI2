@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { SocialButton, type SocialProvider } from "@/components/ui/social-button";
 import { cn } from "@/lib/utils";
 import { authClientReact } from '@libs/auth/authClient';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/hooks/use-translation';
 import { toast } from 'sonner';
 
@@ -20,14 +20,14 @@ export function SocialAuth({
   ...props
 }: SocialAuthProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { locale: currentLocale, t } = useTranslation();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(null);
 
   const handleProviderClick = async (provider: SocialProvider) => {
     if (loadingProvider) return;
 
-    const returnTo = searchParams.get('returnTo');
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get('returnTo');
     const queryString = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '';
 
     switch (provider) {

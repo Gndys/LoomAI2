@@ -5,7 +5,6 @@ import Script from 'next/script';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/use-translation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useSearchParams } from 'next/navigation';
 
 declare global {
   interface Window {
@@ -15,12 +14,12 @@ declare global {
 
 export default function WeixinLoginPage() {
   const { t, locale } = useTranslation();
-  const searchParams = useSearchParams();
   
   useEffect(() => {
     const initWxLogin = () => {
       if (typeof window.WxLogin !== 'undefined') {
-        const returnTo = searchParams.get('returnTo') || '/';
+        const params = new URLSearchParams(window.location.search);
+        const returnTo = params.get('returnTo') || '/';
         const stateData = btoa(encodeURIComponent(returnTo));
         
         new window.WxLogin({
@@ -37,7 +36,7 @@ export default function WeixinLoginPage() {
 
     const timer = setTimeout(initWxLogin, 1000);
     return () => clearTimeout(timer);
-  }, [searchParams]);
+  }, []);
 
   return (
     <div className="container flex items-center justify-center min-h-screen py-6">

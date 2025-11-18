@@ -16,14 +16,12 @@ import { ResendVerificationDialog } from "@/components/resend-verification-dialo
 import { useTranslation } from "@/hooks/use-translation";
 import { config } from "@config";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 export function LoginForm({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const { t, locale, tWithParams } = useTranslation();
-  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorCode, setErrorCode] = useState('');
@@ -61,9 +59,10 @@ export function LoginForm({
     setLoading(true);
     setErrorMessage('');
     setErrorCode('');
-    setUserEmail(data.email); // 保存用户邮箱
+    setUserEmail(data.email);
 
-    const returnTo = searchParams.get('returnTo');
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get('returnTo');
     const callbackURL = returnTo || `/${locale}`;
     
     const { error } = await authClientReact.signIn.email({
