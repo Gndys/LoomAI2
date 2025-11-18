@@ -63,4 +63,15 @@
     margin-left: auto;
     margin-right: auto;
   }
+
+  /* Override sonner 2.0.7 default theme styles */
+  /* Bug: sonner injects theme-based colors even with unstyled: true */
+  /* The selectors don't check data-styled attribute */
+  [data-sonner-toaster][data-sonner-theme] [data-description] {
+    color: var(--muted-foreground) !important;
+  }
+  
+  [data-sonner-toaster][data-sonner-theme] [data-title] {
+    color: inherit !important;
+  }
 }
