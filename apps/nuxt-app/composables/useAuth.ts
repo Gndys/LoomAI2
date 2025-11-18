@@ -43,10 +43,18 @@ export const useAuth = () => {
    */
   const redirectToSignIn = (returnUrl?: string) => {
     const localePath = useLocalePath()
-    const url = returnUrl 
-      ? `${localePath('/signin')}?returnUrl=${encodeURIComponent(returnUrl)}`
-      : localePath('/signin')
-    return navigateTo(url)
+    const signinPath = localePath('/signin')
+    
+    if (returnUrl) {
+      return navigateTo({
+        path: signinPath,
+        query: {
+          returnTo: returnUrl
+        }
+      })
+    }
+    
+    return navigateTo(signinPath)
   }
 
   /**

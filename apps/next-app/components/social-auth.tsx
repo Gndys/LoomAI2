@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { SocialButton, type SocialProvider } from "@/components/ui/social-button";
 import { cn } from "@/lib/utils";
 import { authClientReact } from '@libs/auth/authClient';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from '@/hooks/use-translation';
 import { toast } from 'sonner';
 
@@ -20,28 +20,31 @@ export function SocialAuth({
   ...props
 }: SocialAuthProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { locale: currentLocale, t } = useTranslation();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(null);
 
   const handleProviderClick = async (provider: SocialProvider) => {
-    // Prevent multiple simultaneous requests
     if (loadingProvider) return;
+
+    const returnTo = searchParams.get('returnTo');
+    const queryString = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '';
 
     switch (provider) {
       case 'wechat':
-        router.push(`/${currentLocale}/wechat`);
+        router.push(`/${currentLocale}/wechat${queryString}`);
         break;
       case 'phone':
-        router.push(`/${currentLocale}/cellphone`);
+        router.push(`/${currentLocale}/cellphone${queryString}`);
         break;
       default:
-        // Set loading state for the clicked provider
         setLoadingProvider(provider);
         
         try {
-          // Use default social login flow for other providers
+          const callbackURL = returnTo ? `${window.location.origin}${returnTo}` : undefined;
           const { data, error } = await authClientReact.signIn.social({
             provider,
+            ...(callbackURL && { callbackURL })
           });
           
           if (error) {

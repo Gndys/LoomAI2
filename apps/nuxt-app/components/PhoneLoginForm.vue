@@ -154,6 +154,7 @@ const props = withDefaults(defineProps<Props>(), {
 // Initialize internationalization and navigation
 const { t } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const localePath = useLocalePath()
 const { locale } = useI18n()
 
@@ -352,7 +353,15 @@ const onVerifyOTP = async () => {
   
   console.log('isVerified', data)
   if (data) {
-    await navigateTo(localePath('/'))
+    // Login successful, check for returnTo parameter and redirect
+    const returnTo = route.query.returnTo as string
+    if (returnTo) {
+      // Redirect to the original page
+      await navigateTo(returnTo)
+    } else {
+      // Default redirect to home page
+      await navigateTo(localePath('/'))
+    }
   }
   
   loading.value = false

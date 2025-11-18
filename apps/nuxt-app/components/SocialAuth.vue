@@ -19,6 +19,7 @@ import { toast } from 'vue-sonner'
 
 // Composables
 const { t } = useI18n()
+const route = useRoute()
 
 interface Props {
   className?: string
@@ -41,12 +42,23 @@ const handleProviderClick = async (provider: SocialProvider) => {
   // Prevent multiple simultaneous requests
   if (loadingProvider.value) return
 
+  // Get returnTo parameter from current route
+  const returnTo = route.query.returnTo as string
+
   switch (provider) {
     case 'wechat':
-      await navigateTo(localePath('/wechat'))
+      // Navigate to wechat login page with returnTo query parameter
+      await navigateTo({
+        path: localePath('/wechat'),
+        query: returnTo ? { returnTo } : undefined
+      })
       break
     case 'phone':
-      await navigateTo(localePath('/cellphone'))
+      // Navigate to phone login page with returnTo query parameter
+      await navigateTo({
+        path: localePath('/cellphone'),
+        query: returnTo ? { returnTo } : undefined
+      })
       break
     default:
       // Set loading state for the clicked provider
@@ -54,8 +66,11 @@ const handleProviderClick = async (provider: SocialProvider) => {
       
       try {
         // Other providers use default social login flow
+        // Pass callbackURL with returnTo parameter
+        const callbackURL = returnTo ? `${window.location.origin}${returnTo}` : undefined
         const { data, error } = await authClientVue.signIn.social({
           provider,
+          ...(callbackURL && { callbackURL })
         })
         
         if (error) {

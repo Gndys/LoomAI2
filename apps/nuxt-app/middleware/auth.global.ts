@@ -205,7 +205,14 @@ export default defineNuxtRouteMiddleware(async (to) => {
     if (!isAuthenticated && matchedRoute.requiresAuth !== false && !matchedRoute.isAuthRoute) {
       console.log(`🔒 Server-side authentication failed for: ${to.path}`)
       const localePath = useLocalePath()
-      return navigateTo(localePath('/signin'))
+      const signinPath = localePath('/signin')
+      // Add returnTo parameter to redirect back after login (Nuxt handles encoding)
+      return navigateTo({
+        path: signinPath,
+        query: {
+          returnTo: to.fullPath
+        }
+      })
     }
     
     // --- 服务端权限检查（关键安全检查）---
@@ -268,7 +275,14 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (!isAuthenticated && matchedRoute.requiresAuth !== false && !matchedRoute.isAuthRoute) {
     console.log(`🔒 Client-side authentication failed for: ${to.path}`)
     const localePath = useLocalePath()
-    return navigateTo(localePath('/signin'))
+    const signinPath = localePath('/signin')
+    // Add returnTo parameter to redirect back after login (Nuxt handles encoding)
+    return navigateTo({
+      path: signinPath,
+      query: {
+        returnTo: to.fullPath
+      }
+    })
   }
 
   // --- Handle auth routes for authenticated users (client-side) ---

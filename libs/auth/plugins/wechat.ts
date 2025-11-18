@@ -51,10 +51,23 @@ export const wechatPlugin = (options: WeChatPluginOptions): BetterAuthPlugin => 
       }, async (ctx) => {
         try {
           const code = ctx.query?.code;
+          const state = ctx.query?.state;
+          
           if (!code || Array.isArray(code)) {
             throw new APIError("BAD_REQUEST", {
               message: "Missing or invalid authorization code",
             });
+          }
+          
+          let returnTo = '/';
+          if (state && typeof state === 'string') {
+            try {
+              const decoded = Buffer.from(state, 'base64').toString('utf-8');
+              returnTo = decoded || '/';
+            } catch (e) {
+              console.error('Failed to decode state:', e);
+              returnTo = '/';
+            }
           }
 
           // 获取访问令牌
@@ -167,7 +180,7 @@ export const wechatPlugin = (options: WeChatPluginOptions): BetterAuthPlugin => 
             }
           );
 
-          const redirectUrl =options.callbackUrl || '/'
+          const redirectUrl = returnTo || options.callbackUrl || '/'
           throw ctx.redirect(redirectUrl);
         } catch (error) {
           if (error instanceof APIError) {

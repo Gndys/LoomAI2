@@ -5,7 +5,7 @@ import Script from 'next/script';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/use-translation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { nanoid } from 'nanoid';
+import { useSearchParams } from 'next/navigation';
 
 declare global {
   interface Window {
@@ -15,30 +15,29 @@ declare global {
 
 export default function WeixinLoginPage() {
   const { t, locale } = useTranslation();
+  const searchParams = useSearchParams();
   
   useEffect(() => {
-
     const initWxLogin = () => {
       if (typeof window.WxLogin !== 'undefined') {
+        const returnTo = searchParams.get('returnTo') || '/';
+        const stateData = btoa(returnTo);
+        
         new window.WxLogin({
           id: 'login_container',
           appid: process.env.NEXT_PUBLIC_WECHAT_APP_ID,
           scope: 'snsapi_login',
           redirect_uri: encodeURIComponent(`${window.location.origin}/api/auth/oauth2/callback/wechat`),
-          state: nanoid(10),
+          state: stateData,
           style: 'black',
           href: `${window.location.origin}/wxLogin.css`,
-          onReady: (isReady: boolean) => {
-            console.log('WeChat login iframe ready:', isReady);
-          }
         });
       }
     };
 
-    // Initialize after a short delay to ensure the script is loaded
     const timer = setTimeout(initWxLogin, 1000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [searchParams]);
 
   return (
     <div className="container flex items-center justify-center min-h-screen py-6">

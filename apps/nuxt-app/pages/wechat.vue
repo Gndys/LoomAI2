@@ -61,6 +61,9 @@ const { t } = useI18n()
 // Get localized path function
 const localePath = useLocalePath()
 
+// Get route to retrieve returnTo parameter
+const route = useRoute()
+
 // Define layout
 definePageMeta({
   layout: 'auth'
@@ -78,17 +81,17 @@ useHead({
 // Initialize WeChat login
 const initWxLogin = () => {
   if (typeof window.WxLogin !== 'undefined') {
+    const returnTo = route.query.returnTo as string || '/'
+    const stateData = btoa(returnTo)
+    
     new window.WxLogin({
       id: 'login_container',
       appid: config.public.wechatAppId,
       scope: 'snsapi_login',
       redirect_uri: encodeURIComponent(`${window.location.origin}/api/auth/oauth2/callback/wechat`),
-      state: nanoid(10),
+      state: stateData,
       style: 'black',
                 href: `${window.location.origin}/wxLogin.css`,
-      onReady: (isReady: boolean) => {
-        console.log('WeChat login iframe ready:', isReady);
-      }
     });
   }
 };

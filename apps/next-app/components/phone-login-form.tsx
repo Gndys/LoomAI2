@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { cn } from "@/lib/utils"
@@ -28,6 +28,7 @@ export function PhoneLoginForm({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t, tWithParams } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ code?: string; message: string } | null>(null);
@@ -184,7 +185,8 @@ export function PhoneLoginForm({
     
     console.log('isVerified', data);
     if (data) {
-      router.push("/");
+      const returnTo = searchParams.get('returnTo');
+      router.push(returnTo || `/${locale}`);
     }
     
     setLoading(false);

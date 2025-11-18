@@ -107,8 +107,8 @@ export function SignupForm({
       setVerificationEmail(formData.email);
       setIsVerificationEmailSent(true);
     } else {
-      // Redirect directly to dashboard if verification is not required
-      router.push(`/${locale}`);
+      const returnTo = searchParams.get('returnTo');
+      router.push(returnTo || `/${locale}`);
     }
     
     setLoading(false);

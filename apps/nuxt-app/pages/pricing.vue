@@ -356,8 +356,14 @@ const startPolling = (orderIdValue: string) => {
 const handleSubscribe = async (plan: Plan) => {
   try {
     if (!user.value) {
-      const returnPath = encodeURIComponent(route.fullPath)
-      await navigateTo(localePath(`/signin?returnTo=${returnPath}`))
+      // Navigate to signin with returnTo query parameter
+      const signinPath = localePath('/signin')
+      await navigateTo({
+        path: signinPath,
+        query: {
+          returnTo: route.fullPath
+        }
+      })
       return
     }
 

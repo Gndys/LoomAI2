@@ -134,13 +134,14 @@ const props = withDefaults(defineProps<Props>(), {
 const { t } = useI18n()
 const localePath = useLocalePath()
 const { locale } = useI18n()
+const route = useRoute()
 
 // State management
 const loading = ref(false)
 const errorMessage = ref('')
 const errorCode = ref('')
-const userEmail = ref('') // 存储用户邮箱用于重发验证邮件
-const showResendDialog = ref(false) // 控制重发弹窗显示
+const userEmail = ref('') // Store user email for resend verification
+const showResendDialog = ref(false) // Control resend dialog display
 
 // Get runtime configuration
 const runtimeConfig = useRuntimeConfig()
@@ -246,8 +247,15 @@ const onSubmit = handleSubmit(async (values) => {
         errorCode.value = 'UNKNOWN_ERROR'
       }
     } else if (result && 'data' in result && result.data.user) {
-      // Login successful, redirect to dashboard
-      await navigateTo(localePath('/'))
+      // Login successful, check for returnTo parameter and redirect
+      const returnTo = route.query.returnTo as string
+      if (returnTo) {
+        // Redirect to the original page
+        await navigateTo(returnTo)
+      } else {
+        // Default redirect to home page
+        await navigateTo(localePath('/'))
+      }
     } else {
       // Unknown response format
       errorMessage.value = t('auth.signin.errors.invalidCredentials')

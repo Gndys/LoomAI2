@@ -188,6 +188,7 @@ const props = withDefaults(defineProps<Props>(), {
 const { t } = useI18n()
 const localePath = useLocalePath()
 const { locale } = useI18n()
+const route = useRoute()
 
 // State management
 const loading = ref(false)
@@ -324,8 +325,15 @@ const onSubmit = handleSubmit(async (values) => {
       verificationEmail.value = values.email
       isVerificationEmailSent.value = true
     } else {
-      // Redirect directly to dashboard if verification is not required
-      await navigateTo(localePath('/'))
+      // Redirect after successful signup, check for returnTo parameter
+      const returnTo = route.query.returnTo as string
+      if (returnTo) {
+        // Redirect to the original page
+        await navigateTo(returnTo)
+      } else {
+        // Default redirect to home page
+        await navigateTo(localePath('/'))
+      }
     }
     
     loading.value = false
