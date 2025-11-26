@@ -380,6 +380,7 @@ export const zhCN: Locale = {
           name: "姓名",
           email: "邮箱",
           role: "角色",
+          phoneNumber: "手机号",
           emailVerified: "邮箱验证",
           banned: "封禁状态",
           createdAt: "创建时间",

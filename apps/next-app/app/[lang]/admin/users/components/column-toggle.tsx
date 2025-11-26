@@ -23,6 +23,7 @@ export function ColumnToggle<TData>({
   const { t } = useTranslation()
   const hiddenColumns = [
     "id",
+    "phoneNumber",
     "emailVerified",
     "createdAt",
     "updatedAt",

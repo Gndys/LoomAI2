@@ -12,17 +12,13 @@
       <DropdownMenuItem
         v-for="column in filteredColumns"
         :key="column.id"
-        class="capitalize"
+        class="flex items-center justify-between"
         @select="(event) => { event.preventDefault(); column.toggleVisibility() }"
       >
-        <div class="flex items-center space-x-2 w-full">
-          <Check 
-            v-if="column.getIsVisible()" 
-            class="h-4 w-4 text-primary" 
-          />
-          <div v-else class="h-4 w-4" />
-          <span class="flex-1">{{ getColumnDisplayName(column.id) }}</span>
-        </div>
+        <span class="capitalize">
+          {{ getColumnDisplayName(column.id) }}
+        </span>
+        <Check v-if="column.getIsVisible()" class="h-4 w-4" />
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
@@ -54,16 +50,21 @@ const props = defineProps<Props>()
 // Internationalization
 const { t } = useI18n()
 
-// Hidden column IDs that should not be toggleable
-const hiddenColumnIds = ['userEmail', 'status', 'provider', 'actions']
+// Define which columns should be toggleable (hidden by default)
+const toggleableColumnIds = [
+  'id',
+  'periodStart',
+  'periodEnd',
+  'cancelAtPeriodEnd',
+  'createdAt',
+]
 
 // Filter columns to only show toggleable ones
 const filteredColumns = computed(() => {
   return props.table.getAllColumns().filter(
     (column: any) => 
       typeof column.accessorFn !== 'undefined' && 
-      column.getCanHide() &&
-      !hiddenColumnIds.includes(column.id)
+      toggleableColumnIds.includes(column.id)
   )
 })
 
@@ -77,8 +78,6 @@ const getColumnDisplayName = (columnId: string): string => {
     periodEnd: t('admin.subscriptions.table.columns.periodEnd'),
     cancelAtPeriodEnd: t('admin.subscriptions.table.columns.cancelAtPeriodEnd'),
     createdAt: t('admin.subscriptions.table.columns.createdAt'),
-    updatedAt: t('admin.subscriptions.table.columns.updatedAt'),
-    metadata: t('admin.subscriptions.table.columns.metadata'),
   }
   
   return columnMap[columnId] || columnId

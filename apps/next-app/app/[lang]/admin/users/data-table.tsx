@@ -55,28 +55,30 @@ export function DataTable<TData, TValue>({
   // Generate columns with translations
   const columns = useMemo(() => getColumns(t) as ColumnDef<TData, TValue>[], [t])
   
-  // Load column visibility from localStorage
+  // Column visibility state management
   const COLUMN_VISIBILITY_KEY = 'admin-users-column-visibility'
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    id: false,
+    phoneNumber: false,
+    emailVerified: false,
+    createdAt: true,
+    updatedAt: false,
+  })
+  const [sorting, setSorting] = useState<SortingState>([])
+  
+  // Load column visibility from localStorage after mount (avoid hydration mismatch)
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(COLUMN_VISIBILITY_KEY)
       if (saved) {
         try {
-          return JSON.parse(saved)
+          setColumnVisibility(JSON.parse(saved))
         } catch (e) {
           console.error('Failed to parse saved column visibility:', e)
         }
       }
     }
-    // Default visibility state
-    return {
-      id: false,
-      emailVerified: false,
-      createdAt: true,
-      updatedAt: false,
-    }
-  })
-  const [sorting, setSorting] = useState<SortingState>([])
+  }, [])
   
   // Persist column visibility to localStorage
   useEffect(() => {

@@ -186,6 +186,7 @@ const getInitialColumnVisibility = (): VisibilityState => {
   // Default visibility state
   return {
     id: false,
+    phoneNumber: false,
     emailVerified: false,
     createdAt: true,
     updatedAt: false,

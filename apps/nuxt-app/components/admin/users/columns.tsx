@@ -135,6 +135,20 @@ export const columns: ColumnDef<User>[] = [
     enableSorting: false,
   },
   
+  // Phone Number Column
+  {
+    accessorKey: 'phoneNumber',
+    header: () => {
+      const { t } = useI18n()
+      return <span>{t('admin.users.table.columns.phoneNumber')}</span>
+    },
+    cell: ({ row }) => {
+      const phoneNumber = row.getValue('phoneNumber') as string | null
+      return <div class="text-sm text-muted-foreground">{phoneNumber || 'N/A'}</div>
+    },
+    enableSorting: false,
+  },
+  
   // Email Verified Column (no sorting needed - just status display)
   {
     accessorKey: 'emailVerified',

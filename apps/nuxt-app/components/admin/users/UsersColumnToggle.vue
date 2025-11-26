@@ -42,6 +42,7 @@ const { t } = useI18n()
 // Define which columns should be toggleable (hidden by default)
 const hiddenColumnIds = [
   "id",
+  "phoneNumber",
   "emailVerified", 
   "createdAt",
   "updatedAt",
@@ -62,6 +63,7 @@ const hiddenColumns = computed(() => {
 const getColumnTitle = (columnId: string) => {
   const columnTitles: Record<string, string> = {
     id: t('admin.users.table.columns.id'),
+    phoneNumber: t('admin.users.table.columns.phoneNumber'),
     emailVerified: t('admin.users.table.columns.emailVerified'),
     createdAt: t('admin.users.table.columns.createdAt'),
     updatedAt: t('admin.users.table.columns.updatedAt'),

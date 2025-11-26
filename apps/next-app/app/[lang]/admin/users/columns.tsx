@@ -360,6 +360,18 @@ export const columns = (t: any) => {
       },
     },
     {
+      accessorKey: "phoneNumber",
+      header: t.admin.users.table.columns.phoneNumber,
+      cell: ({ row }) => {
+        const phoneNumber = row.getValue("phoneNumber") as string | null
+        return (
+          <div className="text-sm text-muted-foreground" title={phoneNumber || t.common.notAvailable}>
+            {phoneNumber || t.common.notAvailable}
+          </div>
+        )
+      },
+    },
+    {
       accessorKey: "emailVerified",
       header: t.admin.users.table.columns.emailVerified,
       cell: ({ row }) => {

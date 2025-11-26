@@ -378,6 +378,7 @@ export const en: Locale = {
           name: "Name",
           email: "Email",
           role: "Role",
+          phoneNumber: "Phone Number",
           emailVerified: "Email Verified",
           banned: "Banned",
           createdAt: "Created At",

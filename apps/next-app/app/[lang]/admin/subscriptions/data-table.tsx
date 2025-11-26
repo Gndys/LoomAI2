@@ -55,27 +55,30 @@ export function DataTable<TData, TValue>({
   const searchParams = useSearchParams()
   const columns = useSubscriptionColumns()
   
-  // Load column visibility from localStorage
+  // Column visibility state management
   const COLUMN_VISIBILITY_KEY = 'admin-subscriptions-column-visibility'
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    id: false,
+    periodStart: false,
+    periodEnd: false,
+    cancelAtPeriodEnd: false,
+    createdAt: true,
+  })
+  const [sorting, setSorting] = useState<SortingState>([])
+  
+  // Load column visibility from localStorage after mount (avoid hydration mismatch)
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(COLUMN_VISIBILITY_KEY)
       if (saved) {
         try {
-          return JSON.parse(saved)
+          setColumnVisibility(JSON.parse(saved))
         } catch (e) {
           console.error('Failed to parse saved column visibility:', e)
         }
       }
     }
-    // Default visibility state
-    return {
-      id: false,
-      metadata: false,
-      updatedAt: false,
-    }
-  })
-  const [sorting, setSorting] = useState<SortingState>([])
+  }, [])
   
   // Persist column visibility to localStorage
   useEffect(() => {

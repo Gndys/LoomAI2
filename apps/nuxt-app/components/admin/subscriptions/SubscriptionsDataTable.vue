@@ -159,8 +159,10 @@ const getInitialColumnVisibility = (): VisibilityState => {
   // Default visibility state
   return {
     id: false,
-    metadata: false,
-    updatedAt: false,
+    periodStart: false,
+    periodEnd: false,
+    cancelAtPeriodEnd: false,
+    createdAt: true,
   }
 }
 
