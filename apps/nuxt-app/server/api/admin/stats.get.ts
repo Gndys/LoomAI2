@@ -18,7 +18,7 @@ interface ChartData {
   orders: number
 }
 
-// Admin statistics interface
+// Admin statistics interface with growth rates
 interface AdminStats {
   revenue: {
     total: number
@@ -39,7 +39,23 @@ interface AdminStats {
     newUsers: number
     orders: number
   }
-  chartData: ChartData[] // Add monthly chart data
+  lastMonthData: {
+    revenue: number
+    newUsers: number
+    orders: number
+  }
+  growthRates: {
+    revenue: number
+    users: number
+    orders: number
+  }
+  chartData: ChartData[]
+}
+
+// Calculate growth rate percentage
+function calculateGrowthRate(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0
+  return ((current - previous) / previous) * 100
 }
 
 // Get real monthly data for the past 6 months
@@ -67,10 +83,11 @@ async function getRealMonthlyData(): Promise<ChartData[]> {
           sql`${order.createdAt} <= ${monthEnd}`
         ))
         
-        // Query monthly order count
+        // Query monthly paid order count
         const [monthOrders] = await db.select({
           count: count()
         }).from(order).where(and(
+          eq(order.status, orderStatus.PAID),
           gte(order.createdAt, monthStart),
           sql`${order.createdAt} <= ${monthEnd}`
         ))
@@ -116,14 +133,22 @@ async function getRealMonthlyData(): Promise<ChartData[]> {
 export default defineEventHandler(async (event) => {
   try {
     const now = new Date()
+    const currentDayOfMonth = now.getDate()
     
     // Time range definitions
     const today = new Date(now)
     today.setHours(0, 0, 0, 0)
     
-    const thisMonth = new Date(now)
-    thisMonth.setDate(1)
-    thisMonth.setHours(0, 0, 0, 0)
+    // This month: from 1st to today
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    thisMonthStart.setHours(0, 0, 0, 0)
+
+    // Last month same period: from 1st to same day of last month (for fair comparison)
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    lastMonthStart.setHours(0, 0, 0, 0)
+    
+    // Last month same day (e.g., if today is Dec 15, compare with Nov 1-15)
+    const lastMonthSameDay = new Date(now.getFullYear(), now.getMonth() - 1, currentDayOfMonth, 23, 59, 59)
 
     // Get all statistics in parallel
     const [
@@ -135,20 +160,26 @@ export default defineEventHandler(async (event) => {
       todayOrders,
       thisMonthRevenue,
       monthlyOrders,
+      lastMonthRevenue,
+      lastMonthUsers,
+      lastMonthOrders,
       chartData
     ] = await Promise.all([
-      // Total revenue
+      // Total revenue (all time, only paid orders)
       db.select({
         total: sql<number>`COALESCE(SUM(CAST(${order.amount} AS DECIMAL)), 0)`
       }).from(order).where(eq(order.status, orderStatus.PAID)),
 
       // New customers this month
       db.select({ count: count() }).from(user)
-        .where(gte(user.createdAt, thisMonth)),
+        .where(gte(user.createdAt, thisMonthStart)),
 
-      // New orders this month
+      // New paid orders this month
       db.select({ count: count() }).from(order)
-        .where(gte(order.createdAt, thisMonth)),
+        .where(and(
+          eq(order.status, orderStatus.PAID),
+          gte(order.createdAt, thisMonthStart)
+        )),
 
       // Today's revenue
       db.select({
@@ -161,23 +192,54 @@ export default defineEventHandler(async (event) => {
       // Today's new users
       db.select({ count: count() }).from(user).where(gte(user.createdAt, today)),
 
-      // Today's orders
-      db.select({ count: count() }).from(order).where(gte(order.createdAt, today)),
+      // Today's paid orders
+      db.select({ count: count() }).from(order).where(and(
+        eq(order.status, orderStatus.PAID),
+        gte(order.createdAt, today)
+      )),
 
       // This month's revenue
       db.select({
         total: sql<number>`COALESCE(SUM(CAST(${order.amount} AS DECIMAL)), 0)`
       }).from(order).where(and(
         eq(order.status, orderStatus.PAID),
-        gte(order.createdAt, thisMonth)
+        gte(order.createdAt, thisMonthStart)
       )),
 
-      // This month's orders
-      db.select({ count: count() }).from(order).where(gte(order.createdAt, thisMonth)),
+      // This month's paid orders
+      db.select({ count: count() }).from(order).where(and(
+        eq(order.status, orderStatus.PAID),
+        gte(order.createdAt, thisMonthStart)
+      )),
+
+      // Last month's same period revenue (for fair comparison)
+      db.select({
+        total: sql<number>`COALESCE(SUM(CAST(${order.amount} AS DECIMAL)), 0)`
+      }).from(order).where(and(
+        eq(order.status, orderStatus.PAID),
+        gte(order.createdAt, lastMonthStart),
+        sql`${order.createdAt} <= ${lastMonthSameDay}`
+      )),
+
+      // Last month's same period users
+      db.select({ count: count() }).from(user).where(and(
+        gte(user.createdAt, lastMonthStart),
+        sql`${user.createdAt} <= ${lastMonthSameDay}`
+      )),
+
+      // Last month's same period paid orders
+      db.select({ count: count() }).from(order).where(and(
+        eq(order.status, orderStatus.PAID),
+        gte(order.createdAt, lastMonthStart),
+        sql`${order.createdAt} <= ${lastMonthSameDay}`
+      )),
 
       // Monthly chart data
       getRealMonthlyData()
     ])
+
+    const thisMonthRevenueValue = Number(thisMonthRevenue[0].total) || 0
+    const lastMonthRevenueValue = Number(lastMonthRevenue[0].total) || 0
 
     const stats: AdminStats = {
       revenue: {
@@ -195,9 +257,19 @@ export default defineEventHandler(async (event) => {
         orders: todayOrders[0].count,
       },
       monthData: {
-        revenue: Number(thisMonthRevenue[0].total) || 0,
+        revenue: thisMonthRevenueValue,
         newUsers: newCustomers[0].count,
         orders: monthlyOrders[0].count,
+      },
+      lastMonthData: {
+        revenue: lastMonthRevenueValue,
+        newUsers: lastMonthUsers[0].count,
+        orders: lastMonthOrders[0].count,
+      },
+      growthRates: {
+        revenue: calculateGrowthRate(thisMonthRevenueValue, lastMonthRevenueValue),
+        users: calculateGrowthRate(newCustomers[0].count, lastMonthUsers[0].count),
+        orders: calculateGrowthRate(monthlyOrders[0].count, lastMonthOrders[0].count),
       },
       chartData: chartData,
     }
@@ -211,4 +283,4 @@ export default defineEventHandler(async (event) => {
       statusMessage: 'Failed to fetch statistics'
     })
   }
-}) 
+})

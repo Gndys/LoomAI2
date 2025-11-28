@@ -327,11 +327,12 @@ export const zhCN: Locale = {
       lastUpdated: "最后更新",
       metrics: {
         totalRevenue: "总收入",
-        totalRevenueDesc: "总收入",
-        newCustomers: "新客户",
-        newCustomersDesc: "本月新客户",
-        newOrders: "新订单",
-        newOrdersDesc: "本月新订单"
+        totalRevenueDesc: "历史总收入",
+        newCustomers: "本月新客户",
+        newCustomersDesc: "本月新增客户数",
+        newOrders: "本月新订单",
+        newOrdersDesc: "本月新增订单数",
+        fromLastMonth: "较上月"
       },
       chart: {
         monthlyRevenueTrend: "月度收入趋势",
@@ -346,9 +347,9 @@ export const zhCN: Locale = {
       },
       monthData: {
         title: "本月数据",
-        revenue: "收入",
-        newUsers: "新用户",
-        orders: "订单数"
+        revenue: "本月收入",
+        newUsers: "本月新用户",
+        orders: "本月订单数"
       },
       recentOrders: {
         title: "最近订单",

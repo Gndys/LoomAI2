@@ -4,11 +4,11 @@ import { userRoles } from "@libs/database/constants";
 import { db } from "@libs/database";
 import { user } from "@libs/database/schema/user";
 import { order, orderStatus } from "@libs/database/schema/order";
-import { count, eq, gte, and, sql, desc } from "drizzle-orm";
+import { count, eq, gte, and, sql, desc, lt } from "drizzle-orm";
 import { config } from "@config";
 import dynamic from 'next/dynamic';
 import { translations } from "@libs/i18n";
-import { DollarSign, Users, ShoppingBag, Loader2 } from "lucide-react";
+import { DollarSign, Users, ShoppingBag, Loader2, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { AdminOrdersCard } from "./components/admin-orders-card";
 
 // 定义图表数据类型
@@ -30,16 +30,16 @@ const RevenueChart = dynamic(() => import('./RevenueChart'), {
   )
 });
 
-// 简化的统计数据类型定义
+// Statistics data type definition with growth rates
 interface AdminStats {
   revenue: {
     total: number;
   };
   customers: {
-    new: number; // 本月新客户
+    new: number; // This month's new customers
   };
   orders: {
-    new: number; // 本月新订单
+    new: number; // This month's new orders
   };
   todayData: {
     revenue: number;
@@ -49,6 +49,16 @@ interface AdminStats {
   monthData: {
     revenue: number;
     newUsers: number;
+    orders: number;
+  };
+  lastMonthData: {
+    revenue: number;
+    newUsers: number;
+    orders: number;
+  };
+  growthRates: {
+    revenue: number; // Percentage growth compared to last month
+    users: number;
     orders: number;
   };
 }
@@ -79,10 +89,11 @@ async function getRealMonthlyData(): Promise<ChartData[]> {
           sql`${order.createdAt} <= ${monthEnd}`
         ));
         
-        // 查询该月的订单数量
+        // 查询该月的已支付订单数量
         const [monthOrders] = await db.select({
           count: count()
         }).from(order).where(and(
+          eq(order.status, orderStatus.PAID),
           gte(order.createdAt, monthStart),
           sql`${order.createdAt} <= ${monthEnd}`
         ));
@@ -125,32 +136,49 @@ async function getRealMonthlyData(): Promise<ChartData[]> {
   }
 }
 
-// 获取统计数据的函数
+// Calculate growth rate percentage
+function calculateGrowthRate(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
+}
+
+// Get admin statistics with growth rates
 async function getAdminStats(): Promise<AdminStats> {
   const now = new Date();
+  const currentDayOfMonth = now.getDate();
   
-  // 时间范围定义
+  // Time range definitions
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   
-  const thisMonth = new Date(now);
-  thisMonth.setDate(1);
-  thisMonth.setHours(0, 0, 0, 0);
+  // This month: from 1st to today
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  thisMonthStart.setHours(0, 0, 0, 0);
 
-  // 总收入
+  // Last month same period: from 1st to same day of last month (for fair comparison)
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  lastMonthStart.setHours(0, 0, 0, 0);
+  
+  // Last month same day (e.g., if today is Dec 15, compare with Nov 1-15)
+  const lastMonthSameDay = new Date(now.getFullYear(), now.getMonth() - 1, currentDayOfMonth, 23, 59, 59);
+
+  // Total revenue (all time, only paid orders)
   const [totalRevenue] = await db.select({
     total: sql<number>`COALESCE(SUM(CAST(${order.amount} AS DECIMAL)), 0)`
   }).from(order).where(eq(order.status, orderStatus.PAID));
 
-  // 本月新客户
+  // This month's new customers
   const [newCustomers] = await db.select({ count: count() }).from(user)
-    .where(gte(user.createdAt, thisMonth));
+    .where(gte(user.createdAt, thisMonthStart));
 
-  // 本月新订单
+  // This month's paid orders (only count successful payments)
   const [newOrders] = await db.select({ count: count() }).from(order)
-    .where(gte(order.createdAt, thisMonth));
+    .where(and(
+      eq(order.status, orderStatus.PAID),
+      gte(order.createdAt, thisMonthStart)
+    ));
 
-  // 今日数据
+  // Today's data
   const [todayRevenue] = await db.select({
     total: sql<number>`COALESCE(SUM(CAST(${order.amount} AS DECIMAL)), 0)`
   }).from(order).where(and(
@@ -159,17 +187,49 @@ async function getAdminStats(): Promise<AdminStats> {
   ));
 
   const [todayNewUsers] = await db.select({ count: count() }).from(user).where(gte(user.createdAt, today));
-  const [todayOrders] = await db.select({ count: count() }).from(order).where(gte(order.createdAt, today));
+  
+  // Today's paid orders only
+  const [todayOrders] = await db.select({ count: count() }).from(order).where(and(
+    eq(order.status, orderStatus.PAID),
+    gte(order.createdAt, today)
+  ));
 
-  // 本月数据
+  // This month's revenue (only paid orders)
   const [thisMonthRevenue] = await db.select({
     total: sql<number>`COALESCE(SUM(CAST(${order.amount} AS DECIMAL)), 0)`
   }).from(order).where(and(
     eq(order.status, orderStatus.PAID),
-    gte(order.createdAt, thisMonth)
+    gte(order.createdAt, thisMonthStart)
   ));
 
-  const [monthlyOrders] = await db.select({ count: count() }).from(order).where(gte(order.createdAt, thisMonth));
+  // This month's paid orders count
+  const [monthlyOrders] = await db.select({ count: count() }).from(order).where(and(
+    eq(order.status, orderStatus.PAID),
+    gte(order.createdAt, thisMonthStart)
+  ));
+
+  // Last month's same period data for fair comparison (e.g., Nov 1-15 vs Dec 1-15)
+  const [lastMonthRevenue] = await db.select({
+    total: sql<number>`COALESCE(SUM(CAST(${order.amount} AS DECIMAL)), 0)`
+  }).from(order).where(and(
+    eq(order.status, orderStatus.PAID),
+    gte(order.createdAt, lastMonthStart),
+    sql`${order.createdAt} <= ${lastMonthSameDay}`
+  ));
+
+  const [lastMonthUsers] = await db.select({ count: count() }).from(user).where(and(
+    gte(user.createdAt, lastMonthStart),
+    sql`${user.createdAt} <= ${lastMonthSameDay}`
+  ));
+
+  const [lastMonthOrders] = await db.select({ count: count() }).from(order).where(and(
+    eq(order.status, orderStatus.PAID),
+    gte(order.createdAt, lastMonthStart),
+    sql`${order.createdAt} <= ${lastMonthSameDay}`
+  ));
+
+  const thisMonthRevenueValue = Number(thisMonthRevenue.total) || 0;
+  const lastMonthRevenueValue = Number(lastMonthRevenue.total) || 0;
 
   return {
     revenue: {
@@ -187,9 +247,19 @@ async function getAdminStats(): Promise<AdminStats> {
       orders: todayOrders.count,
     },
     monthData: {
-      revenue: Number(thisMonthRevenue.total) || 0,
+      revenue: thisMonthRevenueValue,
       newUsers: newCustomers.count,
       orders: monthlyOrders.count,
+    },
+    lastMonthData: {
+      revenue: lastMonthRevenueValue,
+      newUsers: lastMonthUsers.count,
+      orders: lastMonthOrders.count,
+    },
+    growthRates: {
+      revenue: calculateGrowthRate(thisMonthRevenueValue, lastMonthRevenueValue),
+      users: calculateGrowthRate(newCustomers.count, lastMonthUsers.count),
+      orders: calculateGrowthRate(monthlyOrders.count, lastMonthOrders.count),
     },
   };
 }
@@ -242,112 +312,139 @@ export default async function AdminDashboard({ params }: { params: Promise<{ lan
           </div>
         </div>
         
-        {/* 核心业务指标 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Total Revenue */}
-          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">{t.admin.dashboard.metrics.totalRevenue}</h3>
-                <p className="text-2xl font-bold text-card-foreground">¥{formatNumber(stats.revenue.total)}</p>
-                <p className="text-sm text-muted-foreground">{t.admin.dashboard.metrics.totalRevenueDesc}</p>
+        {/* Core Business Metrics - 4 Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Monthly Revenue */}
+          <div className="relative p-6 rounded-2xl bg-gradient-to-br from-card via-card to-muted/30 border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-chart-1/5 rounded-full blur-2xl -mr-10 -mt-10" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-muted-foreground">{t.admin.dashboard.monthData.revenue}</h3>
+                <div className="p-2.5 bg-muted rounded-xl">
+                  <Wallet className="w-5 h-5 text-foreground" />
+                </div>
               </div>
-              <div className="p-3 bg-chart-2 rounded-full">
-                <DollarSign className="w-6 h-6 text-white" />
+              <p className="text-2xl font-bold text-card-foreground mb-1">¥{formatNumber(stats.monthData.revenue)}</p>
+              <div className="flex items-center text-sm">
+                {stats.growthRates.revenue >= 0 ? (
+                  <TrendingUp className="w-4 h-4 text-chart-1 mr-1" />
+                ) : (
+                  <TrendingDown className="w-4 h-4 text-destructive mr-1" />
+                )}
+                <span className={stats.growthRates.revenue >= 0 ? "text-chart-1" : "text-destructive"}>
+                  {stats.growthRates.revenue >= 0 ? "+" : ""}{stats.growthRates.revenue.toFixed(1)}%
+                </span>
+                <span className="text-muted-foreground ml-1">{t.admin.dashboard.metrics.fromLastMonth}</span>
               </div>
             </div>
           </div>
 
-          {/* New Customers */}
-          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">{t.admin.dashboard.metrics.newCustomers}</h3>
-                <p className="text-2xl font-bold text-card-foreground">{formatNumber(stats.customers.new)}</p>
-                <p className="text-sm text-muted-foreground">{t.admin.dashboard.metrics.newCustomersDesc}</p>
+          {/* Total Revenue */}
+          <div className="relative p-6 rounded-2xl bg-gradient-to-br from-card via-card to-muted/30 border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-chart-1/5 rounded-full blur-2xl -mr-10 -mt-10" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-muted-foreground">{t.admin.dashboard.metrics.totalRevenue}</h3>
+                <div className="p-2.5 bg-muted rounded-xl">
+                  <DollarSign className="w-5 h-5 text-foreground" />
+                </div>
               </div>
-              <div className="p-3 bg-chart-1 rounded-full">
-                <Users className="w-6 h-6 text-white" />
+              <p className="text-2xl font-bold text-card-foreground mb-1">¥{formatNumber(stats.revenue.total)}</p>
+              <p className="text-sm text-muted-foreground">{t.admin.dashboard.metrics.totalRevenueDesc}</p>
+            </div>
+          </div>
+
+          {/* New Customers */}
+          <div className="relative p-6 rounded-2xl bg-gradient-to-br from-card via-card to-muted/30 border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-chart-1/5 rounded-full blur-2xl -mr-10 -mt-10" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-muted-foreground">{t.admin.dashboard.metrics.newCustomers}</h3>
+                <div className="p-2.5 bg-muted rounded-xl">
+                  <Users className="w-5 h-5 text-foreground" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-card-foreground mb-1">+{formatNumber(stats.customers.new)}</p>
+              <div className="flex items-center text-sm">
+                {stats.growthRates.users >= 0 ? (
+                  <TrendingUp className="w-4 h-4 text-chart-1 mr-1" />
+                ) : (
+                  <TrendingDown className="w-4 h-4 text-destructive mr-1" />
+                )}
+                <span className={stats.growthRates.users >= 0 ? "text-chart-1" : "text-destructive"}>
+                  {stats.growthRates.users >= 0 ? "+" : ""}{stats.growthRates.users.toFixed(1)}%
+                </span>
+                <span className="text-muted-foreground ml-1">{t.admin.dashboard.metrics.fromLastMonth}</span>
               </div>
             </div>
           </div>
 
           {/* New Orders */}
-          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-            <div className="flex items-center justify-between">
-              <div>
+          <div className="relative p-6 rounded-2xl bg-gradient-to-br from-card via-card to-muted/30 border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-chart-1/5 rounded-full blur-2xl -mr-10 -mt-10" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-muted-foreground">{t.admin.dashboard.metrics.newOrders}</h3>
-                <p className="text-2xl font-bold text-card-foreground">{formatNumber(stats.orders.new)}</p>
-                <p className="text-sm text-muted-foreground">{t.admin.dashboard.metrics.newOrdersDesc}</p>
+                <div className="p-2.5 bg-muted rounded-xl">
+                  <ShoppingBag className="w-5 h-5 text-foreground" />
+                </div>
               </div>
-              <div className="p-3 bg-chart-3 rounded-full">
-                <ShoppingBag className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 月度收入趋势图表 */}
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-card-foreground">{t.admin.dashboard.chart.monthlyRevenueTrend}</h3>
-            <div className="flex items-center space-x-4 text-sm">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-chart-1 rounded-full mr-2"></div>
-                <span className="text-muted-foreground">{t.admin.dashboard.chart.revenue}</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-chart-2 rounded-full mr-2"></div>
-                <span className="text-muted-foreground">{t.admin.dashboard.chart.orders}</span>
-              </div>
-            </div>
-          </div>
-          <RevenueChart data={monthlyData} />
-        </div>
-
-        {/* 时间维度统计 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* 今日数据 */}
-          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-            <h3 className="text-lg font-semibold mb-4 text-card-foreground">{t.admin.dashboard.todayData.title}</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">{t.admin.dashboard.todayData.revenue}</span>
-                <span className="text-lg font-semibold text-card-foreground">¥{formatNumber(stats.todayData.revenue)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">{t.admin.dashboard.todayData.newUsers}</span>
-                <span className="text-lg font-semibold text-card-foreground">{stats.todayData.newUsers}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">{t.admin.dashboard.todayData.orders}</span>
-                <span className="text-lg font-semibold text-card-foreground">{stats.todayData.orders}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 本月数据 */}
-          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-            <h3 className="text-lg font-semibold mb-4 text-card-foreground">{t.admin.dashboard.monthData.title}</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">{t.admin.dashboard.monthData.revenue}</span>
-                <span className="text-lg font-semibold text-card-foreground">¥{formatNumber(stats.monthData.revenue)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">{t.admin.dashboard.monthData.newUsers}</span>
-                <span className="text-lg font-semibold text-card-foreground">{stats.monthData.newUsers}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">{t.admin.dashboard.monthData.orders}</span>
-                <span className="text-lg font-semibold text-card-foreground">{stats.monthData.orders}</span>
+              <p className="text-2xl font-bold text-card-foreground mb-1">+{formatNumber(stats.orders.new)}</p>
+              <div className="flex items-center text-sm">
+                {stats.growthRates.orders >= 0 ? (
+                  <TrendingUp className="w-4 h-4 text-chart-1 mr-1" />
+                ) : (
+                  <TrendingDown className="w-4 h-4 text-destructive mr-1" />
+                )}
+                <span className={stats.growthRates.orders >= 0 ? "text-chart-1" : "text-destructive"}>
+                  {stats.growthRates.orders >= 0 ? "+" : ""}{stats.growthRates.orders.toFixed(1)}%
+                </span>
+                <span className="text-muted-foreground ml-1">{t.admin.dashboard.metrics.fromLastMonth}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 最近订单 */}
-        <AdminOrdersCard limit={10} />
+        {/* Chart and Today's Data Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Monthly Revenue Trend Chart */}
+          <div className="lg:col-span-2 bg-card p-6 rounded-xl border border-border">
+            <h3 className="text-lg font-semibold text-card-foreground mb-2">{t.admin.dashboard.chart.monthlyRevenueTrend}</h3>
+            <RevenueChart 
+              data={monthlyData} 
+              labels={{
+                revenue: t.admin.dashboard.chart.revenue,
+                orders: t.admin.dashboard.chart.orders
+              }}
+            />
+          </div>
+
+          {/* Today's Data */}
+          <div className="bg-card p-6 rounded-xl border border-border">
+            <h3 className="text-lg font-semibold mb-6 text-card-foreground">{t.admin.dashboard.todayData.title}</h3>
+            <div className="space-y-6">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">{t.admin.dashboard.todayData.revenue}</p>
+                <p className="text-2xl font-bold text-card-foreground">¥{formatNumber(stats.todayData.revenue)}</p>
+              </div>
+              <div className="h-px bg-border" />
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">{t.admin.dashboard.todayData.newUsers}</p>
+                <p className="text-2xl font-bold text-card-foreground">{stats.todayData.newUsers}</p>
+              </div>
+              <div className="h-px bg-border" />
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">{t.admin.dashboard.todayData.orders}</p>
+                <p className="text-2xl font-bold text-card-foreground">{stats.todayData.orders}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Orders */}
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <AdminOrdersCard limit={10} />
+        </div>
       </div>
     </div>
   );

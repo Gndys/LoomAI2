@@ -1,44 +1,50 @@
 <template>
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Revenue Chart -->
-    <div class="space-y-2">
-      <ClientOnly>
-        <AreaChart
-          :key="`revenue-${theme}-${colorScheme}`"
-          :data="chartData"
-          :height="250"
-          :categories="revenueCategories"
-          :y-grid-line="true"
-          :x-formatter="xFormatter"
-          :curve-type="CurveType.MonotoneX"
-          :legend-position="LegendPosition.Top"
-          :hide-legend="false"
-        />
-        <template #fallback>
-          <div class="h-[250px] flex items-center justify-center border rounded-lg bg-muted/50">
-            <div class="text-muted-foreground">Loading revenue chart...</div>
-          </div>
-        </template>
-      </ClientOnly>
+  <div>
+    <!-- Tab Switcher -->
+    <div class="flex items-center justify-end mb-4">
+      <div class="inline-flex items-center p-1 bg-muted rounded-lg">
+        <button
+          @click="activeTab = 'revenue'"
+          :class="[
+            'px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200',
+            activeTab === 'revenue'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          ]"
+        >
+          {{ labels.revenue }}
+        </button>
+        <button
+          @click="activeTab = 'orders'"
+          :class="[
+            'px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200',
+            activeTab === 'orders'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          ]"
+        >
+          {{ labels.orders }}
+        </button>
+      </div>
     </div>
 
-    <!-- Orders Chart -->
-    <div class="space-y-2">
+    <!-- Chart -->
+    <div class="h-64">
       <ClientOnly>
         <AreaChart
-          :key="`orders-${theme}-${colorScheme}`"
+          :key="`${activeTab}-${theme}-${colorScheme}`"
           :data="chartData"
-          :height="250"
-          :categories="ordersCategories"
+          :height="256"
+          :categories="activeCategories"
           :y-grid-line="true"
           :x-formatter="xFormatter"
           :curve-type="CurveType.MonotoneX"
           :legend-position="LegendPosition.Top"
-          :hide-legend="false"
+          :hide-legend="true"
         />
         <template #fallback>
-          <div class="h-[250px] flex items-center justify-center border rounded-lg bg-muted/50">
-            <div class="text-muted-foreground">Loading orders chart...</div>
+          <div class="h-64 flex items-center justify-center border rounded-lg bg-muted/50">
+            <div class="text-muted-foreground">Loading chart...</div>
           </div>
         </template>
       </ClientOnly>
@@ -59,14 +65,22 @@ interface RevenueChartItem {
 // Define props
 interface Props {
   chartData?: RevenueChartItem[]
+  labels?: {
+    revenue: string
+    orders: string
+  }
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  chartData: () => []
+  chartData: () => [],
+  labels: () => ({ revenue: 'Revenue', orders: 'Orders' })
 })
 
 // Theme composable for theme switching
 const { theme, colorScheme } = useTheme()
+
+// Active tab state
+const activeTab = ref<'revenue' | 'orders'>('revenue')
 
 // Parse OKLCH string to object format for colorizr library
 const parseOklchString = (oklchString: string) => {
@@ -133,27 +147,24 @@ const getChartColor = (colorVar: string): string => {
   return colorVar === 'chart-1' ? '#D97706' : '#009689'
 }
 
-// Define chart categories for revenue chart only
-const revenueCategories = computed(() => {
-  const revenueColor = getChartColor('chart-1')
+// Active categories based on selected tab
+const activeCategories = computed(() => {
+  const chartColor = getChartColor('chart-1')
   
-  return {
-    revenue: {
-      name: 'Revenue',
-      color: revenueColor, // Auto-converts CSS variable --chart-1 from OKLCH to RGB hex
-    },
-  }
-})
-
-// Define chart categories for orders chart only
-const ordersCategories = computed(() => {
-  const ordersColor = getChartColor('chart-2')
-  
-  return {
-    orders: {
-      name: 'Orders', 
-      color: ordersColor, // Auto-converts CSS variable --chart-2 from OKLCH to RGB hex
-    },
+  if (activeTab.value === 'revenue') {
+    return {
+      revenue: {
+        name: props.labels.revenue,
+        color: chartColor,
+      },
+    }
+  } else {
+    return {
+      orders: {
+        name: props.labels.orders,
+        color: chartColor,
+      },
+    }
   }
 })
 
@@ -178,4 +189,4 @@ const chartData = computed(() => {
 const xFormatter = (i: number): string => {
   return chartData.value[i]?.month || ''
 }
-</script> 
+</script>

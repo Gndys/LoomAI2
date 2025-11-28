@@ -2,7 +2,6 @@
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useEffect, useState } from 'react';
-import { useTheme } from 'next-themes';
 
 interface RevenueChartProps {
   data: Array<{
@@ -10,9 +9,13 @@ interface RevenueChartProps {
     revenue: number;
     orders: number;
   }>;
+  labels: {
+    revenue: string;
+    orders: string;
+  };
 }
 
-// 格式化数字显示
+// Format number display
 function formatNumber(num: number): string {
   if (num >= 1000000) {
     return (num / 1000000).toFixed(1) + 'M';
@@ -29,7 +32,7 @@ const RevenueTooltip = ({ active, payload, label }: any) => {
       <div className="bg-card p-3 border border-border rounded-lg shadow-lg">
         <p className="text-sm font-medium text-card-foreground">{`${label}`}</p>
         <p className="text-sm text-chart-1">
-          {`收入: ¥${payload[0]?.value?.toLocaleString() || 0}`}
+          {`¥${payload[0]?.value?.toLocaleString() || 0}`}
         </p>
       </div>
     );
@@ -43,8 +46,8 @@ const OrdersTooltip = ({ active, payload, label }: any) => {
     return (
       <div className="bg-card p-3 border border-border rounded-lg shadow-lg">
         <p className="text-sm font-medium text-card-foreground">{`${label}`}</p>
-        <p className="text-sm text-chart-2">
-          {`订单: ${payload[0]?.value}`}
+        <p className="text-sm text-chart-1">
+          {payload[0]?.value?.toLocaleString() || 0}
         </p>
       </div>
     );
@@ -52,18 +55,18 @@ const OrdersTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function RevenueChart({ data }: RevenueChartProps) {
+export default function RevenueChart({ data, labels }: RevenueChartProps) {
   const [isClient, setIsClient] = useState(false);
-  const { resolvedTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<'revenue' | 'orders'>('revenue');
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // 在服务端渲染时显示占位符
+  // Show placeholder during server-side rendering
   if (!isClient) {
     return (
-      <div className="h-80 flex items-center justify-center bg-muted rounded-lg">
+      <div className="h-80 flex items-center justify-center bg-muted/30 rounded-lg">
         <div className="text-center">
           <div className="animate-pulse">
             <div className="h-4 bg-muted-foreground/30 rounded w-32 mx-auto mb-2"></div>
@@ -74,96 +77,80 @@ export default function RevenueChart({ data }: RevenueChartProps) {
     );
   }
 
-  // 获取 CSS 变量值
+  // Get CSS variable values
   const getComputedColor = (variable: string) => {
     if (typeof window === 'undefined') return '#000';
     return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
   };
 
   const chart1Color = getComputedColor('--chart-1');
-  const chart2Color = getComputedColor('--chart-2');
   const borderColor = getComputedColor('--border');
   const mutedForegroundColor = getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground').trim();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Revenue Chart */}
-      <div className="space-y-2">
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chart1Color} stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor={chart1Color} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-              <XAxis 
-                dataKey="month" 
-                stroke={mutedForegroundColor}
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis 
-                stroke={mutedForegroundColor}
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `¥${formatNumber(value)}`}
-              />
-              <Tooltip content={<RevenueTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke={chart1Color}
-                strokeWidth={2}
-                fillOpacity={1}
-                fill="url(#colorRevenue)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+    <div>
+      {/* Tab Switcher */}
+      <div className="flex items-center justify-end mb-4">
+        <div className="inline-flex items-center p-1 bg-muted rounded-lg">
+          <button
+            onClick={() => setActiveTab('revenue')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+              activeTab === 'revenue'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {labels.revenue}
+          </button>
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+              activeTab === 'orders'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {labels.orders}
+          </button>
         </div>
       </div>
 
-      {/* Orders Chart */}
-      <div className="space-y-2">
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
-              <defs>
-                <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chart2Color} stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor={chart2Color} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-              <XAxis 
-                dataKey="month" 
-                stroke={mutedForegroundColor}
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis 
-                stroke={mutedForegroundColor}
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip content={<OrdersTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="orders"
-                stroke={chart2Color}
-                strokeWidth={2}
-                fillOpacity={1}
-                fill="url(#colorOrders)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+      {/* Chart */}
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data}>
+            <defs>
+              <linearGradient id="colorChart" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={chart1Color} stopOpacity={0.3}/>
+                <stop offset="95%" stopColor={chart1Color} stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={borderColor} vertical={false} />
+            <XAxis 
+              dataKey="month" 
+              stroke={mutedForegroundColor}
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis 
+              stroke={mutedForegroundColor}
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => activeTab === 'revenue' ? `¥${formatNumber(value)}` : formatNumber(value)}
+            />
+            <Tooltip content={activeTab === 'revenue' ? <RevenueTooltip /> : <OrdersTooltip />} />
+            <Area
+              type="monotone"
+              dataKey={activeTab}
+              stroke={chart1Color}
+              strokeWidth={2}
+              fillOpacity={1}
+              fill="url(#colorChart)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

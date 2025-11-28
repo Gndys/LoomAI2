@@ -327,11 +327,12 @@ export const en: Locale = {
       lastUpdated: "Last updated",
       metrics: {
         totalRevenue: "Total Revenue",
-        totalRevenueDesc: "Total revenue",
-        newCustomers: "New Customers",
+        totalRevenueDesc: "All time revenue",
+        newCustomers: "Monthly New Customers",
         newCustomersDesc: "New customers this month",
-        newOrders: "New Orders",
-        newOrdersDesc: "New orders this month"
+        newOrders: "Monthly New Orders",
+        newOrdersDesc: "New orders this month",
+        fromLastMonth: "from last month"
       },
       chart: {
         monthlyRevenueTrend: "Monthly Revenue Trend",
@@ -346,9 +347,9 @@ export const en: Locale = {
       },
       monthData: {
         title: "This Month's Data",
-        revenue: "Revenue",
-        newUsers: "New Users",
-        orders: "Orders"
+        revenue: "Monthly Revenue",
+        newUsers: "Monthly New Users",
+        orders: "Monthly Orders"
       },
       recentOrders: {
         title: "Recent Orders",
