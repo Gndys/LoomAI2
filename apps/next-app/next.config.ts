@@ -1,16 +1,8 @@
-import { fileURLToPath } from 'url';
-import { dirname, join, resolve } from 'path';
+import { resolve } from 'path';
 import type { NextConfig } from 'next'
 
-import { config } from 'dotenv';
-
-// 获取当前文件的目录
-const __dirname = dirname(fileURLToPath(import.meta.url));
-// 加载根目录的 .env 文件
-config({ path: join(__dirname, '../../.env') });
-
-// 解析项目根目录和libs目录的绝对路径
-const rootDir = resolve(__dirname, '../..');
+// Resolve project root directory and libs directory absolute paths
+const rootDir = resolve(__dirname || process.cwd(), '../..');
 const libsDir = resolve(rootDir, 'libs');
 
 /** @type {import('next').NextConfig} */
@@ -45,7 +37,6 @@ const nextConfig: NextConfig= {
   experimental: {
     // 允许导入外部目录
     externalDir: true,
-    nodeMiddleware: true,
   },
   turbopack: {
     rules: {
