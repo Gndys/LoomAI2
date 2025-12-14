@@ -151,7 +151,8 @@ export class WechatPayProvider implements PaymentProvider {
 
   private getSerialNumber(certificateData: Buffer): string {
     try {
-      const certificate = new X509Certificate(certificateData);
+      // Convert Buffer to Uint8Array for @peculiar/x509 compatibility with Node.js 22+
+      const certificate = new X509Certificate(new Uint8Array(certificateData));
       return certificate.serialNumber;
     } catch (error) {
       console.error('Error getting certificate serial number:', error);
