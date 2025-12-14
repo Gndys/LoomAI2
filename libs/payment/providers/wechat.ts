@@ -186,7 +186,8 @@ export class WechatPayProvider implements PaymentProvider {
           );
           
           // 使用 X509Certificate 解析证书并获取公钥
-          const certificate = new X509Certificate(Buffer.from(decryptedCertificate));
+          // Convert to Uint8Array for @peculiar/x509 compatibility with Node.js 22+
+          const certificate = new X509Certificate(new Uint8Array(Buffer.from(decryptedCertificate)));
           this.platformCertificates.set(item.serial_no, certificate.publicKey.toString());
         }
         
