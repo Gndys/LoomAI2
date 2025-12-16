@@ -10,10 +10,13 @@
   "scripts": {
     "dev:next": "turbo run dev --filter=@tinyship/next-app",
     "dev:nuxt": "turbo run dev --filter=@tinyship/nuxt-app",
+    "dev:docs": "turbo run dev --filter=docs-app",
     "build:next": "turbo run build --filter=@tinyship/next-app",
     "build:nuxt": "turbo run build --filter=@tinyship/nuxt-app",
+    "build:docs": "turbo run build --filter=docs-app",
     "start:next": "turbo run start --filter=@tinyship/next-app",
     "start:nuxt": "turbo run start --filter=@tinyship/nuxt-app",
+    "start:docs": "turbo run start --filter=docs-app",
     "clean": "turbo run clean && rm -rf node_modules",
     "db:check": "node libs/database/scripts.js check",
     "db:push": "node libs/database/scripts.js push",
