@@ -1418,5 +1418,29 @@ export const en: Locale = {
       themeSettings: "Theme Settings",
       languageSelection: "Language Selection"
     }
+  },
+  docs: {
+    home: {
+      title: "TinyShip Docs",
+      subtitle: "Built with Fumadocs",
+      description: "A static site project based on Fumadocs, perfect for documentation, blogs, and static pages.",
+      cta: {
+        docs: "Read Docs",
+        blog: "Visit Blog"
+      }
+    },
+    nav: {
+      docs: "Docs",
+      blog: "Blog"
+    },
+    blog: {
+      title: "Blog",
+      description: "Latest articles and updates from the TinyShip team",
+      allPosts: "All Posts",
+      previousPage: "← Previous",
+      nextPage: "Next →",
+      back: "← Back to Blog",
+      noPosts: "No posts yet"
+    }
   }
 } as const; 

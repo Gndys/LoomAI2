@@ -55,6 +55,11 @@ jobs:
           NODE_ENV: production
           BUILD_TIME: true
 
+      - name: Build Docs app
+        run: pnpm build:docs
+        env:
+          NODE_ENV: production
+
   docker-build:
     name: Docker Build Verification
     runs-on: ubuntu-latest

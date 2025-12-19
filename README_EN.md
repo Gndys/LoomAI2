@@ -33,6 +33,11 @@ For detailed setup instructions and configuration guides, please refer to our [S
   - Next.js for React enthusiasts
   - Nuxt.js for Vue lovers
   - Choose your preferred framework while maintaining the same powerful backend
+- **Documentation Site (docs-app)**:
+  - Static documentation site built with [Fumadocs](https://fumadocs.dev)
+  - Supports docs, blogs, and static pages
+  - Built-in i18n and full-text search
+  - Static export, deployable to any CDN
 
 ### 🔐 Comprehensive Authentication
 - **[Better-Auth](https://www.better-auth.com/) Integration**:
@@ -122,6 +127,11 @@ For detailed setup instructions and configuration guides, please refer to our [S
 - Tailwind CSS
 - shadcn/ui & Magic UI
 - [Zod](https://zod.dev/) for end-to-end type safety
+
+### Documentation
+- [Fumadocs](https://fumadocs.dev) documentation framework
+- MDX content authoring
+- Orama static search
 
 ### Backend
 - Better-Auth

@@ -1426,5 +1426,29 @@ export const zhCN: Locale = {
       themeSettings: "主题设置",
       languageSelection: "语言选择"
     }
+  },
+  docs: {
+    home: {
+      title: "TinyShip Docs",
+      subtitle: "基于 Fumadocs 构建",
+      description: "基于 Fumadocs 的静态站点项目，适用于文档、博客和静态页面。",
+      cta: {
+        docs: "阅读文档",
+        blog: "访问博客"
+      }
+    },
+    nav: {
+      docs: "文档",
+      blog: "博客"
+    },
+    blog: {
+      title: "博客",
+      description: "来自 TinyShip 团队的最新文章和动态",
+      allPosts: "所有文章",
+      previousPage: "← 上一页",
+      nextPage: "下一页 →",
+      back: "← 返回博客",
+      noPosts: "暂无文章"
+    }
   }
 } as const; 
