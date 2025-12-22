@@ -623,6 +623,90 @@ export const config = {
   },
 
   /**
+   * Storage Configuration
+   */
+  storage: {
+    /**
+     * Default Storage Provider
+     * @type {'oss' | 's3' | 'r2'}
+     */
+    get defaultProvider() {
+      const provider = getEnv('STORAGE_PROVIDER');
+      if (provider && ['oss', 's3', 'r2'].includes(provider)) {
+        return provider as 'oss' | 's3' | 'r2';
+      }
+      return 'oss' as const;
+    },
+
+    /**
+     * Alibaba Cloud OSS Configuration
+     */
+    oss: {
+      get region() {
+        return getEnvForService('OSS_REGION', 'Alibaba Cloud OSS') || 'oss-cn-shanghai';
+      },
+      get accessKeyId() {
+        return requireEnvForService('OSS_ACCESS_KEY_ID', 'Alibaba Cloud OSS');
+      },
+      get accessKeySecret() {
+        return requireEnvForService('OSS_ACCESS_KEY_SECRET', 'Alibaba Cloud OSS');
+      },
+      get bucket() {
+        return getEnvForService('OSS_BUCKET', 'Alibaba Cloud OSS') || 'tinyship';
+      },
+      get endpoint() {
+        return getEnvForService('OSS_ENDPOINT', 'Alibaba Cloud OSS') || 'oss-cn-shanghai.aliyuncs.com';
+      },
+      defaultExpiration: 60, // 1 minute in seconds
+    },
+
+    /**
+     * AWS S3 Configuration
+     */
+    s3: {
+      get region() {
+        return getEnvForService('S3_REGION', 'AWS S3') || 'us-east-1';
+      },
+      get accessKeyId() {
+        return requireEnvForService('S3_ACCESS_KEY_ID', 'AWS S3');
+      },
+      get accessKeySecret() {
+        return requireEnvForService('S3_ACCESS_KEY_SECRET', 'AWS S3');
+      },
+      get bucket() {
+        return getEnvForService('S3_BUCKET', 'AWS S3') || 'tinyship';
+      },
+      get endpoint() {
+        return getEnvForService('S3_ENDPOINT', 'AWS S3');
+      },
+      get forcePathStyle() {
+        return getEnv('S3_FORCE_PATH_STYLE') === 'true';
+      },
+      defaultExpiration: 3600, // 1 hour in seconds
+    },
+
+    /**
+     * Cloudflare R2 Configuration
+     * R2 is S3-compatible, uses S3Provider under the hood
+     */
+    r2: {
+      get accountId() {
+        return requireEnvForService('R2_ACCOUNT_ID', 'Cloudflare R2');
+      },
+      get accessKeyId() {
+        return requireEnvForService('R2_ACCESS_KEY_ID', 'Cloudflare R2');
+      },
+      get accessKeySecret() {
+        return requireEnvForService('R2_ACCESS_KEY_SECRET', 'Cloudflare R2');
+      },
+      get bucket() {
+        return getEnvForService('R2_BUCKET', 'Cloudflare R2') || 'tinyship';
+      },
+      defaultExpiration: 3600, // 1 hour in seconds
+    }
+  },
+
+  /**
    * AI Chat Configuration
    */
   ai: {
