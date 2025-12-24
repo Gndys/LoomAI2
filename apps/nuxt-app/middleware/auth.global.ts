@@ -96,6 +96,13 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     requiresSubscription: true
   },
   
+  // Upload page - require authentication only
+  {
+    pattern: new RegExp(`^\\/(${locales.join('|')})\\/upload$`),
+    type: 'page',
+    requiresAuth: true
+  },
+  
   // Pricing page - redirect subscribed users to dashboard (require locale prefix)
   {
     pattern: new RegExp(`^\\/(${locales.join('|')})\\/pricing$`),

@@ -42,6 +42,7 @@ tinyship/
 │   ├── email/            # 邮件服务
 │   ├── sms/             # 短信服务
 │   ├── payment/         # 支付服务
+│   ├── storage/         # 存储服务（OSS/S3/R2）
 │   ├── ai/              # AI 集成
 │   ├── i18n/            # 国际化
 │   ├── permissions/      # 权限管理
@@ -111,6 +112,7 @@ pnpm start:docs
 - **[支付集成](../../libs/payment/README.md)**：多平台支付解决方案
 - **[邮件服务](../../libs/email/README.md)**：邮件发送和模板管理系统
 - **[短信服务](../../libs/sms/README.md)**：短信发送和验证码服务
+- **[存储服务](../../libs/storage/README.md)**：统一云存储接口（OSS/S3/R2）
 - **[UI 组件](../../libs/ui/README.md)**：通用 UI 组件库和主题系统
 - **[权限管理](../../libs/permissions/README.md)**：基于角色的访问控制
 - **[数据验证](../../libs/validators/README.md)**：类型安全的数据验证

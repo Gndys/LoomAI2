@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Check, Globe } from "lucide-react";
+import { Check, Globe, ChevronDown, Bot, Crown, Upload } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { type SupportedLocale, locales } from "@libs/i18n";
 import { useTranslation } from "@/hooks/use-translation";
@@ -71,13 +71,60 @@ export default function Header({ className }: HeaderProps) {
           </div>
 
           {/* Desktop navigation */}
-          <nav className="hidden md:flex md:space-x-8">
-            <Link href={`/${currentLocale}/ai`} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              {t.header.navigation.ai}
-            </Link>
-            <Link href={`/${currentLocale}/premium-features`} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              {t.header.navigation.premiumFeatures}
-            </Link>
+          <nav className="hidden md:flex md:items-center md:space-x-8">
+            {/* Demos Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  {t.header.navigation.demos}
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-96 p-4">
+                <div className="space-y-1">
+                  <DropdownMenuItem asChild className="p-0">
+                    <Link href={`/${currentLocale}/ai`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
+                        <Bot className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm">{t.header.demos.ai.title}</span>
+                        <span className="text-sm text-muted-foreground leading-snug mt-0.5">
+                          {t.header.demos.ai.description}
+                        </span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="p-0">
+                    <Link href={`/${currentLocale}/premium-features`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
+                        <Crown className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm">{t.header.demos.premium.title}</span>
+                        <span className="text-sm text-muted-foreground leading-snug mt-0.5">
+                          {t.header.demos.premium.description}
+                        </span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="p-0">
+                    <Link href={`/${currentLocale}/upload`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
+                        <Upload className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm">{t.header.demos.upload.title}</span>
+                        <span className="text-sm text-muted-foreground leading-snug mt-0.5">
+                          {t.header.demos.upload.description}
+                        </span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <Link href={`/${currentLocale}/pricing`} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               {t.header.navigation.pricing}
             </Link>
@@ -212,12 +259,36 @@ export default function Header({ className }: HeaderProps) {
       {isMenuOpen && (
         <div className="md:hidden bg-background border-t border-border">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <Link href={`/${currentLocale}/ai`} className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-foreground hover:bg-muted">
-              {t.header.navigation.ai}
-            </Link>
-            <Link href={`/${currentLocale}/premium-features`} className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-foreground hover:bg-muted">
-              {t.header.navigation.premiumFeatures}
-            </Link>
+            {/* Demos Section */}
+            <div className="px-3 py-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                {t.header.navigation.demos}
+              </p>
+              <div className="space-y-1">
+                <Link href={`/${currentLocale}/ai`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
+                  <Bot className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="block">{t.header.demos.ai.title}</span>
+                    <span className="block text-xs text-muted-foreground">{t.header.demos.ai.description}</span>
+                  </div>
+                </Link>
+                <Link href={`/${currentLocale}/premium-features`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
+                  <Crown className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="block">{t.header.demos.premium.title}</span>
+                    <span className="block text-xs text-muted-foreground">{t.header.demos.premium.description}</span>
+                  </div>
+                </Link>
+                <Link href={`/${currentLocale}/upload`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="block">{t.header.demos.upload.title}</span>
+                    <span className="block text-xs text-muted-foreground">{t.header.demos.upload.description}</span>
+                  </div>
+                </Link>
+              </div>
+            </div>
+            <div className="border-t border-border my-2" />
             <Link href={`/${currentLocale}/pricing`} className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-foreground hover:bg-muted">
               {t.header.navigation.pricing}
             </Link>

@@ -37,7 +37,8 @@ const nextConfig: NextConfig= {
     domains: [],
   },
   // https://github.com/vercel/next.js/issues/50042
-  serverExternalPackages: ['mjml', 'handlebars'],
+  // ali-oss uses urllib which requires proxy-agent (Node.js only)
+  serverExternalPackages: ['mjml', 'handlebars', 'ali-oss', 'urllib'],
   // Enable standalone mode for Docker deployment
   output: 'standalone',
   experimental: {

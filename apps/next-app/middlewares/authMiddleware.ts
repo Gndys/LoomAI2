@@ -85,6 +85,11 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     requiresAuth: true
   },
   {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/upload(\\/.*)?$`), 
+    type: 'page',
+    requiresAuth: true
+  },
+  {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/premium-features(\\/.*)?$`), 
     type: 'page',
     requiresAuth: true,
@@ -173,6 +178,12 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     requiresAuth: true
     // TODO: Replace Subject.PROTECTED_RESOURCE with a valid Subject
     // requiredPermission: { action: Action.READ, subject: Subject.PROTECTED_RESOURCE } // Requires definition
+  },
+  // Upload API - require authentication
+  {
+    pattern: new RegExp('^/api/upload(\\/.*)?$'),
+    type: 'api',
+    requiresAuth: true
   },
 ];
 // ----------------------------------------

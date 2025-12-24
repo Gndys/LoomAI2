@@ -72,6 +72,18 @@ For detailed setup instructions and configuration guides, please refer to our [S
   - China-specific providers (Aliyun)
   - OTP and notification support
 
+### 📦 Storage Services
+- **Unified Storage Interface**:
+  - Alibaba Cloud OSS
+  - AWS S3
+  - Cloudflare R2
+  - Easy provider switching
+- **Full Feature Support**:
+  - File upload/download
+  - Signed URL generation
+  - Metadata management
+  - Directory listing
+
 ### 🎨 Modern UI/UX
 - **Rich Component Libraries**:
   - [shadcn/ui](https://ui.shadcn.com/) for Next.js
@@ -143,6 +155,7 @@ For detailed setup instructions and configuration guides, please refer to our [S
 - Email (Resend/SendGrid/SMTP)
 - SMS (Aliyun/Twilio)
 - Payments (Stripe/WeChat Pay/Creem)
+- Storage (Alibaba Cloud OSS/AWS S3/Cloudflare R2)
 - AI Integration
 
 ## 🌟 Why ShipEasy?

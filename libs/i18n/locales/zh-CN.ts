@@ -62,7 +62,8 @@ export const zhCN: Locale = {
     deleteUser: "删除用户",
     back: "返回",
     resendCode: "重新发送",
-    resendVerificationEmail: "重新发送验证邮件"
+    resendVerificationEmail: "重新发送验证邮件",
+    upload: "上传"
   },
   email: {
     verification: {
@@ -1403,7 +1404,24 @@ export const zhCN: Locale = {
     navigation: {
       ai: "AI 功能演示",
       premiumFeatures: "高级会员功能",
-      pricing: "定价"
+      pricing: "定价",
+      upload: "文件上传",
+      demos: "功能演示",
+      demosDescription: "探索示例功能"
+    },
+    demos: {
+      ai: {
+        title: "AI 对话",
+        description: "大模型对话实现，可扩展设计，支持多个 Provider，需要登录访问"
+      },
+      premium: {
+        title: "高级会员功能",
+        description: "路由保护演示页面，只有付费用户才能访问此页面"
+      },
+      upload: {
+        title: "文件上传",
+        description: "文件上传实现，可扩展设计，支持多个 Provider，需要登录访问"
+      }
     },
     auth: {
       signIn: "登录",
@@ -1449,6 +1467,36 @@ export const zhCN: Locale = {
       nextPage: "下一页 →",
       back: "← 返回博客",
       noPosts: "暂无文章"
+    }
+  },
+  upload: {
+    title: "上传文件",
+    description: "上传图片到云存储",
+    providerTitle: "存储服务商",
+    providerDescription: "选择您偏好的云存储服务商",
+    providers: {
+      oss: "阿里云 OSS",
+      ossDescription: "国内优化存储",
+      s3: "Amazon S3",
+      s3Description: "全球云存储",
+      r2: "Cloudflare R2",
+      r2Description: "零出口费用"
+    },
+    uploadTitle: "上传图片",
+    uploadDescription: "拖拽图片或点击浏览。最大 1MB。",
+    dragDrop: "拖拽文件到这里",
+    orClick: "或点击浏览（最大 1MB）",
+    browseFiles: "浏览文件",
+    clearAll: "清除全部",
+    uploadedTitle: "已上传文件",
+    uploadedDescription: "成功上传 {count} 个文件",
+    uploading: "上传中...",
+    viewFile: "查看",
+    uploaded: "已上传",
+    errors: {
+      maxFiles: "只能上传 1 个文件",
+      imageOnly: "只允许上传图片文件",
+      fileTooLarge: "文件大小必须小于 1MB"
     }
   }
 } as const; 

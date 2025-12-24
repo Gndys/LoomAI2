@@ -61,6 +61,12 @@ const protectedApiRoutes: ProtectedApiRouteConfig[] = [
   {
     pattern: /^\/api\/payment\/query(\/.*)?$/,
     requiresAuth: true // 支付查询API需要登录状态
+  },
+  
+  // Upload API - require authentication
+  {
+    pattern: /^\/api\/upload(\/.*)?$/,
+    requiresAuth: true
   }
 
   // Example: Public API route (if needed in future)

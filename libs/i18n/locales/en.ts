@@ -62,7 +62,8 @@ export const en: Locale = {
     deleteUser: "Delete User",
     back: "Back",
     resendCode: "Resend Code",
-    resendVerificationEmail: "Resend Verification Email"
+    resendVerificationEmail: "Resend Verification Email",
+    upload: "Upload"
   },
   email: {
     verification: {
@@ -1395,7 +1396,24 @@ export const en: Locale = {
     navigation: {
       ai: "AI Demo",
       premiumFeatures: "Premium Features",
-      pricing: "Pricing"
+      pricing: "Pricing",
+      upload: "Upload",
+      demos: "Demos",
+      demosDescription: "Explore example features"
+    },
+    demos: {
+      ai: {
+        title: "AI Chat",
+        description: "LLM chat with extensible design, multi-provider support. Login required."
+      },
+      premium: {
+        title: "Premium Features",
+        description: "Route protection demo. Only paid users can access this page."
+      },
+      upload: {
+        title: "File Upload",
+        description: "File upload with extensible design, multi-provider support. Login required."
+      }
     },
     auth: {
       signIn: "Sign In",
@@ -1441,6 +1459,36 @@ export const en: Locale = {
       nextPage: "Next →",
       back: "← Back to Blog",
       noPosts: "No posts yet"
+    }
+  },
+  upload: {
+    title: "Upload Files",
+    description: "Upload images to cloud storage",
+    providerTitle: "Storage Provider",
+    providerDescription: "Select your preferred cloud storage provider",
+    providers: {
+      oss: "Alibaba Cloud OSS",
+      ossDescription: "China-optimized storage",
+      s3: "Amazon S3",
+      s3Description: "Global cloud storage",
+      r2: "Cloudflare R2",
+      r2Description: "Zero egress fees"
+    },
+    uploadTitle: "Upload Image",
+    uploadDescription: "Drag and drop image or click to browse. Max 1MB.",
+    dragDrop: "Drag & drop file here",
+    orClick: "Or click to browse (max 1MB)",
+    browseFiles: "Browse files",
+    clearAll: "Clear all",
+    uploadedTitle: "Uploaded Files",
+    uploadedDescription: "{count} file(s) uploaded successfully",
+    uploading: "Uploading...",
+    viewFile: "View",
+    uploaded: "Uploaded",
+    errors: {
+      maxFiles: "You can only upload 1 file",
+      imageOnly: "Only image files are allowed",
+      fileTooLarge: "File size must be less than 1MB"
     }
   }
 } as const; 

@@ -72,6 +72,18 @@
   - 中国特定提供商（阿里云）
   - OTP 和通知支持
 
+### 📦 存储服务
+- **统一存储接口**：
+  - 阿里云 OSS
+  - AWS S3
+  - Cloudflare R2
+  - 轻松切换不同服务商
+- **完整功能支持**：
+  - 文件上传/下载
+  - 签名 URL 生成
+  - 元数据管理
+  - 目录列表
+
 ### 🎨 现代化 UI/UX
 - **丰富的组件库**：
   - [shadcn/ui](https://ui.shadcn.com/) 用于 Next.js
@@ -143,6 +155,7 @@
 - 邮件（Resend/SendGrid/SMTP）
 - 短信（阿里云/Twilio）
 - 支付（Stripe/微信支付/Creem）
+- 存储（阿里云 OSS/AWS S3/Cloudflare R2）
 - AI 集成
 
 ## 🌟 为什么选择 ShipEasy？
