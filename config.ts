@@ -36,6 +36,20 @@ function requireEnvForService(key: string, service: string, devDefault?: string)
   return value;
 }
 
+// Function to get environment variables with fallback keys (tries keys in order)
+function requireEnvWithFallback(keys: string[], service: string): string {
+  for (const key of keys) {
+    const value = getEnv(key);
+    if (value) return value;
+  }
+  // During build time, return a placeholder to avoid build failures
+  if (process.env.BUILD_TIME === 'true') {
+    console.warn(`Warning: Missing ${keys.join(' or ')} for ${service} service during build. This will be validated at runtime.`);
+    return `__BUILD_TIME_PLACEHOLDER_${keys[0]}__`;
+  }
+  throw new Error(`Missing ${keys.join(' or ')} for ${service}`);
+}
+
 
 // 计划类型定义
 
@@ -286,7 +300,7 @@ export const config = {
           return requireEnvForService('CREEM_API_KEY', 'Creem');
         },
         get serverUrl() {
-          return getEnvForService('CREEM_SERVER_URL', 'Creem') || 'https://test-api.creem.io';
+          return getEnv('CREEM_SERVER_URL') || 'https://test-api.creem.io';
         },
         get webhookSecret() {
           return requireEnvForService('CREEM_WEBHOOK_SECRET', 'Creem');
@@ -516,7 +530,7 @@ export const config = {
         return getEnvForService('ALIYUN_ACCESS_KEY_SECRET', 'Aliyun SMS');
       },
       get endpoint() {
-        return getEnvForService('ALIYUN_SMS_ENDPOINT', 'Aliyun SMS') || 'dysmsapi.aliyuncs.com';
+        return getEnv('ALIYUN_SMS_ENDPOINT') || 'dysmsapi.aliyuncs.com';
       },
       get signName() {
         return getEnvForService('ALIYUN_SMS_SIGN_NAME', 'Aliyun SMS');
@@ -644,29 +658,21 @@ export const config = {
      */
     oss: {
       get region() {
-        return getEnvForService('OSS_REGION', 'Alibaba Cloud OSS') || 'oss-cn-shanghai';
+        return getEnv('OSS_REGION') || 'oss-cn-shanghai';
       },
       get accessKeyId() {
         // Fallback to ALIYUN_ACCESS_KEY_ID if OSS_ACCESS_KEY_ID is not set
-        const ossKey = getEnv('OSS_ACCESS_KEY_ID');
-        if (ossKey) return ossKey;
-        const aliyunKey = getEnv('ALIYUN_ACCESS_KEY_ID');
-        if (aliyunKey) return aliyunKey;
-        throw new Error('Missing OSS_ACCESS_KEY_ID or ALIYUN_ACCESS_KEY_ID for Alibaba Cloud OSS');
+        return requireEnvWithFallback(['OSS_ACCESS_KEY_ID', 'ALIYUN_ACCESS_KEY_ID'], 'Alibaba Cloud OSS');
       },
       get accessKeySecret() {
         // Fallback to ALIYUN_ACCESS_KEY_SECRET if OSS_ACCESS_KEY_SECRET is not set
-        const ossSecret = getEnv('OSS_ACCESS_KEY_SECRET');
-        if (ossSecret) return ossSecret;
-        const aliyunSecret = getEnv('ALIYUN_ACCESS_KEY_SECRET');
-        if (aliyunSecret) return aliyunSecret;
-        throw new Error('Missing OSS_ACCESS_KEY_SECRET or ALIYUN_ACCESS_KEY_SECRET for Alibaba Cloud OSS');
+        return requireEnvWithFallback(['OSS_ACCESS_KEY_SECRET', 'ALIYUN_ACCESS_KEY_SECRET'], 'Alibaba Cloud OSS');
       },
       get bucket() {
-        return getEnvForService('OSS_BUCKET', 'Alibaba Cloud OSS') || 'tinyship';
+        return getEnv('OSS_BUCKET') || 'tinyship';
       },
       get endpoint() {
-        return getEnvForService('OSS_ENDPOINT', 'Alibaba Cloud OSS') || 'oss-cn-shanghai.aliyuncs.com';
+        return getEnv('OSS_ENDPOINT') || 'oss-cn-shanghai.aliyuncs.com';
       },
       defaultExpiration: 60, // 1 minute in seconds
     },
@@ -676,7 +682,7 @@ export const config = {
      */
     s3: {
       get region() {
-        return getEnvForService('S3_REGION', 'AWS S3') || 'us-east-1';
+        return getEnv('S3_REGION') || 'us-east-1';
       },
       get accessKeyId() {
         return requireEnvForService('S3_ACCESS_KEY_ID', 'AWS S3');
@@ -685,7 +691,7 @@ export const config = {
         return requireEnvForService('S3_ACCESS_KEY_SECRET', 'AWS S3');
       },
       get bucket() {
-        return getEnvForService('S3_BUCKET', 'AWS S3') || 'tinyship';
+        return getEnv('S3_BUCKET') || 'tinyship';
       },
       get endpoint() {
         return getEnvForService('S3_ENDPOINT', 'AWS S3');
@@ -711,7 +717,7 @@ export const config = {
         return requireEnvForService('R2_ACCESS_KEY_SECRET', 'Cloudflare R2');
       },
       get bucket() {
-        return getEnvForService('R2_BUCKET', 'Cloudflare R2') || 'tinyship';
+        return getEnv('R2_BUCKET') || 'tinyship';
       },
       defaultExpiration: 3600, // 1 hour in seconds
     }
