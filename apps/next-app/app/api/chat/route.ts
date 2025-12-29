@@ -70,8 +70,8 @@ export async function POST(req: Request) {
       try {
         // Use safeNumber to prevent NaN issues
         const totalTokens = safeNumber(usageData.totalTokens);
-        const promptTokens = safeNumber(usageData.promptTokens);
-        const completionTokens = safeNumber(usageData.completionTokens);
+        const inputTokens = safeNumber(usageData.inputTokens);
+        const outputTokens = safeNumber(usageData.outputTokens);
         
         // Skip consumption if no valid token count
         if (totalTokens <= 0) {
@@ -119,8 +119,8 @@ export async function POST(req: Request) {
           metadata: {
             provider: usedProvider,
             model: usedModel,
-            promptTokens,
-            completionTokens,
+            inputTokens,
+            outputTokens,
             totalTokens
           }
         });

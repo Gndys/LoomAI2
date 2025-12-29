@@ -590,7 +590,7 @@ export const config = {
      * - fixed: Each operation consumes a fixed amount of credits
      * - dynamic: Credits consumed based on actual token usage
      */
-    consumptionMode: 'dynamic' as const,
+    consumptionMode: 'dynamic' as 'fixed' | 'dynamic',
 
     /**
      * Fixed consumption amounts (used when consumptionMode is 'fixed')

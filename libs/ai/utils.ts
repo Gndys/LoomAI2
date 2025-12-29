@@ -10,9 +10,15 @@ interface StreamOptions {
   model?: string;
 }
 
+interface UsageData {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
 interface StreamResponseWithUsage {
   response: Response;
-  usage: Promise<{ promptTokens: number; completionTokens: number; totalTokens: number }>;
+  usage: Promise<UsageData>;
   provider: string;
   model: string;
 }
@@ -51,9 +57,16 @@ export function streamResponseWithUsage({ messages, provider, model }: StreamOpt
     generateMessageId: () => crypto.randomUUID(),
   });
   
+  // Use SDK's usage data directly with safe defaults
+  const usagePromise: Promise<UsageData> = result.usage.then((usage) => ({
+    inputTokens: usage.inputTokens ?? 0,
+    outputTokens: usage.outputTokens ?? 0,
+    totalTokens: usage.totalTokens ?? 0
+  }));
+
   return {
     response,
-    usage: result.usage,
+    usage: usagePromise,
     provider: providerName,
     model: model || 'default'
   };

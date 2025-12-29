@@ -85,6 +85,13 @@ export class CreditService {
   /**
    * Consume credits from a user's account
    * Returns success status and new balance
+   * 
+   * Uses atomic conditional update to prevent race conditions:
+   * UPDATE ... SET credit_balance = credit_balance - amount 
+   * WHERE id = userId AND credit_balance >= amount
+   * 
+   * This ensures that concurrent requests cannot both deduct credits
+   * if the combined total would exceed the available balance.
    */
   async consumeCredits(params: ConsumeCreditsParams): Promise<ConsumeCreditsResult> {
     const { userId, amount, description, metadata } = params;
@@ -99,39 +106,44 @@ export class CreditService {
 
     try {
       const result = await db.transaction(async (tx) => {
-        // Get current balance
-        const [currentUser] = await tx
-          .select({ creditBalance: user.creditBalance })
-          .from(user)
-          .where(eq(user.id, userId))
-          .limit(1);
-
-        if (!currentUser) {
-          throw new Error(`User not found: ${userId}`);
-        }
-
-        const currentBalance = parseFloat(currentUser.creditBalance) || 0;
-
-        // Check if user has enough credits
-        if (currentBalance < amount) {
-          return {
-            success: false,
-            newBalance: currentBalance,
-            error: 'Insufficient credits'
-          };
-        }
-
-        // Deduct credits
-        const [updatedUser] = await tx
+        // Atomic conditional update: only deduct if balance is sufficient
+        // This prevents race conditions by combining check and update in one SQL statement
+        const updateResult = await tx
           .update(user)
           .set({
             creditBalance: sql`${user.creditBalance} - ${amount}`,
             updatedAt: new Date()
           })
-          .where(eq(user.id, userId))
+          .where(
+            and(
+              eq(user.id, userId),
+              sql`${user.creditBalance} >= ${amount}`
+            )
+          )
           .returning({ creditBalance: user.creditBalance });
 
-        const newBalance = parseFloat(updatedUser.creditBalance);
+        // If no row was updated, either user doesn't exist or insufficient credits
+        if (updateResult.length === 0) {
+          // Check if user exists to provide accurate error message
+          const [existingUser] = await tx
+            .select({ creditBalance: user.creditBalance })
+            .from(user)
+            .where(eq(user.id, userId))
+            .limit(1);
+
+          if (!existingUser) {
+            throw new Error(`User not found: ${userId}`);
+          }
+
+          // User exists but has insufficient credits
+          return {
+            success: false,
+            newBalance: parseFloat(existingUser.creditBalance) || 0,
+            error: 'Insufficient credits'
+          };
+        }
+
+        const newBalance = parseFloat(updateResult[0].creditBalance);
 
         // Create transaction record (negative amount for consumption)
         const transactionId = `txn_${crypto.randomUUID()}`;
