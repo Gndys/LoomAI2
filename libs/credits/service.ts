@@ -1,11 +1,12 @@
 import { db } from '@libs/database';
 import { user, creditTransaction, creditTransactionTypes } from '@libs/database/schema';
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, asc, and, or, like, sql, count } from 'drizzle-orm';
 import type { 
   AddCreditsParams, 
   ConsumeCreditsParams, 
   ConsumeCreditsResult,
   GetTransactionsOptions,
+  GetAllTransactionsOptions,
   GetTransactionsPaginatedResult,
   CreditTransactionType
 } from './types';
@@ -247,6 +248,132 @@ export class CreditService {
 
     return {
       transactions,
+      total,
+      page,
+      pageSize: limit,
+      totalPages: Math.ceil(total / limit)
+    };
+  }
+
+  /**
+   * Get all credit transactions across all users (admin only)
+   * Supports pagination, search, filtering, and sorting
+   */
+  async getAllTransactionsPaginated(
+    options: GetAllTransactionsOptions = {}
+  ): Promise<GetTransactionsPaginatedResult & { transactions: Array<CreditTransaction & { userEmail?: string | null; userName?: string | null }> }> {
+    const { 
+      page = 1, 
+      limit = 10, 
+      searchField, 
+      searchValue, 
+      type, 
+      userId,
+      sortBy = 'createdAt',
+      sortDirection = 'desc'
+    } = options;
+    
+    const offset = (page - 1) * limit;
+    
+    // Build where conditions
+    const whereConditions: any[] = [];
+    
+    // Search conditions
+    if (searchValue && searchField) {
+      switch (searchField) {
+        case 'id':
+          whereConditions.push(eq(creditTransaction.id, searchValue));
+          break;
+        case 'userId':
+          whereConditions.push(eq(creditTransaction.userId, searchValue));
+          break;
+        case 'userEmail':
+          whereConditions.push(like(user.email, `%${searchValue}%`));
+          break;
+        case 'userName':
+          whereConditions.push(like(user.name, `%${searchValue}%`));
+          break;
+        case 'description':
+          whereConditions.push(like(creditTransaction.description, `%${searchValue}%`));
+          break;
+      }
+    }
+    
+    // Filter by transaction type
+    if (type) {
+      whereConditions.push(eq(creditTransaction.type, type));
+    }
+    
+    // Filter by user ID
+    if (userId) {
+      whereConditions.push(eq(creditTransaction.userId, userId));
+    }
+    
+    // Build where clause - only use and() if we have conditions
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+    
+    // Get total count
+    const countQuery = db
+      .select({ count: count() })
+      .from(creditTransaction)
+      .leftJoin(user, eq(creditTransaction.userId, user.id));
+    
+    const countResult = whereClause 
+      ? await countQuery.where(whereClause)
+      : await countQuery;
+    
+    const total = countResult[0]?.count || 0;
+    
+    // Build sorting
+    let orderBy;
+    switch (sortBy) {
+      case 'id':
+        orderBy = sortDirection === 'desc' ? desc(creditTransaction.id) : asc(creditTransaction.id);
+        break;
+      case 'userId':
+        orderBy = sortDirection === 'desc' ? desc(creditTransaction.userId) : asc(creditTransaction.userId);
+        break;
+      case 'userEmail':
+        orderBy = sortDirection === 'desc' ? desc(user.email) : asc(user.email);
+        break;
+      case 'type':
+        orderBy = sortDirection === 'desc' ? desc(creditTransaction.type) : asc(creditTransaction.type);
+        break;
+      case 'amount':
+        orderBy = sortDirection === 'desc' ? desc(creditTransaction.amount) : asc(creditTransaction.amount);
+        break;
+      case 'createdAt':
+      default:
+        orderBy = sortDirection === 'desc' ? desc(creditTransaction.createdAt) : asc(creditTransaction.createdAt);
+        break;
+    }
+    
+    // Build data query
+    const dataQuery = db
+      .select({
+        id: creditTransaction.id,
+        userId: creditTransaction.userId,
+        type: creditTransaction.type,
+        amount: creditTransaction.amount,
+        balance: creditTransaction.balance,
+        orderId: creditTransaction.orderId,
+        description: creditTransaction.description,
+        metadata: creditTransaction.metadata,
+        createdAt: creditTransaction.createdAt,
+        // User info
+        userEmail: user.email,
+        userName: user.name,
+      })
+      .from(creditTransaction)
+      .leftJoin(user, eq(creditTransaction.userId, user.id));
+    
+    // Get paginated transactions with user info
+    const transactions = whereClause
+      ? await dataQuery.where(whereClause).orderBy(orderBy).limit(limit).offset(offset)
+      : await dataQuery.orderBy(orderBy).limit(limit).offset(offset);
+    
+    return {
+      transactions: transactions as any,
       total,
       page,
       pageSize: limit,
