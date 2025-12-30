@@ -1,7 +1,7 @@
 import { h } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 import { Copy } from 'lucide-vue-next'
-import { useI18n } from 'vue-i18n'
+import type { Composer } from 'vue-i18n'
 import UsersActionsCell from '@/components/admin/users/UsersActionsCell.vue'
 import UsersBannedCell from '@/components/admin/users/UsersBannedCell.vue'
 import UsersRoleCell from '@/components/admin/users/UsersRoleCell.vue'
@@ -19,16 +19,16 @@ export interface User {
   updatedAt: string | Date // Can be Date from API
 }
 
-export const columns: ColumnDef<User>[] = [
+// Table columns definition factory function
+// Accepts t function from useI18n() to avoid calling useI18n() in render functions
+export const createColumns = (t: Composer['t']): ColumnDef<User>[] => [
   // ID Column (hidden by default, no sorting needed)
   {
     accessorKey: 'id',
     header: () => {
-      const { t } = useI18n()
       return <span>{t('admin.users.table.columns.id')}</span>
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const id = row.getValue('id') as string
       
       // Create tooltip content with copy functionality
@@ -77,7 +77,6 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'name',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.users.table.columns.name'),
@@ -96,7 +95,6 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'email',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.users.table.columns.email'),
@@ -115,7 +113,6 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'role',
     header: () => {
-      const { t } = useI18n()
       return <span>{t('admin.users.table.columns.role')}</span>
     },
     cell: ({ row, table }) => {
@@ -139,7 +136,6 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'phoneNumber',
     header: () => {
-      const { t } = useI18n()
       return <span>{t('admin.users.table.columns.phoneNumber')}</span>
     },
     cell: ({ row }) => {
@@ -153,7 +149,6 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'emailVerified',
     header: () => {
-      const { t } = useI18n()
       return <span>{t('admin.users.table.columns.emailVerified')}</span>
     },
     cell: ({ row }) => {
@@ -180,7 +175,6 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'banned',
     header: () => {
-      const { t } = useI18n()
       return <span>{t('admin.users.table.columns.banned')}</span>
     },
     cell: ({ row, table }) => {
@@ -206,7 +200,6 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'createdAt',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.users.table.columns.createdAt'),
@@ -231,7 +224,6 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'updatedAt',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.users.table.columns.updatedAt'),
@@ -256,7 +248,6 @@ export const columns: ColumnDef<User>[] = [
   {
     id: 'actions',
     header: () => {
-      const { t } = useI18n()
       return <div class="text-center">{t('admin.users.table.columns.actions')}</div>
     },
     cell: ({ row, table }) => {
@@ -278,4 +269,7 @@ export const columns: ColumnDef<User>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-] 
+]
+
+// Export default columns for backward compatibility (will be created in component setup)
+export const columns: ColumnDef<User>[] = [] 

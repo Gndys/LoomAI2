@@ -7,7 +7,7 @@ import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue'
 import TooltipProvider from '@/components/ui/tooltip/TooltipProvider.vue'
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue'
 import { Copy, TrendingUp, TrendingDown, Gift, RotateCcw, Settings2, Bot, Cpu } from 'lucide-vue-next'
-import { useI18n } from 'vue-i18n'
+import type { Composer } from 'vue-i18n'
 import SortableHeader from '@/components/admin/SortableHeader.vue'
 import type { CreditTransaction } from '@libs/database/schema/credit-transaction'
 
@@ -62,16 +62,15 @@ const copyToClipboard = async (text: string) => {
   }
 }
 
-// Table columns definition
-export const columns: ColumnDef<CreditTransactionRow>[] = [
+// Table columns definition factory function
+// Accepts t function from useI18n() to avoid calling useI18n() in render functions
+export const createColumns = (t: Composer['t']): ColumnDef<CreditTransactionRow>[] => [
   {
     accessorKey: 'id',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.credits.table.columns.id'))
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const id = row.getValue('id') as string
       
       return h('div', { class: 'group relative' }, [
@@ -103,14 +102,12 @@ export const columns: ColumnDef<CreditTransactionRow>[] = [
   {
     accessorKey: 'userEmail',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.credits.table.columns.user')
       })
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const email = row.getValue('userEmail') as string
       const name = row.original.userName
       
@@ -130,11 +127,9 @@ export const columns: ColumnDef<CreditTransactionRow>[] = [
   {
     accessorKey: 'type',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.credits.table.columns.type'))
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const type = row.getValue('type') as string
       const config = getTypeConfig(type)
       
@@ -157,7 +152,6 @@ export const columns: ColumnDef<CreditTransactionRow>[] = [
   {
     accessorKey: 'amount',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.credits.table.columns.amount')
@@ -178,7 +172,6 @@ export const columns: ColumnDef<CreditTransactionRow>[] = [
   {
     accessorKey: 'balance',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.credits.table.columns.balance'))
     },
     cell: ({ row }) => {
@@ -190,11 +183,9 @@ export const columns: ColumnDef<CreditTransactionRow>[] = [
   {
     accessorKey: 'description',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.credits.table.columns.description'))
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const description = row.getValue('description') as string
       const metadata = row.original.metadata as Record<string, any> | null
       
@@ -252,7 +243,6 @@ export const columns: ColumnDef<CreditTransactionRow>[] = [
   {
     accessorKey: 'createdAt',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.credits.table.columns.createdAt')
@@ -265,3 +255,5 @@ export const columns: ColumnDef<CreditTransactionRow>[] = [
   },
 ]
 
+// Export default columns for backward compatibility (will be created in component setup)
+export const columns: ColumnDef<CreditTransactionRow>[] = []

@@ -111,7 +111,7 @@ import {
   type SortingState,
 } from '@tanstack/vue-table'
 import { ref, computed, watch, nextTick } from 'vue'
-import { columns, type User } from './columns'
+import { createColumns, type User } from './columns'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-vue-next'
 
 // Define props
@@ -130,7 +130,8 @@ const emit = defineEmits<{
   'refresh-data': []
 }>()
 
-// Get router for navigation
+// Get composables
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 
@@ -223,10 +224,13 @@ watch(() => route.query, () => {
   sorting.value = getInitialSorting()
 }, { deep: true })
 
+// Create columns with i18n function
+const columns = computed(() => createColumns(t))
+
 // Create table instance
 const table = useVueTable({
   get data() { return localData.value },
-  get columns() { return columns },
+  get columns() { return columns.value },
   getCoreRowModel: getCoreRowModel(),
   onColumnVisibilityChange: (updater) => {
     const value = typeof updater === 'function' ? updater(columnVisibility.value) : updater
