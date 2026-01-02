@@ -43,6 +43,7 @@ export const en: Locale = {
       users: "Users",
       subscriptions: "Subscriptions",
       orders: "Orders",
+      credits: "Credits",
       application: "Application"
     }
   },
@@ -533,6 +534,57 @@ export const en: Locale = {
         failed: "Failed",
         refunded: "Refunded",
         canceled: "Canceled"
+      }
+    },
+    credits: {
+      title: "Credit Transactions",
+      subtitle: "View all credit transactions across all users",
+      messages: {
+        fetchError: "Failed to load credit transactions. Please try again."
+      },
+      table: {
+        noResults: "No credit transactions found.",
+        search: {
+          searchBy: "Search by...",
+          searchPlaceholder: "Search by {field}...",
+          filterByType: "Filter by type",
+          allTypes: "All Types",
+          purchase: "Purchase",
+          consumption: "Consumption",
+          refund: "Refund",
+          bonus: "Bonus",
+          adjustment: "Adjustment"
+        },
+        columns: {
+          id: "Transaction ID",
+          user: "User",
+          type: "Type",
+          amount: "Amount",
+          balance: "Balance",
+          description: "Description",
+          createdAt: "Created At",
+          metadata: "Metadata"
+        },
+        actions: {
+          clickToCopy: "Click to copy",
+          viewDetails: "View details"
+        },
+        sort: {
+          ascending: "Sort ascending",
+          descending: "Sort descending",
+          none: "Remove sorting"
+        },
+        pagination: {
+          showing: "Showing {start} to {end} of {total} results",
+          pageInfo: "Page {current} of {total}"
+        }
+      },
+      type: {
+        purchase: "Purchase",
+        consumption: "Consumption",
+        refund: "Refund",
+        bonus: "Bonus",
+        adjustment: "Adjustment"
       }
     },
     subscriptions: {

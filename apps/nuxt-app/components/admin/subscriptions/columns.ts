@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, ExternalLink, RefreshCw, Copy } from 'lucide-vue-next'
-import { useI18n } from 'vue-i18n'
+import type { Composer } from 'vue-i18n'
 import SortableHeader from '@/components/admin/SortableHeader.vue'
 
 // Subscription type definition
@@ -100,16 +100,15 @@ const formatDateTime = (date: Date | string | null) => {
   })
 }
 
-// Table columns definition
-export const columns: ColumnDef<Subscription>[] = [
+// Table columns definition factory function
+// Accepts t function from useI18n() to avoid calling useI18n() in render functions
+export const createColumns = (t: Composer['t']): ColumnDef<Subscription>[] => [
   {
     accessorKey: 'id',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.subscriptions.table.columns.id'))
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const id = row.getValue('id') as string
       
       // Create copy functionality
@@ -152,7 +151,6 @@ export const columns: ColumnDef<Subscription>[] = [
   {
     accessorKey: 'userEmail',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.subscriptions.table.columns.user'),
@@ -163,7 +161,6 @@ export const columns: ColumnDef<Subscription>[] = [
     },
     enableHiding: false,
     cell: ({ row }) => {
-      const { t } = useI18n()
       const email = row.getValue('userEmail') as string
       const name = row.original.userName
       return h('div', { class: 'max-w-[150px]' }, [
@@ -181,11 +178,9 @@ export const columns: ColumnDef<Subscription>[] = [
   {
     accessorKey: 'planId',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.subscriptions.table.columns.plan'))
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const planId = row.getValue('planId') as string
       return h('div', { class: 'font-medium' }, planId || t('common.notAvailable'))
     },
@@ -194,7 +189,6 @@ export const columns: ColumnDef<Subscription>[] = [
   {
     accessorKey: 'status',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.subscriptions.table.columns.status'),
@@ -205,7 +199,6 @@ export const columns: ColumnDef<Subscription>[] = [
     },
     enableHiding: false,
     cell: ({ row }) => {
-      const { t } = useI18n()
       const status = row.getValue('status') as string
       const variant = getStatusVariant(status)
       return h(Badge, { variant }, () => t(`admin.subscriptions.status.${status.toLowerCase()}`, status))
@@ -214,11 +207,9 @@ export const columns: ColumnDef<Subscription>[] = [
   {
     accessorKey: 'paymentType',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.subscriptions.table.columns.paymentType'))
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const paymentType = row.getValue('paymentType') as string
       return h('div', { class: 'font-medium' }, 
         t(`admin.subscriptions.paymentType.${paymentType?.toLowerCase()}`, getPaymentTypeDisplay(paymentType))
@@ -229,7 +220,6 @@ export const columns: ColumnDef<Subscription>[] = [
   {
     accessorKey: 'provider',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.subscriptions.table.columns.provider'))
     },
     cell: ({ row }) => {
@@ -241,7 +231,6 @@ export const columns: ColumnDef<Subscription>[] = [
   {
     accessorKey: 'periodStart',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.subscriptions.table.columns.periodStart'),
@@ -258,7 +247,6 @@ export const columns: ColumnDef<Subscription>[] = [
   {
     accessorKey: 'periodEnd',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.subscriptions.table.columns.periodEnd'),
@@ -278,11 +266,9 @@ export const columns: ColumnDef<Subscription>[] = [
   {
     accessorKey: 'cancelAtPeriodEnd',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.subscriptions.table.columns.cancelAtPeriodEnd'))
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const willCancel = row.getValue('cancelAtPeriodEnd') as boolean
       return h('div', { class: 'text-sm' }, 
         willCancel ? t('common.yes') : t('common.no')
@@ -293,7 +279,6 @@ export const columns: ColumnDef<Subscription>[] = [
   {
     accessorKey: 'createdAt',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.subscriptions.table.columns.createdAt'),
@@ -344,4 +329,7 @@ export const columns: ColumnDef<Subscription>[] = [
   //     ])
   //   },
   // },
-] 
+]
+
+// Export default columns for backward compatibility (will be created in component setup)
+export const columns: ColumnDef<Subscription>[] = [] 

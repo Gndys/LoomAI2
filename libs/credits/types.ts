@@ -51,6 +51,20 @@ export interface GetTransactionsOptions {
 }
 
 /**
+ * Options for querying all users' credit transactions (admin)
+ */
+export interface GetAllTransactionsOptions {
+  page?: number;
+  limit?: number;
+  searchField?: string;
+  searchValue?: string;
+  type?: CreditTransactionType;
+  userId?: string;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+}
+
+/**
  * Paginated result for credit transactions
  */
 export interface GetTransactionsPaginatedResult {

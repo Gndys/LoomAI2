@@ -2,8 +2,8 @@
   <div class="space-y-4">
     <!-- Search and Filters -->
     <div class="flex items-center justify-between gap-4">
-      <SubscriptionsSearch />
-      <SubscriptionsColumnToggle :table="table" />
+      <CreditsSearch />
+      <CreditsColumnToggle :table="table" />
     </div>
 
     <!-- Data Table -->
@@ -38,7 +38,7 @@
           <template v-else>
             <TableRow>
               <TableCell :colSpan="columns.length" class="h-24 text-center">
-                {{ t('admin.subscriptions.table.noResults') }}
+                {{ t('admin.credits.table.noResults') }}
               </TableCell>
             </TableRow>
           </template>
@@ -49,15 +49,18 @@
     <!-- Simple Pagination -->
     <div v-if="pagination" class="flex items-center justify-between px-2">
       <div class="flex-1 text-sm text-muted-foreground">
-        {{ t('admin.subscriptions.table.showing', {
-          from: (pagination.currentPage - 1) * pagination.pageSize + 1,
-          to: Math.min(pagination.currentPage * pagination.pageSize, pagination.total),
+        {{ t('admin.credits.table.pagination.showing', {
+          start: (pagination.currentPage - 1) * pagination.pageSize + 1,
+          end: Math.min(pagination.currentPage * pagination.pageSize, pagination.total),
           total: pagination.total
         }) }}
       </div>
       <div class="flex items-center space-x-6 lg:space-x-8">
         <div class="flex items-center space-x-2">
-          <p class="text-sm font-medium">{{ t('admin.subscriptions.table.page') }} {{ pagination.currentPage }} {{ t('admin.subscriptions.table.of') }} {{ pagination.totalPages }}</p>
+          <p class="text-sm font-medium">{{ t('admin.credits.table.pagination.pageInfo', {
+            current: pagination.currentPage,
+            total: pagination.totalPages
+          }) }}</p>
         </div>
         <div class="flex items-center space-x-2">
           <Button
@@ -108,14 +111,12 @@ import {
   type SortingState,
 } from '@tanstack/vue-table'
 import { ref, computed, watch } from 'vue'
-import { createColumns, type Subscription } from './columns'
+import { createColumns, type CreditTransactionRow } from './columns'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-vue-next'
-import SubscriptionsSearch from '@/components/admin/subscriptions/SubscriptionsSearch.vue'
-import SubscriptionsColumnToggle from '@/components/admin/subscriptions/SubscriptionsColumnToggle.vue'
 
 // Define props
 interface Props {
-  data: Subscription[]
+  data: CreditTransactionRow[]
   pagination?: {
     currentPage: number
     totalPages: number
@@ -135,7 +136,7 @@ const router = useRouter()
 const route = useRoute()
 
 // Local data state for real-time updates
-const localData = ref<Subscription[]>([...props.data])
+const localData = ref<CreditTransactionRow[]>([...props.data])
 
 // Watch for props changes and update local data
 watch(() => props.data, (newData) => {
@@ -143,7 +144,7 @@ watch(() => props.data, (newData) => {
 }, { deep: true })
 
 // Table state - Load from localStorage or use defaults
-const COLUMN_VISIBILITY_KEY = 'admin-subscriptions-column-visibility'
+const COLUMN_VISIBILITY_KEY = 'admin-credits-column-visibility'
 
 const getInitialColumnVisibility = (): VisibilityState => {
   if (typeof window !== 'undefined') {
@@ -159,10 +160,8 @@ const getInitialColumnVisibility = (): VisibilityState => {
   // Default visibility state
   return {
     id: false,
-    periodStart: false,
-    periodEnd: false,
-    cancelAtPeriodEnd: false,
-    createdAt: true,
+    balance: false,
+    // description is visible by default
   }
 }
 
@@ -241,4 +240,5 @@ const goToPage = (page: number) => {
     router.push({ query })
   }
 }
-</script> 
+</script>
+

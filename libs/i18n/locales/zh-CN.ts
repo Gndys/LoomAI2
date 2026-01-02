@@ -43,6 +43,7 @@ export const zhCN: Locale = {
       users: "用户管理",
       subscriptions: "订阅管理",
       orders: "订单管理",
+      credits: "积分管理",
       application: "应用程序"
     }
   },
@@ -540,6 +541,57 @@ export const zhCN: Locale = {
         failed: "支付失败",
         refunded: "已退款",
         canceled: "已取消"
+      }
+    },
+    credits: {
+      title: "积分交易记录",
+      subtitle: "查看所有用户的积分收入和消耗记录",
+      messages: {
+        fetchError: "加载积分交易记录失败，请重试。"
+      },
+      table: {
+        noResults: "未找到积分交易记录。",
+        search: {
+          searchBy: "搜索条件...",
+          searchPlaceholder: "按{field}搜索...",
+          filterByType: "按类型筛选",
+          allTypes: "所有类型",
+          purchase: "购买",
+          consumption: "消耗",
+          refund: "退款",
+          bonus: "奖励",
+          adjustment: "调整"
+        },
+        columns: {
+          id: "交易ID",
+          user: "用户",
+          type: "类型",
+          amount: "金额",
+          balance: "余额",
+          description: "描述",
+          createdAt: "创建时间",
+          metadata: "元数据"
+        },
+        actions: {
+          clickToCopy: "点击复制",
+          viewDetails: "查看详情"
+        },
+        sort: {
+          ascending: "升序排列",
+          descending: "降序排列",
+          none: "取消排序"
+        },
+        pagination: {
+          showing: "显示第 {start} 到 {end} 条，共 {total} 条结果",
+          pageInfo: "第 {current} 页，共 {total} 页"
+        }
+      },
+      type: {
+        purchase: "购买",
+        consumption: "消耗",
+        refund: "退款",
+        bonus: "奖励",
+        adjustment: "调整"
       }
     },
     subscriptions: {

@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, ExternalLink, RefreshCw, Copy } from 'lucide-vue-next'
-import { useI18n } from 'vue-i18n'
+import type { Composer } from 'vue-i18n'
 import SortableHeader from '@/components/admin/SortableHeader.vue'
 
 // Order type definition
@@ -87,16 +87,15 @@ const formatAmount = (amount: string, currency: string) => {
   }).format(numAmount)
 }
 
-// Table columns definition
-export const columns: ColumnDef<Order>[] = [
+// Table columns definition factory function
+// Accepts t function from useI18n() to avoid calling useI18n() in render functions
+export const createColumns = (t: Composer['t']): ColumnDef<Order>[] => [
   {
     accessorKey: 'id',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.orders.table.columns.id'))
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const id = row.getValue('id') as string
       
       // Create copy functionality
@@ -139,7 +138,6 @@ export const columns: ColumnDef<Order>[] = [
   {
     accessorKey: 'userEmail',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.orders.table.columns.user'),
@@ -150,7 +148,6 @@ export const columns: ColumnDef<Order>[] = [
     },
     enableHiding: false,
     cell: ({ row }) => {
-      const { t } = useI18n()
       const email = row.getValue('userEmail') as string
       const name = row.original.userName
       return h('div', { class: 'max-w-[150px]' }, [
@@ -168,7 +165,6 @@ export const columns: ColumnDef<Order>[] = [
   {
     accessorKey: 'amount',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.orders.table.columns.amount'),
@@ -189,11 +185,9 @@ export const columns: ColumnDef<Order>[] = [
   {
     accessorKey: 'planId',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.orders.table.columns.plan'))
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const planId = row.getValue('planId') as string
       return h('div', { class: 'font-medium' }, planId || t('common.notAvailable'))
     },
@@ -202,12 +196,10 @@ export const columns: ColumnDef<Order>[] = [
   {
     accessorKey: 'status',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.orders.table.columns.status'))
     },
     enableHiding: false,
     cell: ({ row }) => {
-      const { t } = useI18n()
       const status = row.getValue('status') as string
       
       // Get translated status text
@@ -227,7 +219,6 @@ export const columns: ColumnDef<Order>[] = [
   {
     accessorKey: 'provider',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.orders.table.columns.provider'))
     },
     enableHiding: false,
@@ -240,11 +231,9 @@ export const columns: ColumnDef<Order>[] = [
   {
     accessorKey: 'providerOrderId',
     header: () => {
-      const { t } = useI18n()
       return h('span', {}, t('admin.orders.table.columns.providerOrderId'))
     },
     cell: ({ row }) => {
-      const { t } = useI18n()
       const providerOrderId = row.getValue('providerOrderId') as string
       return h('div', { 
         class: 'font-mono text-xs max-w-[120px] truncate',
@@ -256,7 +245,6 @@ export const columns: ColumnDef<Order>[] = [
   {
     accessorKey: 'createdAt',
     header: ({ column }) => {
-      const { t } = useI18n()
       return h(SortableHeader, {
         column,
         title: t('admin.orders.table.columns.createdAt'),
@@ -327,4 +315,7 @@ export const columns: ColumnDef<Order>[] = [
   //   },
   //   enableSorting: false,
   // },
-] 
+]
+
+// Export default columns for backward compatibility (will be created in component setup)
+export const columns: ColumnDef<Order>[] = [] 
