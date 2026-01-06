@@ -91,16 +91,18 @@ pnpm run dev:nuxt
 
 ### 邮箱验证配置
 
-默认情况下，系统要求新用户验证邮箱不需要验证就可以使用。你可以在 `config.ts` 中开启此功能
+默认情况下，系统要求新用户验证邮箱不需要验证就可以使用。你可以在 `config/auth.ts` 中开启此功能
 
-`config.ts` 是整个应用的配置文件，在这里我们可以修改关于应用的各种配置：
+项目采用模块化配置结构，`config/` 目录包含各功能的独立配置文件，主文件 `config.ts` 负责导入和合并所有配置：
 
 ```typescript
+// config/auth.ts
 // 当设置为 true 的时候，系统会在新用户注册的时候发送验证邮件
 // 并且假如用户邮箱没有验证，登录以后没有验证的警告
 // 设置为 false 以后，用户注册没有任何限制
-auth: {
+export const authConfig = {
   requireEmailVerification: true,
+  // ...其他认证配置
 }
 ```
 
@@ -126,15 +128,16 @@ EMAIL_DEFAULT_FROM="noreply@tinyship.cn"
 
 #### 修改配置文件
 
-`config.ts`
+`config/email.ts`
 
 ```typescript
-  email: {
-    /**
-     * 默认 email 发送提供商
-     */
-    defaultProvider: 'resend',
-  },
+export const emailConfig = {
+  /**
+   * 默认 email 发送提供商
+   */
+  defaultProvider: 'resend',
+  // ...其他配置
+}
 ```
 
 配置完毕以后应该就在注册的时候成功的发送验证邮件了。
@@ -287,17 +290,19 @@ TWILIO_DEFAULT_FROM="+1234567890"
 
 ### 修改配置文件
 
-`config.ts` 是整个应用的配置文件，在这里我们可以修改关于应用的各种配置：
+`config/sms.ts` 包含短信服务的配置：
 
 ### 短信验证配置
 
 ```typescript
-  sms: {
-    /**
-     * Default SMS Provider
-     */
-    defaultProvider: 'aliyun',
-  },
+// config/sms.ts
+export const smsConfig = {
+  /**
+   * Default SMS Provider
+   */
+  defaultProvider: 'aliyun',
+  // ...其他配置
+}
 ```
 默认使用的是阿里云发送
 配置完毕以后应该就在注册的时候成功的发送验证短信了。

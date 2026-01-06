@@ -172,7 +172,7 @@ export const en: Locale = {
       }
     },
     signup: {
-      title: "Sign up for ShipEasy",
+      title: "Sign up for TinyShip",
       createAccount: "Create an account",
       socialSignup: "Sign up with your favorite social account",
       continueWith: "Or continue with",
@@ -902,6 +902,7 @@ export const en: Locale = {
       },
       descriptions: {
         ai_chat: "AI Chat",
+        ai_image_generation: "AI Image Generation",
         image_generation: "Image Generation",
         document_processing: "Document Processing",
         purchase: "Credit Purchase",
@@ -1380,6 +1381,80 @@ export const en: Locale = {
         thisWeek: "This Week",
         older: "Older"
       }
+    },
+    image: {
+      metadata: {
+        title: "TinyShip - AI Image Generation",
+        description: "Generate stunning images using AI. Powered by Qwen-Image, fal.ai Flux, and OpenAI DALL-E.",
+        keywords: "AI, image generation, DALL-E, Flux, Qwen, text to image, art, creative"
+      },
+      title: "AI Image Generation",
+      description: "Generate stunning images from text prompts using multiple AI providers",
+      defaultPrompt: "A yellow Labrador wearing black and gold round sunglasses drinking tea with two yellow and white cats in a venue in Chengdu",
+      prompt: "Prompt",
+      promptPlaceholder: "Describe the image you want to generate...",
+      negativePrompt: "Negative Prompt",
+      negativePromptPlaceholder: "Describe what you don't want in the image...",
+      negativePromptHint: "Describe elements to avoid in the generated image",
+      generate: "Generate",
+      generating: "Generating...",
+      generatedSuccessfully: "Image generated successfully!",
+      download: "Download",
+      result: "Result",
+      idle: "Idle",
+      preview: "Preview",
+      json: "JSON",
+      whatNext: "What would you like to do next?",
+      costInfo: "Your request will cost",
+      perMegapixel: "per megapixel",
+      credits: "credits",
+      providers: {
+        title: "Provider",
+        qwen: "Aliyun BaiLian",
+        fal: "fal.ai",
+        openai: "OpenAI"
+      },
+      models: {
+        "qwen-image-plus": "Qwen Image Plus",
+        "qwen-image-max": "Qwen Image Max",
+        "fal-ai/qwen-image-2512/lora": "Qwen Image 2512 Lora",
+        "fal-ai/nano-banana-pro": "Nano Banana Pro",
+        "fal-ai/flux/dev": "Flux Dev",
+        "fal-ai/recraft/v3/text-to-image": "Recraft V3 Text to Image",
+        "fal-ai/flux-pro/kontext": "Flux Pro Kontext",
+        "fal-ai/bytedance/seedream/v3/text-to-image": "Bytedance Seedream V3 Text to Image",
+        "dall-e-3": "DALL-E 3",
+        "dall-e-2": "DALL-E 2"
+      },
+      settings: {
+        title: "Additional Settings",
+        showMore: "More",
+        showLess: "Less",
+        imageSize: "Image Size",
+        imageSizeHint: "Select the aspect ratio and resolution",
+        numInferenceSteps: "Num Inference Steps",
+        numInferenceStepsHint: "More steps = higher quality but slower",
+        guidanceScale: "Guidance Scale",
+        guidanceScaleHint: "How closely to follow the prompt",
+        seed: "Seed",
+        seedHint: "Use the same seed to reproduce results",
+        random: "random",
+        randomize: "Randomize",
+        promptExtend: "Prompt Extend",
+        promptExtendHint: "AI will enhance and expand your prompt",
+        watermark: "Watermark",
+        watermarkHint: "Add Qwen-Image watermark to the generated image",
+        syncMode: "Sync Mode",
+        syncModeHint: "Return base64 data instead of URL"
+      },
+      errors: {
+        generationFailed: "Image generation failed",
+        invalidPrompt: "Please enter a valid prompt",
+        insufficientCredits: "Insufficient Credits",
+        insufficientCreditsDescription: "You need credits to generate images. Purchase credits to continue.",
+        networkError: "Network error. Please check your connection.",
+        unknownError: "An unknown error occurred"
+      }
     }
   },
   premiumFeatures: {
@@ -1501,6 +1576,10 @@ export const en: Locale = {
       ai: {
         title: "AI Chat",
         description: "LLM chat with extensible design, multi-provider support. Login required."
+      },
+      aiImage: {
+        title: "AI Image Generation",
+        description: "AI image generation with extensible design, multi-provider support. Login required."
       },
       premium: {
         title: "Premium Features",

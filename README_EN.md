@@ -19,7 +19,7 @@
   - [🤖 AI Integration](#-ai-integration)
   - [🧠 AI Development Ready](#-ai-development-ready)
 - [📦 Tech Stack](#-tech-stack)
-- [🌟 Why ShipEasy?](#-why-shipeasy)
+- [🌟 Why TinyShip?](#-why-tinyship)
 
 ## 🚀 Getting Started
 
@@ -161,7 +161,7 @@ For detailed setup instructions and configuration guides, please refer to our [S
 - Storage (Alibaba Cloud OSS/AWS S3/Cloudflare R2)
 - AI Integration
 
-## 🌟 Why ShipEasy?
+## 🌟 Why TinyShip?
 
 1. **Quick Start**: Get your SaaS up and running in minutes, not days
 2. **Best Practices**: Built with modern tools and patterns

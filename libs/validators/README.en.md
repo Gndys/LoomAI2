@@ -1,6 +1,6 @@
 # User Validators
 
-ShipEasy's internationalized data validation system built on Zod, providing type-safe data validation and multi-language error message support.
+TinyShip's internationalized data validation system built on Zod, providing type-safe data validation and multi-language error message support.
 
 ## 🌟 Core Features
 

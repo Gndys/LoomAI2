@@ -909,6 +909,7 @@ export const zhCN: Locale = {
       },
       descriptions: {
         ai_chat: "AI 对话",
+        ai_image_generation: "AI 图像生成",
         image_generation: "图片生成",
         document_processing: "文档处理",
         purchase: "积分充值",
@@ -1197,6 +1198,80 @@ export const zhCN: Locale = {
         yesterday: "昨天",
         thisWeek: "本周",
         older: "更早"
+      }
+    },
+    image: {
+      metadata: {
+        title: "TinyShip - AI 图像生成",
+        description: "使用 AI 生成精美图像。支持通义千问图像、fal.ai Flux 和 OpenAI DALL-E。",
+        keywords: "AI, 图像生成, DALL-E, Flux, 通义千问, 文生图, 艺术, 创意"
+      },
+      title: "AI 图像生成",
+      description: "使用多种 AI 提供商从文本提示生成精美图像",
+      defaultPrompt: "一只黄色拉布拉多带着黑色金色圆墨镜在成都的场馆和两只黄白猫喝茶",
+      prompt: "提示词",
+      promptPlaceholder: "描述您想要生成的图像...",
+      negativePrompt: "负面提示词",
+      negativePromptPlaceholder: "描述您不希望在图像中出现的内容...",
+      negativePromptHint: "描述需要避免在生成图像中出现的元素",
+      generate: "生成",
+      generating: "生成中...",
+      generatedSuccessfully: "图像生成成功！",
+      download: "下载",
+      result: "结果",
+      idle: "空闲",
+      preview: "预览",
+      json: "JSON",
+      whatNext: "接下来您想做什么？",
+      costInfo: "本次请求将花费",
+      perMegapixel: "每百万像素",
+      credits: "积分",
+      providers: {
+        title: "提供商",
+        qwen: "阿里云百炼",
+        fal: "fal.ai",
+        openai: "OpenAI"
+      },
+      models: {
+        "qwen-image-plus": "通义千问图像 Plus",
+        "qwen-image-max": "通义千问图像 Max",
+        "fal-ai/qwen-image-2512/lora": "Qwen Image 2512 Lora",
+        "fal-ai/nano-banana-pro": "Nano Banana Pro",
+        "fal-ai/flux/dev": "Flux Dev",
+        "fal-ai/recraft/v3/text-to-image": "Recraft V3 Text to Image",
+        "fal-ai/flux-pro/kontext": "Flux Pro Kontext",
+        "fal-ai/bytedance/seedream/v3/text-to-image": "Bytedance Seedream V3 Text to Image",
+        "dall-e-3": "DALL-E 3",
+        "dall-e-2": "DALL-E 2"
+      },
+      settings: {
+        title: "附加设置",
+        showMore: "更多",
+        showLess: "收起",
+        imageSize: "图像尺寸",
+        imageSizeHint: "选择宽高比和分辨率",
+        numInferenceSteps: "推理步数",
+        numInferenceStepsHint: "步数越多质量越高，但速度越慢",
+        guidanceScale: "引导强度",
+        guidanceScaleHint: "控制生成图像与提示词的匹配程度",
+        seed: "种子",
+        seedHint: "使用相同的种子可以复现结果",
+        random: "随机",
+        randomize: "随机生成",
+        promptExtend: "提示词扩展",
+        promptExtendHint: "AI 将增强和扩展您的提示词",
+        watermark: "水印",
+        watermarkHint: "在生成的图像上添加通义千问水印",
+        syncMode: "同步模式",
+        syncModeHint: "返回 base64 数据而非 URL"
+      },
+      errors: {
+        generationFailed: "图像生成失败",
+        invalidPrompt: "请输入有效的提示词",
+        insufficientCredits: "积分不足",
+        insufficientCreditsDescription: "生成图像需要积分，请购买积分以继续。",
+        networkError: "网络错误，请检查您的连接。",
+        unknownError: "发生未知错误"
       }
     }
   },
@@ -1509,6 +1584,10 @@ export const zhCN: Locale = {
       ai: {
         title: "AI 对话",
         description: "大模型对话实现，可扩展设计，支持多个 Provider，需要购买积分使用"
+      },
+      aiImage: {
+        title: "AI 图像生成",
+        description: "AI 图像生成实现，可扩展设计，支持多个 Provider，需要购买积分使用"
       },
       premium: {
         title: "高级会员功能",

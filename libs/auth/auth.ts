@@ -41,7 +41,7 @@ function getRefererInfo(request?: Request): { locale: string; lastSegment: strin
 }
 
 export const auth = betterAuth({
-  appName: 'shipeasy',
+  appName: 'tinyship',
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {

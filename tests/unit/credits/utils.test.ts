@@ -106,6 +106,7 @@ describe('Credits Utils', () => {
       // At runtime, we can check that all expected codes exist
       const expectedCodes = [
         'ai_chat',
+        'ai_image_generation',
         'image_generation',
         'document_processing',
         'purchase',
