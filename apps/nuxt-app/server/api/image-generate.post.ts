@@ -76,6 +76,31 @@ export default defineEventHandler(async (event) => {
       creditCost
     })
 
+    // Consume credits BEFORE generation to prevent race conditions and free generations
+    const consumeResult = await creditService.consumeCredits({
+      userId,
+      amount: creditCost,
+      description: TransactionTypeCode.AI_IMAGE_GENERATION,
+      metadata: {
+        provider,
+        model,
+        prompt: prompt.trim().substring(0, 100), // Store truncated prompt for reference
+      }
+    })
+
+    if (!consumeResult.success) {
+      throw createError({
+        statusCode: 402,
+        statusMessage: 'Payment Required',
+        data: {
+          error: 'credit_consumption_failed',
+          message: consumeResult.error || 'Failed to consume credits. Please try again.',
+          required: creditCost,
+          balance: consumeResult.newBalance
+        }
+      })
+    }
+
     // Build generation options
     const options: ImageGenerationOptions = {
       prompt: prompt.trim(),
@@ -91,32 +116,15 @@ export default defineEventHandler(async (event) => {
       guidanceScale,
     }
 
-    // Generate image
+    // Generate image (credits already consumed)
     const result = await generateImageResponse(options)
-
-    // Consume credits after successful generation
-    const consumeResult = await creditService.consumeCredits({
-      userId,
-      amount: creditCost,
-      description: TransactionTypeCode.AI_IMAGE_GENERATION,
-      metadata: {
-        provider: result.provider,
-        model: result.model,
-        width: result.width,
-        height: result.height,
-      }
-    })
-
-    if (!consumeResult.success) {
-      console.warn('Credit consumption failed:', consumeResult.error)
-    }
 
     return {
       success: true,
       data: result,
       credits: {
         consumed: creditCost,
-        remaining: creditBalance - creditCost
+        remaining: consumeResult.newBalance  // Use actual balance from consumption result
       }
     }
 
