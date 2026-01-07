@@ -117,7 +117,40 @@ export default defineEventHandler(async (event) => {
     }
 
     // Generate image (credits already consumed)
-    const result = await generateImageResponse(options)
+    // If generation fails, we need to refund the credits
+    let result
+    try {
+      result = await generateImageResponse(options)
+    } catch (generationError: any) {
+      // Refund credits on generation failure
+      console.error('Image generation failed, refunding credits:', generationError)
+      
+      try {
+        await creditService.addCredits({
+          userId,
+          amount: creditCost,
+          type: 'refund',
+          description: 'Refund for failed image generation',
+          metadata: {
+            originalTransactionId: consumeResult.transactionId,
+            provider,
+            model,
+            error: generationError instanceof Error ? generationError.message : 'Unknown error',
+          }
+        })
+        console.log('Credits refunded successfully:', { userId, amount: creditCost })
+      } catch (refundError) {
+        // Log refund failure for manual reconciliation
+        console.error('CRITICAL: Failed to refund credits after generation failure:', {
+          userId,
+          amount: creditCost,
+          originalTransactionId: consumeResult.transactionId,
+          refundError
+        })
+      }
+      
+      throw generationError
+    }
 
     return {
       success: true,
