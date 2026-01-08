@@ -380,9 +380,6 @@ importers:
       '@tanstack/vue-table':
         specifier: 8.21.3
         version: 8.21.3(vue@3.5.25(typescript@5.9.3))
-      '@vee-validate/zod':
-        specifier: 4.15.1
-        version: 4.15.1(vue@3.5.25(typescript@5.9.3))(zod@4.2.1)
       '@vueuse/core':
         specifier: 13.4.0
         version: 13.4.0(vue@3.5.25(typescript@5.9.3))
@@ -429,8 +426,8 @@ importers:
         specifier: 1.2.4
         version: 1.2.4
       vee-validate:
-        specifier: 4.15.1
-        version: 4.15.1(vue@3.5.25(typescript@5.9.3))
+        specifier: 5.0.0-beta.0
+        version: 5.0.0-beta.0(vue@3.5.25(typescript@5.9.3))
       vue-markdown-render:
         specifier: 2.2.1
         version: 2.2.1(vue@3.5.25(typescript@5.9.3))
@@ -4975,11 +4972,6 @@ packages:
     peerDependencies:
       '@unovis/ts': 1.6.2
       vue: ^3
-
-  '@vee-validate/zod@4.15.1':
-    resolution: {integrity: sha512-329Z4TDBE5Vx0FdbA8S4eR9iGCFFUNGbxjpQ20ff5b5wGueScjocUIx9JHPa79LTG06RnlUR4XogQsjN4tecKA==}
-    peerDependencies:
-      zod: ^3.24.0
 
   '@vercel/nft@0.30.4':
     resolution: {integrity: sha512-wE6eAGSXScra60N2l6jWvNtVK0m+sh873CpfZW4KI2v8EHuUQp+mSEi4T+IcdPCSEDgCdAS/7bizbhQlkjzrSA==}
@@ -10909,8 +10901,8 @@ packages:
   validation-better-auth@1.1.1:
     resolution: {integrity: sha512-P8KtbayRUv9CnIbP8EQ1OOufLf2Mm5Mhx5B3LQO2ipfDubhjnqXjEZT9R1vyMgRkzsaCDM3kV5qzIfkol7dytg==}
 
-  vee-validate@4.15.1:
-    resolution: {integrity: sha512-DkFsiTwEKau8VIxyZBGdO6tOudD+QoUBPuHj3e6QFqmbfCRj1ArmYWue9lEp6jLSWBIw4XPlDLjFIZNLdRAMSg==}
+  vee-validate@5.0.0-beta.0:
+    resolution: {integrity: sha512-uGIRnODDMM0A8Weu8AJcZFFJceUpgbSX6G4UYZgWhBc90VcXDK+v7yO16G+sj+6vU1eML11M2BH4HxwoPE62rw==}
     peerDependencies:
       vue: ^3.4.26
 
@@ -16531,14 +16523,6 @@ snapshots:
     dependencies:
       '@unovis/ts': 1.6.2
       vue: 3.5.25(typescript@5.9.3)
-
-  '@vee-validate/zod@4.15.1(vue@3.5.25(typescript@5.9.3))(zod@4.2.1)':
-    dependencies:
-      type-fest: 4.41.0
-      vee-validate: 4.15.1(vue@3.5.25(typescript@5.9.3))
-      zod: 4.2.1
-    transitivePeerDependencies:
-      - vue
 
   '@vercel/nft@0.30.4(rollup@4.53.3)':
     dependencies:
@@ -23931,8 +23915,10 @@ snapshots:
       - vitest
       - vue
 
-  vee-validate@4.15.1(vue@3.5.25(typescript@5.9.3)):
+  vee-validate@5.0.0-beta.0(vue@3.5.25(typescript@5.9.3)):
     dependencies:
+      '@standard-schema/spec': 1.1.0
+      '@standard-schema/utils': 0.3.0
       '@vue/devtools-api': 7.7.9
       type-fest: 4.41.0
       vue: 3.5.25(typescript@5.9.3)

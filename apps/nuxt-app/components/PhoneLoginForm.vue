@@ -134,7 +134,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { createValidators } from '@libs/validators'
 import { authClientVue } from '@libs/auth/authClient'
@@ -211,7 +210,7 @@ const { phoneLoginSchema } = createValidators(t)
 
 // Form validation
 const { handleSubmit, errors, defineField } = useForm({
-  validationSchema: toTypedSchema(phoneLoginSchema),
+  validationSchema: phoneLoginSchema,
   validateOnMount: false,
   initialValues: {
     countryCode: '+86', // Default to China

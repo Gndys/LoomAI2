@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { authClientVue } from "@libs/auth/authClient"
 import { toast } from 'vue-sonner'
-import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { createValidators } from '@libs/validators'
 import { z } from 'zod'
@@ -47,7 +46,7 @@ const profileUpdateSchema = z.object({
 
 // Form validation using vee-validate
 const { handleSubmit, errors, defineField, isSubmitting, resetForm, setValues } = useForm({
-  validationSchema: toTypedSchema(profileUpdateSchema),
+  validationSchema: profileUpdateSchema,
   initialValues: {
     name: '',
     image: ''
