@@ -81,6 +81,7 @@ export function generateVerificationEmail(params: VerificationEmailParams): Emai
   const html = template({
     ...params,
     base_url: params.base_url || config.app.baseUrl,
+    app_name: config.app.name,
     ...translationData
   });
   
@@ -109,6 +110,7 @@ export function generateResetPasswordEmail(params: ResetPasswordEmailParams): Em
   const html = template({
     ...params,
     base_url: params.base_url || config.app.baseUrl,
+    app_name: config.app.name,
     ...translationData
   });
   
