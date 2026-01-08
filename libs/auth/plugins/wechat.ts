@@ -161,10 +161,9 @@ export const wechatPlugin = (options: WeChatPluginOptions): BetterAuthPlugin => 
             });
           }
 
-          // 创建会话
+          // 创建会话 (better-auth 1.4+ takes only userId)
           const newSession = await ctx.context.internalAdapter.createSession(
-            user.id,
-            ctx
+            user.id
           );
 
           // 设置会话 cookie

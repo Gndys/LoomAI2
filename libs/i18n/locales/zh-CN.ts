@@ -295,24 +295,82 @@ export const zhCN: Locale = {
         networkError: "网络错误，请重试"
       }
     },
-    // Better Auth 错误代码映射
+    // Better Auth 1.4 错误代码映射
     authErrors: {
-      USER_ALREADY_EXISTS: "该邮箱已被注册",
-      INVALID_EMAIL_OR_PASSWORD: "邮箱或密码错误",
-      EMAIL_NOT_VERIFIED: "请先验证您的邮箱地址",
+      // 用户相关错误
       USER_NOT_FOUND: "未找到该邮箱对应的账户",
+      USER_ALREADY_EXISTS: "该邮箱已被注册",
+      USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "用户已存在，请使用其他邮箱",
+      USER_EMAIL_NOT_FOUND: "未找到用户邮箱",
+      FAILED_TO_CREATE_USER: "创建用户失败",
+      FAILED_TO_UPDATE_USER: "更新用户失败",
+      
+      // 认证错误
+      INVALID_EMAIL: "邮箱地址无效",
+      INVALID_PASSWORD: "密码无效",
+      INVALID_EMAIL_OR_PASSWORD: "邮箱或密码错误",
       INVALID_CREDENTIALS: "提供的凭据无效",
-      ACCOUNT_BLOCKED: "您的账户已被临时冻结",
-      TOO_MANY_REQUESTS: "登录尝试次数过多，请稍后重试",
       INVALID_TOKEN: "无效或已过期的令牌",
+      PASSWORD_TOO_SHORT: "密码过短",
+      PASSWORD_TOO_LONG: "密码过长",
+      
+      // 邮箱验证错误
+      EMAIL_NOT_VERIFIED: "请先验证您的邮箱地址",
+      EMAIL_ALREADY_VERIFIED: "邮箱已验证",
+      EMAIL_MISMATCH: "邮箱不匹配",
+      EMAIL_CAN_NOT_BE_UPDATED: "邮箱无法更新",
+      VERIFICATION_EMAIL_NOT_ENABLED: "验证邮件功能未启用",
+      
+      // 会话错误
       SESSION_EXPIRED: "您的会话已过期，请重新登录",
+      SESSION_NOT_FRESH: "会话不是最新的，请重新认证",
+      FAILED_TO_CREATE_SESSION: "创建会话失败",
+      FAILED_TO_GET_SESSION: "获取会话失败",
+      
+      // 账户错误
+      ACCOUNT_NOT_FOUND: "账户未找到",
+      ACCOUNT_BLOCKED: "您的账户已被临时冻结",
+      CREDENTIAL_ACCOUNT_NOT_FOUND: "凭证账户未找到",
+      SOCIAL_ACCOUNT_ALREADY_LINKED: "社交账户已关联",
+      LINKED_ACCOUNT_ALREADY_EXISTS: "关联账户已存在",
+      FAILED_TO_UNLINK_LAST_ACCOUNT: "无法解除最后一个账户的关联",
+      USER_ALREADY_HAS_PASSWORD: "用户已设置密码",
+      
+      // 手机号错误
       PHONE_NUMBER_ALREADY_EXISTS: "该手机号已被注册",
       INVALID_PHONE_NUMBER: "手机号格式无效",
       OTP_EXPIRED: "验证码已过期",
       INVALID_OTP: "验证码错误",
       OTP_TOO_MANY_ATTEMPTS: "验证尝试次数过多，请重新获取验证码",
+      
+      // 提供商错误
+      PROVIDER_NOT_FOUND: "提供商未找到",
+      ID_TOKEN_NOT_SUPPORTED: "不支持 ID Token",
+      FAILED_TO_GET_USER_INFO: "获取用户信息失败",
+      
+      // 安全错误
       CAPTCHA_REQUIRED: "请完成验证码验证",
       CAPTCHA_INVALID: "验证码验证失败",
+      TOO_MANY_REQUESTS: "请求过于频繁，请稍后重试",
+      CROSS_SITE_NAVIGATION_LOGIN_BLOCKED: "跨站导航登录被阻止",
+      INVALID_ORIGIN: "无效的来源",
+      MISSING_OR_NULL_ORIGIN: "来源缺失或无效",
+      
+      // 回调 URL 错误
+      INVALID_CALLBACK_URL: "无效的回调 URL",
+      INVALID_REDIRECT_URL: "无效的重定向 URL",
+      INVALID_ERROR_CALLBACK_URL: "无效的错误回调 URL",
+      INVALID_NEW_USER_CALLBACK_URL: "无效的新用户回调 URL",
+      CALLBACK_URL_REQUIRED: "需要回调 URL",
+      
+      // 验证错误
+      VALIDATION_ERROR: "验证错误",
+      MISSING_FIELD: "缺少必填字段",
+      FIELD_NOT_ALLOWED: "不允许的字段",
+      ASYNC_VALIDATION_NOT_SUPPORTED: "不支持异步验证",
+      
+      // 系统错误
+      FAILED_TO_CREATE_VERIFICATION: "创建验证失败",
       EMAIL_SEND_FAILED: "邮件发送失败，请稍后重试",
       SMS_SEND_FAILED: "短信发送失败，请稍后重试",
       UNKNOWN_ERROR: "发生未知错误"
