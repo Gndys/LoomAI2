@@ -14,6 +14,7 @@ RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 
 # Copy all files needed for build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json config.ts tsconfig.json ./
+COPY config ./config
 COPY apps/nuxt-app ./apps/nuxt-app
 COPY libs ./libs
 COPY scripts ./scripts
