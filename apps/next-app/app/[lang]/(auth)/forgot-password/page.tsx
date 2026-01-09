@@ -57,7 +57,7 @@ export default function ForgetPasswordPage() {
     setLoading(true);
     setError(null);
     
-    const { data: result, error } = await authClientReact.forgetPassword({
+    const { data: result, error } = await authClientReact.requestPasswordReset({
       email: data.email,
       redirectTo: '/reset-password',
       fetchOptions: {

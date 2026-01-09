@@ -128,7 +128,10 @@ TinyShip 内置了强大的多主题系统，基于 shadcn/ui 主题架构，提
 
 ### 在 config.ts 中配置
 
+主题配置位于 `config.ts` 的 `app` 对象中：
+
 ```typescript
+// config.ts
 export const config = {
   app: {
     theme: {
@@ -136,7 +139,8 @@ export const config = {
       defaultColorScheme: 'claude' as const, // 默认颜色方案
       storageKey: 'tinyship-ui-theme'        // 主题持久化存储键
     }
-  }
+  },
+  // 其他配置从 config/ 目录导入...
 }
 ```
 
@@ -167,7 +171,10 @@ TinyShip 提供了完整的国际化支持，支持中英文双语，可以轻�
 
 ### 在 config.ts 中配置
 
+国际化配置位于 `config.ts` 的 `app` 对象中：
+
 ```typescript
+// config.ts
 export const config = {
   app: {
     i18n: {
@@ -202,16 +209,15 @@ export const config = {
 
 TinyShip 支持 Cloudflare Turnstile 验证码，用于防止垃圾注册和恶意请求。
 
-### 在 config.ts 中配置
+### 在 config/captcha.ts 中配置
 
 ```typescript
-export const config = {
-  captcha: {
-    enabled: false,                          // 启用/禁用验证码验证
-    defaultProvider: 'cloudflare-turnstile', // 默认验证码提供商
-    cloudflare: {
-      // 配置会自动从环境变量读取，开发环境自动使用测试密钥
-    }
+// config/captcha.ts
+export const captchaConfig = {
+  enabled: false,                          // 启用/禁用验证码验证
+  defaultProvider: 'cloudflare-turnstile', // 默认验证码提供商
+  cloudflare: {
+    // 配置会自动从环境变量读取，开发环境自动使用测试密钥
   }
 }
 ```
@@ -257,24 +263,23 @@ TinyShip 支持以下三个 AI 提供商，每个都有其独特优势：
 | **DeepSeek** | deepseek-chat, deepseek-coder | 编程能力强，成本低 | 代码辅助、技术支持 |
 | **OpenAI** | gpt-5, gpt-5-codex, gpt-5-pro | 性能强大，生态完善 | 复杂推理、英文对话 |
 
-### 在 config.ts 中配置
+### 在 config/ai.ts 中配置
 
 ```typescript
-export const config = {
-  ai: {
-    defaultProvider: 'qwen' as const,        // 默认 AI 提供商: 'qwen' | 'deepseek' | 'openai'
-    
-    defaultModels: {                         // 每个提供商的默认模型
-      qwen: 'qwen-turbo',
-      deepseek: 'deepseek-chat',
-      openai: 'gpt-5'
-    },
-    
-    availableModels: {                       // 每个提供商的可用模型列表
-      qwen: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
-      deepseek: ['deepseek-chat', 'deepseek-coder'],
-      openai: ['gpt-5', 'gpt-5-codex', 'gpt-5-pro']
-    }
+// config/ai.ts
+export const aiConfig = {
+  defaultProvider: 'qwen' as const,        // 默认 AI 提供商: 'qwen' | 'deepseek' | 'openai'
+  
+  defaultModels: {                         // 每个提供商的默认模型
+    qwen: 'qwen-turbo',
+    deepseek: 'deepseek-chat',
+    openai: 'gpt-5'
+  },
+  
+  availableModels: {                       // 每个提供商的可用模型列表
+    qwen: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
+    deepseek: ['deepseek-chat', 'deepseek-coder'],
+    openai: ['gpt-5', 'gpt-5-codex', 'gpt-5-pro']
   }
 }
 ```
@@ -401,39 +406,38 @@ TinyShip 提供了统一的云存储服务，支持多个主流云存储服务�
 - ✅ 元数据检索
 - ✅ 目录列表
 
-### 在 config.ts 中配置
+### 在 config/storage.ts 中配置
 
 ```typescript
-export const config = {
-  storage: {
-    defaultProvider: 'oss' as const,  // 默认服务商: 'oss' | 's3' | 'r2'
-    
-    oss: {
-      region: 'oss-cn-shanghai',
-      accessKeyId: '...',
-      accessKeySecret: '...',
-      bucket: 'your-bucket',
-      endpoint: '',  // 可选：自定义端点
-      defaultExpiration: 60
-    },
-    
-    s3: {
-      region: 'us-east-1',
-      accessKeyId: '...',
-      accessKeySecret: '...',
-      bucket: 'your-bucket',
-      endpoint: '',  // 可选：S3 兼容服务的自定义端点
-      forcePathStyle: false,
-      defaultExpiration: 3600
-    },
-    
-    r2: {
-      accountId: '...',
-      accessKeyId: '...',
-      accessKeySecret: '...',
-      bucket: 'your-bucket',
-      defaultExpiration: 3600
-    }
+// config/storage.ts
+export const storageConfig = {
+  defaultProvider: 'oss' as const,  // 默认服务商: 'oss' | 's3' | 'r2'
+  
+  oss: {
+    region: 'oss-cn-shanghai',
+    accessKeyId: '...',
+    accessKeySecret: '...',
+    bucket: 'your-bucket',
+    endpoint: '',  // 可选：自定义端点
+    defaultExpiration: 60
+  },
+  
+  s3: {
+    region: 'us-east-1',
+    accessKeyId: '...',
+    accessKeySecret: '...',
+    bucket: 'your-bucket',
+    endpoint: '',  // 可选：S3 兼容服务的自定义端点
+    forcePathStyle: false,
+    defaultExpiration: 3600
+  },
+  
+  r2: {
+    accountId: '...',
+    accessKeyId: '...',
+    accessKeySecret: '...',
+    bucket: 'your-bucket',
+    defaultExpiration: 3600
   }
 }
 ```
@@ -526,4 +530,4 @@ await s3Storage.uploadFile({
 - **AI 对话**: 支持 Qwen、DeepSeek、OpenAI 三大提供商
 - **存储服务**: 支持阿里云 OSS、AWS S3、Cloudflare R2
 
-所有配置都通过 `config.ts` 统一管理，确保一致性和易于维护。根据您的需求启用或禁用这些功能，打造独特的用户体验。
+配置采用模块化结构：主文件 `config.ts` 保留应用核心配置（name、theme、i18n），其他配置分布在 `config/` 目录下的独立文件中（auth、payment、credits、ai、storage 等），确保清晰和易于维护。根据您的需求启用或禁用这些功能，打造独特的用户体验。

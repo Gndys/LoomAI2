@@ -2,7 +2,7 @@
 
 ## 概述
 
-ShipEasy 项目使用统一的配置系统来管理所有环境变量和应用配置。配置系统基于单一的 `config.ts` 文件，支持 Next.js 和 Nuxt.js 两个框架。
+TinyShip 项目使用统一的配置系统来管理所有环境变量和应用配置。配置系统基于单一的 `config.ts` 文件，支持 Next.js 和 Nuxt.js 两个框架。
 
 ## 架构设计
 

@@ -20,6 +20,7 @@ export function safeNumber(value: unknown, defaultValue = 0): number {
  */
 export const TransactionTypeCode = {
   AI_CHAT: 'ai_chat',
+  AI_IMAGE_GENERATION: 'ai_image_generation',
   IMAGE_GENERATION: 'image_generation',
   DOCUMENT_PROCESSING: 'document_processing',
   PURCHASE: 'purchase',

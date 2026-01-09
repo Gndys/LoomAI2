@@ -213,7 +213,6 @@ import { Save, Trash2 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { authClientVue } from '@libs/auth/authClient'
 import { createAdminUserValidators } from '@libs/validators'
-import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import type { z } from 'zod'
 
@@ -247,7 +246,7 @@ const {
   setValues,
   resetForm
 } = useForm({
-  validationSchema: toTypedSchema(validationSchema.value),
+  validationSchema: validationSchema.value,
   initialValues: {
     name: '',
     email: '',

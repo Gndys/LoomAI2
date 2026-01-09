@@ -179,6 +179,13 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     // to support both credit-based and subscription-based access
   },
   {
+    pattern: new RegExp('^/api/image-generate(\\/.*)?$'), 
+    type: 'api',
+    requiresAuth: true
+    // Credit check is handled in the API route itself
+    // to check balance before generation
+  },
+  {
     pattern: new RegExp('^/api/protected(\\/.*)?$'), 
     type: 'api',
     requiresAuth: true

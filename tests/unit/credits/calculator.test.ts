@@ -23,7 +23,14 @@ describe('Credits Calculator', () => {
         credits: {
           consumptionMode: 'dynamic',
           fixedConsumption: {
-            aiChat: 1
+            aiChat: 1,
+            aiImage: {
+              default: 10,
+              models: {
+                'qwen-image-max': 8,
+                'dall-e-3': 15,
+              }
+            }
           },
           dynamicConsumption: {
             tokensPerCredit: 1000, // 1000 tokens = 1 credit
@@ -42,6 +49,13 @@ describe('Credits Calculator', () => {
       };
       
       vi.doMock('@config', () => ({ config: mockConfig }));
+      vi.doMock('../../config/credits', () => ({
+        resolveFixedConsumption: (cfg: any, model?: string) => {
+          if (typeof cfg === 'number') return cfg;
+          if (model && cfg.models?.[model] !== undefined) return cfg.models[model];
+          return cfg.default;
+        }
+      }));
     });
 
     test('should calculate credits for exact token count', async () => {
@@ -151,12 +165,12 @@ describe('Credits Calculator', () => {
 
   describe('Fixed Consumption Mode', () => {
     beforeEach(async () => {
-      // Mock config for fixed mode
+      // Mock config for fixed mode with simple number
       mockConfig = {
         credits: {
           consumptionMode: 'fixed',
           fixedConsumption: {
-            aiChat: 5 // Fixed 5 credits per chat
+            aiChat: 5 // Fixed 5 credits per chat (simple number format)
           },
           dynamicConsumption: {
             tokensPerCredit: 1000,
@@ -168,6 +182,13 @@ describe('Credits Calculator', () => {
       };
       
       vi.doMock('@config', () => ({ config: mockConfig }));
+      vi.doMock('../../config/credits', () => ({
+        resolveFixedConsumption: (cfg: any, model?: string) => {
+          if (typeof cfg === 'number') return cfg;
+          if (model && cfg.models?.[model] !== undefined) return cfg.models[model];
+          return cfg.default;
+        }
+      }));
     });
 
     test('should return fixed amount regardless of token count', async () => {
@@ -208,6 +229,76 @@ describe('Credits Calculator', () => {
     });
   });
 
+  describe('Fixed Mode with Object Config (Model-specific pricing)', () => {
+    beforeEach(async () => {
+      // Mock config for fixed mode with object (model-specific pricing)
+      mockConfig = {
+        credits: {
+          consumptionMode: 'fixed',
+          fixedConsumption: {
+            aiChat: {
+              default: 1,
+              models: {
+                'gpt-4': 3,
+                'gpt-4-turbo': 2,
+                'qwen-turbo': 1
+              }
+            }
+          },
+          dynamicConsumption: {
+            tokensPerCredit: 1000,
+            modelMultipliers: { 'default': 1.0 }
+          }
+        }
+      };
+      
+      vi.doMock('@config', () => ({ config: mockConfig }));
+      vi.doMock('../../config/credits', () => ({
+        resolveFixedConsumption: (cfg: any, model?: string) => {
+          if (typeof cfg === 'number') return cfg;
+          if (model && cfg.models?.[model] !== undefined) return cfg.models[model];
+          return cfg.default;
+        }
+      }));
+    });
+
+    test('should return model-specific cost for gpt-4', async () => {
+      const { calculateCreditConsumption } = await import('@libs/credits/calculator');
+      
+      const result = calculateCreditConsumption({
+        totalTokens: 1000,
+        model: 'gpt-4',
+        provider: 'openai'
+      });
+      
+      expect(result).toBe(3);
+    });
+
+    test('should return model-specific cost for gpt-4-turbo', async () => {
+      const { calculateCreditConsumption } = await import('@libs/credits/calculator');
+      
+      const result = calculateCreditConsumption({
+        totalTokens: 1000,
+        model: 'gpt-4-turbo',
+        provider: 'openai'
+      });
+      
+      expect(result).toBe(2);
+    });
+
+    test('should return default cost for unknown model', async () => {
+      const { calculateCreditConsumption } = await import('@libs/credits/calculator');
+      
+      const result = calculateCreditConsumption({
+        totalTokens: 1000,
+        model: 'unknown-model',
+        provider: 'openai'
+      });
+      
+      expect(result).toBe(1); // default
+    });
+  });
+
   describe('Helper Functions', () => {
     beforeEach(async () => {
       mockConfig = {
@@ -215,7 +306,13 @@ describe('Credits Calculator', () => {
           consumptionMode: 'dynamic',
           fixedConsumption: {
             aiChat: 1,
-            aiImage: 10
+            aiImage: {
+              default: 10,
+              models: {
+                'qwen-image-max': 8,
+                'dall-e-3': 15,
+              }
+            }
           },
           dynamicConsumption: {
             tokensPerCredit: 1000,
@@ -228,6 +325,13 @@ describe('Credits Calculator', () => {
       };
       
       vi.doMock('@config', () => ({ config: mockConfig }));
+      vi.doMock('../../config/credits', () => ({
+        resolveFixedConsumption: (cfg: any, model?: string) => {
+          if (typeof cfg === 'number') return cfg;
+          if (model && cfg.models?.[model] !== undefined) return cfg.models[model];
+          return cfg.default;
+        }
+      }));
     });
 
     test('isDynamicMode should return true in dynamic mode', async () => {
@@ -249,10 +353,120 @@ describe('Credits Calculator', () => {
       expect(getModelMultiplier('unknown-model')).toBe(1.0);
     });
 
-    test('getFixedConsumptionAmount should return correct amount', async () => {
+    test('getFixedConsumptionAmount should return correct amount for simple number', async () => {
       const { getFixedConsumptionAmount } = await import('@libs/credits/calculator');
       
       expect(getFixedConsumptionAmount('aiChat')).toBe(1);
+    });
+
+    test('getFixedConsumptionAmount should return default for aiImage without model', async () => {
+      const { getFixedConsumptionAmount } = await import('@libs/credits/calculator');
+      
+      expect(getFixedConsumptionAmount('aiImage')).toBe(10);
+    });
+
+    test('getFixedConsumptionAmount should return model-specific cost for aiImage', async () => {
+      const { getFixedConsumptionAmount } = await import('@libs/credits/calculator');
+      
+      expect(getFixedConsumptionAmount('aiImage', 'qwen-image-max')).toBe(8);
+      expect(getFixedConsumptionAmount('aiImage', 'dall-e-3')).toBe(15);
+    });
+  });
+
+  describe('AI Image Credit Calculation', () => {
+    beforeEach(async () => {
+      // Using new unified flat format for aiImage
+      mockConfig = {
+        credits: {
+          consumptionMode: 'dynamic',
+          fixedConsumption: {
+            aiChat: 1,
+            aiImage: {
+              default: 10,
+              models: {
+                'qwen-image-max': 8,
+                'qwen-image-plus': 5,
+                'fal-ai/flux/schnell': 6,
+                'fal-ai/flux/dev': 10,
+                'dall-e-3': 15,
+                'dall-e-2': 8,
+              }
+            }
+          },
+          dynamicConsumption: {
+            tokensPerCredit: 1000,
+            modelMultipliers: { 'default': 1.0 }
+          }
+        }
+      };
+      
+      vi.doMock('@config', () => ({ config: mockConfig }));
+    });
+
+    test('should return default for unknown model', async () => {
+      const { calculateImageCreditCost } = await import('@libs/ai/image');
+      
+      const result = calculateImageCreditCost({
+        provider: 'qwen',
+        model: 'unknown-model'
+      });
+      
+      expect(result).toBe(10); // global default
+    });
+
+    test('should return model-specific cost for qwen-image-max', async () => {
+      const { calculateImageCreditCost } = await import('@libs/ai/image');
+      
+      const result = calculateImageCreditCost({
+        provider: 'qwen',
+        model: 'qwen-image-max'
+      });
+      
+      expect(result).toBe(8);
+    });
+
+    test('should return model-specific cost for dall-e-2', async () => {
+      const { calculateImageCreditCost } = await import('@libs/ai/image');
+      
+      const result = calculateImageCreditCost({
+        provider: 'openai',
+        model: 'dall-e-2'
+      });
+      
+      expect(result).toBe(8);
+    });
+
+    test('should return model-specific cost for dall-e-3', async () => {
+      const { calculateImageCreditCost } = await import('@libs/ai/image');
+      
+      const result = calculateImageCreditCost({
+        provider: 'openai',
+        model: 'dall-e-3'
+      });
+      
+      expect(result).toBe(15);
+    });
+
+    test('should return fal model-specific cost', async () => {
+      const { calculateImageCreditCost } = await import('@libs/ai/image');
+      
+      const result = calculateImageCreditCost({
+        provider: 'fal',
+        model: 'fal-ai/flux/dev'
+      });
+      
+      expect(result).toBe(10);
+    });
+
+    test('should return default for unknown fal model', async () => {
+      const { calculateImageCreditCost } = await import('@libs/ai/image');
+      
+      const result = calculateImageCreditCost({
+        provider: 'fal',
+        model: 'fal-ai/unknown-model'
+      });
+      
+      expect(result).toBe(10); // global default (no provider default anymore)
     });
   });
 
@@ -275,6 +489,13 @@ describe('Credits Calculator', () => {
       };
       
       vi.doMock('@config', () => ({ config: mockConfig }));
+      vi.doMock('../../config/credits', () => ({
+        resolveFixedConsumption: (cfg: any, model?: string) => {
+          if (typeof cfg === 'number') return cfg;
+          if (model && cfg.models?.[model] !== undefined) return cfg.models[model];
+          return cfg.default;
+        }
+      }));
     });
 
     test('should handle zero tokens', async () => {
@@ -330,4 +551,3 @@ describe('Credits Calculator', () => {
     });
   });
 });
-

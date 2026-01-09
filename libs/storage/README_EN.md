@@ -1,6 +1,6 @@
 # Storage Library
 
-A unified storage abstraction layer for ShipEasy project, providing consistent interfaces for different cloud storage providers.
+A unified storage abstraction layer for TinyShip project, providing consistent interfaces for different cloud storage providers.
 
 ## Overview
 
@@ -539,5 +539,5 @@ DEBUG=storage:* npm start
 
 ## License
 
-This library is part of the ShipEasy project and follows the same license terms.
+This library is part of the TinyShip project and follows the same license terms.
 

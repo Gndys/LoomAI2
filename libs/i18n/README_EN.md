@@ -488,4 +488,4 @@ When adding new translations:
 
 ## 📄 License
 
-Part of the ShipEasy monorepo project. 
+Part of the TinyShip monorepo project. 

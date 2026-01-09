@@ -37,7 +37,7 @@
 
 ## ⚙️ 配置概览
 
-通过 `config.ts` 中的 **payment.providers** 进行设置。建议您根据项目需求和目标市场选择一种支付方式进行配置：
+通过 `config/payment.ts` 中的 **providers** 进行设置。建议您根据项目需求和目标市场选择一种支付方式进行配置：
 
 - **中国大陆用户**：推荐 WeChat Pay
 - **国际用户**：推荐 Stripe 
@@ -320,7 +320,7 @@ CREEM_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ## 📦 配置付款计划
 
-通过 `config.ts` 中的 **payment.plans** 配置产品定价方案。这里配置的计划会自动显示在 `/pricing` 页面中。
+通过 `config/payment.ts` 中的 **plans** 配置产品定价方案。这里配置的计划会自动显示在 `/pricing` 页面中。
 默认项目有所有三种支付方式的六种价格条目供参考。
 
 ### 💰 计划类型

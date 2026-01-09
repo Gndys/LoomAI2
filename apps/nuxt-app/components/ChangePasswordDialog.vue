@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { authClientVue } from "@libs/auth/authClient"
 import { toast } from 'vue-sonner'
-import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { createValidators } from '@libs/validators'
 import { cn } from '@/lib/utils'
@@ -27,7 +26,7 @@ const { changePasswordSchema } = createValidators(t)
 
 // Form validation using vee-validate
 const { handleSubmit, errors, defineField, isSubmitting, resetForm } = useForm({
-  validationSchema: toTypedSchema(changePasswordSchema),
+  validationSchema: changePasswordSchema,
   initialValues: {
     currentPassword: '',
     newPassword: '',

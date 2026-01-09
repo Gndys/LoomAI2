@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     });
     
     // Get streaming response with usage tracking
-    const { response, usage, provider: usedProvider, model: usedModel } = streamResponseWithUsage({
+    const { response, usage, provider: usedProvider, model: usedModel } = await streamResponseWithUsage({
       messages,
       provider,
       model
