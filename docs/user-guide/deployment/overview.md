@@ -8,18 +8,10 @@
   - [方式对比](#方式对比)
   - [推荐方案](#推荐方案)
 - [📚 部署文档](#-部署文档)
-  - [1. [传统部署指南](./deployment-traditional.md)](#1-传统部署指南deployment-traditionalmd)
-  - [2. [Docker 部署指南](./deployment-docker.md)](#2-docker-部署指南deployment-dockermd)
-  - [3. [云平台部署与通用配置](./deployment-cloud.md)](#3-云平台部署与通用配置deployment-cloudmd)
 - [🚀 快速开始](#-快速开始)
-  - [选择你的部署方式](#选择你的部署方式)
-  - [通用准备工作](#通用准备工作)
 - [🔧 快速命令对比](#-快速命令对比)
 - [🌟 特性支持](#-特性支持)
 - [📋 部署检查清单](#-部署检查清单)
-  - [部署前检查](#部署前检查)
-  - [部署后验证](#部署后验证)
-  - [生产环境额外检查](#生产环境额外检查)
 - [🆘 获取帮助](#-获取帮助)
 
 ## 🎯 部署方式选择
@@ -34,13 +26,13 @@
 
 ### 推荐方案
 
-- **🥇 生产环境推荐**: [云平台部署](./deployment-cloud.md) 或 [Docker 部署](./deployment-docker.md)
-- **🥈 开发/测试环境**: [传统部署](./deployment-traditional.md)
-- **🥉 快速验证**: [传统部署](./deployment-traditional.md)
+- **🥇 生产环境推荐**: [云平台部署](./cloud.md) 或 [Docker 部署](./docker.md)
+- **🥈 开发/测试环境**: [传统部署](./traditional.md)
+- **🥉 快速验证**: [传统部署](./traditional.md)
 
 ## 📚 部署文档
 
-### 1. [传统部署指南](./deployment-traditional.md)
+### 1. [传统部署指南](./traditional.md)
 - **适合**: 开发、测试环境
 - **内容**: 
   - 环境准备和依赖安装
@@ -48,7 +40,7 @@
   - PM2 进程管理
   - 健康检查和故障排除
 
-### 2. [Docker 部署指南](./deployment-docker.md)  
+### 2. [Docker 部署指南](./docker.md)  
 - **适合**: 容器化环境、生产环境
 - **内容**:
   - Docker Compose 快速部署
@@ -56,7 +48,7 @@
   - 数据库连接配置
   - 容器管理和调试
 
-### 3. [云平台部署与通用配置](./deployment-cloud.md)
+### 3. [云平台部署与通用配置](./cloud.md)
 - **适合**: 云环境、高可用生产环境
 - **内容**:
   - Vercel、Netlify、Railway 部署
@@ -70,9 +62,9 @@
 
 **如果你想要...**
 
-- ✅ **最简单的开始**: → [传统部署](./deployment-traditional.md#快速启动)
-- ✅ **容器化部署**: → [Docker 部署](./deployment-docker.md#推荐方式docker-compose)
-- ✅ **零运维部署**: → [云平台部署](./deployment-cloud.md#vercel-部署)
+- ✅ **最简单的开始**: → [传统部署](./traditional.md#快速启动)
+- ✅ **容器化部署**: → [Docker 部署](./docker.md#推荐方式docker-compose)
+- ✅ **零运维部署**: → [云平台部署](./cloud.md#vercel-部署)
 
 ### 通用准备工作
 
@@ -145,10 +137,10 @@
 
 遇到问题？查看对应部署方式的故障排除章节：
 
-- [传统部署故障排除](./deployment-traditional.md#故障排除)
-- [Docker 部署故障排除](./deployment-docker.md#故障排除)
-- [云平台部署故障排除](./deployment-cloud.md#故障排除)
+- [传统部署故障排除](./traditional.md#故障排除)
+- [Docker 部署故障排除](./docker.md#故障排除)
+- [云平台部署故障排除](./cloud.md#故障排除)
 
 ---
 
-选择适合你需求的部署方式，按照对应的详细指南进行部署。每种方式都有其优势，关键是找到最适合你项目需求的方案。 
+选择适合你需求的部署方式，按照对应的详细指南进行部署。每种方式都有其优势，关键是找到最适合你项目需求的方案。
