@@ -36,6 +36,34 @@ export const config = {
     name: 'TinyShip',
 
     /**
+     * Logo Configuration
+     * Customize your application's logo appearance
+     */
+    logo: {
+      /**
+       * Logo icon URL (path relative to public folder or absolute URL)
+       * Recommended size: 40x40px for square icon
+       * @example '/logo.svg' or 'https://example.com/logo.png'
+       */
+      iconUrl: '/logo.svg',
+
+      /**
+       * Full logo image URL (optional, includes icon and text)
+       * Used for scenarios where you want a complete logo image instead of icon + text
+       * If not provided, icon + app name text will be used
+       * Recommended size: 200x40px
+       */
+      fullLogoUrl: '' as string | undefined,
+
+      /**
+       * Custom CSS classes for the icon container
+       * Use this to add background color, border, rounded corners, padding, etc.
+       * @example 'bg-primary rounded-full p-1' or 'bg-white shadow-sm rounded-lg'
+       */
+      iconClassName: 'bg-chart-1 rounded-full p-2' as string,
+    },
+
+    /**
      * Base URL Configuration
      * This will be used for all callback URLs and webhooks
      */

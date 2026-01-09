@@ -19,7 +19,7 @@ export const VERIFICATION_TEMPLATE = `
     <!-- Header -->
     <mj-section padding="20px 0">
       <mj-column>
-        <mj-image width="120px" src="{{base_url}}/android-chrome-192x192.png" alt="TinyShip Logo" />
+        <mj-image width="120px" src="{{base_url}}/android-chrome-192x192.png" alt="{{app_name}} Logo" />
       </mj-column>
     </mj-section>
     
@@ -99,7 +99,7 @@ export const RESET_PASSWORD_TEMPLATE = `
     <!-- Header -->
     <mj-section padding="20px 0">
       <mj-column>
-        <mj-image width="120px" src="{{base_url}}/android-chrome-192x192.png" alt="TinyShip Logo" />
+        <mj-image width="120px" src="{{base_url}}/android-chrome-192x192.png" alt="{{app_name}} Logo" />
       </mj-column>
     </mj-section>
     

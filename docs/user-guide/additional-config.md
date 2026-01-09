@@ -1,9 +1,12 @@
 # 更多配置
 
-本文档介绍 TinyShip 应用的其他重要配置选项，包括主题系统、国际化和验证码等功能的配置方法。
+本文档介绍 TinyShip 应用的其他重要配置选项，包括应用基础配置、主题系统、国际化和验证码等功能的配置方法。
 
 ## 📑 目录
 
+- [应用基础配置](#应用基础配置)
+  - [应用名称](#应用名称)
+  - [Logo 配置](#logo-配置)
 - [主题系统配置](#主题系统配置)
   - [可用主题](#可用主题)
   - [在 config.ts 中配置](#在-configts-中配置)
@@ -27,6 +30,87 @@
   - [环境变量配置](#环境变量配置-2)
   - [使用方法](#使用方法)
 - [总结](#总结)
+
+---
+
+## 应用基础配置
+
+在开始使用 TinyShip 之前，您需要配置一些基础信息，包括应用名称和 Logo。这些配置会影响整个应用的品牌展示。
+
+### 应用名称
+
+应用名称会显示在页面标题、Logo 旁边的文字、邮件模板等位置。
+
+```typescript
+// config.ts
+export const config = {
+  app: {
+    name: 'TinyShip',  // 修改为您的应用名称
+  }
+}
+```
+
+### Logo 配置
+
+TinyShip 支持灵活的 Logo 配置，您可以使用图标 + 文字的组合，或者使用完整的 Logo 图片。
+
+```typescript
+// config.ts
+export const config = {
+  app: {
+    logo: {
+      /**
+       * Logo 图标 URL（相对于 public 文件夹的路径或绝对 URL）
+       * 推荐尺寸：24x24px 的 SVG 或 PNG
+       * @example '/logo.svg' 或 'https://example.com/logo.png'
+       */
+      iconUrl: '/logo.svg',
+
+      /**
+       * 完整 Logo 图片 URL（可选，包含图标和文字）
+       * 用于需要展示完整 Logo 图片而非图标 + 文字组合的场景
+       * 如果不设置，将使用 iconUrl + app.name 的组合
+       * 推荐尺寸：200x40px
+       */
+      fullLogoUrl: undefined,
+
+      /**
+       * 图标容器的自定义 CSS 类
+       * 用于添加背景色、边框、圆角、内边距等样式
+       * @example 'bg-primary rounded-full p-1' 或 'bg-white shadow-sm rounded-lg'
+       */
+      iconClassName: 'bg-chart-1 rounded-full p-2',
+    },
+  }
+}
+```
+
+**配置选项说明**：
+
+| 选项 | 说明 | 示例 |
+|------|------|------|
+| `iconUrl` | Logo 图标的路径，支持 SVG、PNG 等格式 | `/logo.svg` |
+| `fullLogoUrl` | 完整 Logo 图片路径（可选），设置后会替代图标 + 文字的组合 | `/full-logo.png` |
+| `iconClassName` | 图标容器的 Tailwind CSS 类，用于自定义样式 | `bg-chart-1 rounded-full p-2` |
+
+**自定义 Logo 步骤**：
+
+1. **准备 Logo 文件**：
+   - 图标文件：推荐 24x24px 的 SVG 格式（白色填充，配合彩色背景使用）
+   - 完整 Logo：推荐 200x40px 的 PNG 或 SVG 格式
+
+2. **放置文件**：
+   - 将 Logo 文件放入 `apps/next-app/public/` 目录
+   - 同时也需要放入 `apps/nuxt-app/public/` 和 `apps/docs-app/public/` 目录
+
+3. **更新配置**：
+   ```typescript
+   logo: {
+     iconUrl: '/my-logo.svg',
+     iconClassName: 'bg-blue-500 rounded-full p-1',
+   }
+   ```
+
 
 ---
 
@@ -437,8 +521,9 @@ await s3Storage.uploadFile({
 
 ## 总结
 
-这些配置选项让您可以完全自定义 TinyShip 应用的外观、语言、安全、AI 和存储功能：
+这些配置选项让您可以完全自定义 TinyShip 应用的品牌形象、外观、语言、安全、AI 和存储功能：
 
+- **应用基础配置**: 自定义应用名称和 Logo
 - **主题系统**: 5 种预设主题 + 自定义主题支持
 - **国际化**: 完整的中英文支持 + 易于扩展
 - **验证码**: Cloudflare Turnstile 集成防护
