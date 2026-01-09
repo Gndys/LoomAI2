@@ -2,18 +2,19 @@
 
 ## Overview
 
-AI integration library built on Vercel AI SDK v5 supporting multiple providers (Qwen, DeepSeek, OpenAI) with unified interface. Provides streaming chat functionality, AI Elements components, and type-safe provider management for both Next.js and Nuxt.js applications.
+AI integration library built on **Vercel AI SDK v6** supporting multiple providers (Qwen, DeepSeek, OpenAI, fal.ai) with unified interface. Provides streaming chat functionality, **AI image generation**, AI Elements components, and type-safe provider management for both Next.js and Nuxt.js applications.
 
 ## Setup Commands
 
 ```bash
 # Install dependencies (usually already included in apps)
-pnpm add ai @ai-sdk/openai @ai-sdk/openai-compatible @ai-sdk/deepseek @ai-sdk/react @ai-sdk/vue
+pnpm add ai@latest @ai-sdk/openai @ai-sdk/openai-compatible @ai-sdk/deepseek @ai-sdk/fal @ai-sdk/react @ai-sdk/vue
 
 # Environment configuration required
 # Add to .env file:
 AI_PROVIDER=qwen  # Default provider
 
+# Chat Providers
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_BASE_URL=optional_base_url
 
@@ -21,6 +22,10 @@ QWEN_API_KEY=your_qwen_api_key
 QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
 DEEPSEEK_API_KEY=your_deepseek_api_key
+
+# Image Generation Providers
+FAL_API_KEY=your_fal_api_key
+# Note: Qwen and OpenAI keys are reused for image generation
 ```
 
 ## Code Style

@@ -90,7 +90,6 @@
 </template>
 
 <script setup lang="ts">
-import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { createValidators } from '@libs/validators'
 import { authClientVue } from '@libs/auth/authClient'
@@ -159,7 +158,7 @@ const { forgetPasswordSchema } = createValidators(t)
 
 // Form validation
 const { handleSubmit, errors, defineField, isSubmitting } = useForm({
-  validationSchema: toTypedSchema(forgetPasswordSchema),
+  validationSchema: forgetPasswordSchema,
   initialValues: {
     email: ''
   }
@@ -198,15 +197,16 @@ const onSubmit = handleSubmit(async (values) => {
     }
   }
 
-  const { data, error } = await authClientVue.requestPasswordReset({
+  const result = await authClientVue.requestPasswordReset({
     email: values.email,
     redirectTo: `/${locale.value}/reset-password`,
     fetchOptions
   })
 
-  if (error) {
-    errorMessage.value = error.message || t('common.unexpectedError')
-    errorCode.value = error.code || 'UNKNOWN_ERROR'
+  // Handle error response (better-auth 1.4+ returns union type)
+  if ('error' in result && result.error) {
+    errorMessage.value = result.error.message || t('common.unexpectedError')
+    errorCode.value = result.error.code || 'UNKNOWN_ERROR'
     
     // If validation fails, reset turnstile token and force re-render
     if (captchaEnabled.value) {

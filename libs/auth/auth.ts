@@ -41,7 +41,7 @@ function getRefererInfo(request?: Request): { locale: string; lastSegment: strin
 }
 
 export const auth = betterAuth({
-  appName: 'shipeasy',
+  appName: 'tinyship',
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
@@ -218,7 +218,7 @@ export const auth = betterAuth({
       captcha({
         provider: "cloudflare-turnstile",
         secretKey: config.captcha.cloudflare.secretKey!,
-        endpoints: ["/sign-up/email", "/sign-in/email", "/forget-password", '/phone-number/send-otp', '/send-verification-email']
+        endpoints: ["/sign-up/email", "/sign-in/email", "/request-password-reset", '/phone-number/send-otp', '/send-verification-email']
       })
     ] : []),
 
@@ -231,11 +231,13 @@ export const auth = betterAuth({
     // https://www.better-auth.com/docs/plugins/phone-number
     phoneNumber({
       //otpLength: 4,
-      sendOTP: async ({ phoneNumber, code }, request) => {
+      sendOTP: async ({ phoneNumber, code }, ctx) => {
+        // In better-auth 1.4+, sendOTP receives ctx with request inside
+        const request = ctx?.request;
         console.log(`Attempting to send OTP to ${phoneNumber} with code ${code}`);
         
         // 开发环境：将 OTP 代码存储到 context 中，通过 hooks 返回
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV === 'development' && request) {
           (request as any).context = (request as any).context || {};
           (request as any).context.otpCode = code;
           console.log('📱 [DEVELOPMENT MODE] OTP code stored in context:', code);
@@ -310,7 +312,7 @@ export const auth = betterAuth({
         window: 60, 
         max: 1,    
       },
-      "/forget-password": {
+      "/request-password-reset": {
         window: 60, 
         max: 1, 
       },

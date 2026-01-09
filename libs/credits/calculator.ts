@@ -1,4 +1,5 @@
 import { config } from '@config';
+import { resolveFixedConsumption, type FixedConsumptionConfig } from '../../config/credits';
 import type { CalculateConsumptionParams } from './types';
 
 /**
@@ -6,12 +7,13 @@ import type { CalculateConsumptionParams } from './types';
  * Supports both fixed and dynamic consumption modes
  */
 export function calculateCreditConsumption(params: CalculateConsumptionParams): number {
-  const { totalTokens, model } = params;
+  const { totalTokens, model, type = 'aiChat' } = params;
   const creditsConfig = config.credits;
 
   // Fixed consumption mode: return static amount per operation
   if (creditsConfig.consumptionMode === 'fixed') {
-    return creditsConfig.fixedConsumption.aiChat;
+    const fixedConfig = creditsConfig.fixedConsumption[type] as FixedConsumptionConfig;
+    return resolveFixedConsumption(fixedConfig, model);
   }
 
   // Dynamic consumption mode: calculate based on token usage
@@ -32,8 +34,12 @@ export function calculateCreditConsumption(params: CalculateConsumptionParams): 
  * Get the estimated credits for a fixed consumption operation
  * Useful for showing users expected cost before executing
  */
-export function getFixedConsumptionAmount(operation: keyof typeof config.credits.fixedConsumption): number {
-  return config.credits.fixedConsumption[operation] ?? 1;
+export function getFixedConsumptionAmount(
+  operation: keyof typeof config.credits.fixedConsumption,
+  model?: string
+): number {
+  const fixedConfig = config.credits.fixedConsumption[operation] as FixedConsumptionConfig;
+  return resolveFixedConsumption(fixedConfig, model);
 }
 
 /**
@@ -50,4 +56,3 @@ export function getModelMultiplier(model: string): number {
   const { modelMultipliers } = config.credits.dynamicConsumption;
   return modelMultipliers[model] ?? modelMultipliers['default'] ?? 1.0;
 }
-

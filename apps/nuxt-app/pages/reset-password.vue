@@ -84,7 +84,6 @@
 </template>
 
 <script setup lang="ts">
-import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { createValidators } from '@libs/validators'
 import { authClientVue } from '@libs/auth/authClient'
@@ -131,7 +130,7 @@ const { resetPasswordSchema } = createValidators(t)
 
 // Form validation
 const { handleSubmit, errors, defineField, isSubmitting } = useForm({
-  validationSchema: toTypedSchema(resetPasswordSchema),
+  validationSchema: resetPasswordSchema,
   initialValues: {
     password: '',
     confirmPassword: ''

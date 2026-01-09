@@ -56,7 +56,7 @@ type CreditPlan = {
 
 ### 配置示例
 
-在 `config.ts` 中的 `payment.plans` 添加积分充值计划：
+在 `config/payment.ts` 中的 `plans` 添加积分充值计划：
 
 ```typescript
 // 基础积分包
@@ -153,28 +153,51 @@ credits1000: {
 | **fixed** | 每次操作消耗固定积分 | 简单计费、图片生成 |
 | **dynamic** | 按实际 token 消耗计费 | AI 聊天、文本处理 |
 
-在 `config.ts` 中配置：
+在 `config/credits.ts` 中配置：
 
 ```typescript
-credits: {
+// config/credits.ts
+export const creditsConfig = {
   // 消耗模式：'fixed' 或 'dynamic'
   consumptionMode: 'dynamic',
   
-  // 固定模式：每次 AI 聊天消耗的积分
-  fixedChatCost: 10,
+  /**
+   * 固定消耗配置
+   * 每个条目可以是:
+   * - 数字: 所有操作统一消耗
+   * - 对象: { default: number, models?: { modelName: number } }
+   */
+  fixedConsumption: {
+    // AI 聊天 - 简单数字格式（所有模型统一消耗）
+    aiChat: 1,
+    
+    // AI 图片生成 - 对象格式（按模型定价）
+    // 模型名称全局唯一，无需按 provider 嵌套
+    aiImage: {
+      default: 10,
+      models: {
+        'qwen-image-max': 8,
+        'qwen-image-plus': 5,
+        'fal-ai/flux/schnell': 6,
+        'dall-e-3': 15,
+        'dall-e-2': 8,
+      }
+    },
+  },
   
-  // 动态模式：每 1000 token 消耗的积分
-  dynamicChatCostPerKiloToken: 1,
-  
-  // 不同 AI 模型的积分消耗乘数
-  modelMultipliers: {
-    'qwen-turbo': 1.0,      // 基础模型
-    'qwen-plus': 1.2,       // 高级模型 +20%
-    'qwen-max': 1.5,        // 最强模型 +50%
-    'deepseek-chat': 1.0,
-    'deepseek-coder': 1.2,
-    'gpt-4': 2.0,           // GPT-4 双倍消耗
-    'default': 1.0
+  // 动态消耗配置
+  dynamicConsumption: {
+    tokensPerCredit: 1000,  // 每 1000 token 消耗 1 积分
+    
+    // 不同 AI 模型的积分消耗乘数
+    modelMultipliers: {
+      'qwen-turbo': 0.5,      // 经济模型
+      'qwen-plus': 1.0,       // 标准模型
+      'qwen-max': 1.2,        // 高级模型
+      'deepseek-chat': 0.8,
+      'gpt-4': 2.0,           // GPT-4 双倍消耗
+      'default': 1.0
+    }
   }
 }
 ```

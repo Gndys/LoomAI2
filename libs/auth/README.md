@@ -152,7 +152,7 @@ const { data, error } = await authClientReact.signUp.email({
 });
 
 // 密码重置
-await authClientReact.forgetPassword({
+await authClientReact.requestPasswordReset({
   email: 'user@example.com',
   redirectTo: '/reset-password'
 });

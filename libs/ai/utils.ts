@@ -1,12 +1,12 @@
 import { streamText, convertToModelMessages } from 'ai';
 import type { UIMessage } from 'ai';
-import { createProvider } from './providers';
+import { createChatProvider } from './providers';
 import { getProviderConfig } from './config';
-import type { ProviderName } from './types';
+import type { ChatProviderName } from './types';
 
 interface StreamOptions {
   messages: UIMessage[];
-  provider?: ProviderName;
+  provider?: ChatProviderName;
   model?: string;
 }
 
@@ -26,8 +26,9 @@ interface StreamResponseWithUsage {
 /**
  * Stream AI response with usage tracking capability
  * Returns both the response and a promise for usage data
+ * Note: In AI SDK v6, convertToModelMessages is async
  */
-export function streamResponseWithUsage({ messages, provider, model }: StreamOptions): StreamResponseWithUsage {
+export async function streamResponseWithUsage({ messages, provider, model }: StreamOptions): Promise<StreamResponseWithUsage> {
   // Validate messages
   if (!messages || !Array.isArray(messages)) {
     throw new Error('Invalid messages: messages must be an array');
@@ -45,11 +46,16 @@ export function streamResponseWithUsage({ messages, provider, model }: StreamOpt
   
   const providerName = provider || 'openai';
   const config = getProviderConfig(providerName);
-  const aiProvider = createProvider(providerName, config);
+  const aiProvider = createChatProvider(providerName, config);
   
+  // AI SDK v6: convertToModelMessages is now async
+  const modelMessages = await convertToModelMessages(messages);
+  
+  // Note: Using 'any' cast due to version mismatch between @ai-sdk/* packages
+  // This is safe as the runtime behavior is correct
   const result = streamText({
-    model: aiProvider(model as any),
-    messages: convertToModelMessages(messages),
+    model: aiProvider(model as string) as any,
+    messages: modelMessages,
   });
   
   const response = result.toUIMessageStreamResponse({
@@ -58,11 +64,14 @@ export function streamResponseWithUsage({ messages, provider, model }: StreamOpt
   });
   
   // Use SDK's usage data directly with safe defaults
-  const usagePromise: Promise<UsageData> = result.usage.then((usage) => ({
-    inputTokens: usage.inputTokens ?? 0,
-    outputTokens: usage.outputTokens ?? 0,
-    totalTokens: usage.totalTokens ?? 0
-  }));
+  const usagePromise = (async (): Promise<UsageData> => {
+    const usage = await result.usage;
+    return {
+      inputTokens: usage.inputTokens ?? 0,
+      outputTokens: usage.outputTokens ?? 0,
+      totalTokens: usage.totalTokens ?? 0,
+    };
+  })();
 
   return {
     response,
@@ -76,6 +85,7 @@ export function streamResponseWithUsage({ messages, provider, model }: StreamOpt
  * Simple stream response (backwards compatible)
  * Use streamResponseWithUsage for credit consumption tracking
  */
-export function streamResponse({ messages, provider, model }: StreamOptions): Response {
-  return streamResponseWithUsage({ messages, provider, model }).response;
+export async function streamResponse({ messages, provider, model }: StreamOptions): Promise<Response> {
+  const result = await streamResponseWithUsage({ messages, provider, model });
+  return result.response;
 }

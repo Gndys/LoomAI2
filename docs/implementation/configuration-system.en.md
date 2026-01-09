@@ -2,7 +2,7 @@
 
 ## Overview
 
-The ShipEasy project uses a unified configuration system to manage all environment variables and application configurations. The configuration system is based on a single `config.ts` file and supports both Next.js and Nuxt.js frameworks.
+The TinyShip project uses a unified configuration system to manage all environment variables and application configurations. The configuration system is based on a single `config.ts` file and supports both Next.js and Nuxt.js frameworks.
 
 ## Architecture Design
 

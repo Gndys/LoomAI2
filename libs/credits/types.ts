@@ -94,5 +94,7 @@ export interface CalculateConsumptionParams {
   totalTokens: number;
   model: string;
   provider: string;
+  /** Operation type for fixed consumption mode: 'aiChat' | 'aiImage' */
+  type?: 'aiChat' | 'aiImage';
 }
 

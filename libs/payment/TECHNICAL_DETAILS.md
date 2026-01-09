@@ -2,7 +2,7 @@
 
 ## 概述
 
-本文档详细描述了ShipEasy支付系统的技术实现，包括：
+本文档详细描述了TinyShip支付系统的技术实现，包括：
 - **传统订阅模式**：按时间计费（月付/年付/终身），支持循环订阅和一次性支付
 - **积分模式**：AI时代流行的按需付费模式，用户购买积分包后按实际使用量消耗
 
@@ -14,7 +14,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     ShipEasy Payment System                  │
+│                     TinyShip Payment System                  │
 ├─────────────────────────────┬───────────────────────────────┤
 │      订阅模式 (Subscription)  │       积分模式 (Credits)        │
 ├─────────────────────────────┼───────────────────────────────┤
@@ -924,12 +924,20 @@ if (plan.duration.type === 'credits' && plan.credits) {
 #### 消费模式配置
 
 ```typescript
-// config.ts
+// config/credits.ts
 credits: {
   consumptionMode: 'dynamic',  // 或 'fixed'
   
+  // 固定消耗配置 - 支持数字或对象格式
   fixedConsumption: {
-    aiChat: 1,  // 固定模式：每次对话消耗1积分
+    aiChat: 1,  // 数字格式：所有模型统一消耗
+    // 或对象格式（按模型定价）：
+    // aiChat: { default: 1, models: { 'gpt-4': 3 } }
+    
+    aiImage: {
+      default: 10,
+      models: { 'dall-e-3': 15, 'qwen-image-max': 8 }
+    }
   },
   
   dynamicConsumption: {
@@ -997,7 +1005,9 @@ export async function POST(req: Request) {
 
 **固定模式**：
 ```
-消耗积分 = fixedConsumption.aiChat (例如1积分)
+消耗积分 = resolveFixedConsumption(aiChat, model)
+// 数字格式：直接返回该数字
+// 对象格式：优先返回 models[model]，否则返回 default
 ```
 
 **动态模式**：

@@ -295,24 +295,82 @@ export const zhCN: Locale = {
         networkError: "网络错误，请重试"
       }
     },
-    // Better Auth 错误代码映射
+    // Better Auth 1.4 错误代码映射
     authErrors: {
-      USER_ALREADY_EXISTS: "该邮箱已被注册",
-      INVALID_EMAIL_OR_PASSWORD: "邮箱或密码错误",
-      EMAIL_NOT_VERIFIED: "请先验证您的邮箱地址",
+      // 用户相关错误
       USER_NOT_FOUND: "未找到该邮箱对应的账户",
+      USER_ALREADY_EXISTS: "该邮箱已被注册",
+      USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "用户已存在，请使用其他邮箱",
+      USER_EMAIL_NOT_FOUND: "未找到用户邮箱",
+      FAILED_TO_CREATE_USER: "创建用户失败",
+      FAILED_TO_UPDATE_USER: "更新用户失败",
+      
+      // 认证错误
+      INVALID_EMAIL: "邮箱地址无效",
+      INVALID_PASSWORD: "密码无效",
+      INVALID_EMAIL_OR_PASSWORD: "邮箱或密码错误",
       INVALID_CREDENTIALS: "提供的凭据无效",
-      ACCOUNT_BLOCKED: "您的账户已被临时冻结",
-      TOO_MANY_REQUESTS: "登录尝试次数过多，请稍后重试",
       INVALID_TOKEN: "无效或已过期的令牌",
+      PASSWORD_TOO_SHORT: "密码过短",
+      PASSWORD_TOO_LONG: "密码过长",
+      
+      // 邮箱验证错误
+      EMAIL_NOT_VERIFIED: "请先验证您的邮箱地址",
+      EMAIL_ALREADY_VERIFIED: "邮箱已验证",
+      EMAIL_MISMATCH: "邮箱不匹配",
+      EMAIL_CAN_NOT_BE_UPDATED: "邮箱无法更新",
+      VERIFICATION_EMAIL_NOT_ENABLED: "验证邮件功能未启用",
+      
+      // 会话错误
       SESSION_EXPIRED: "您的会话已过期，请重新登录",
+      SESSION_NOT_FRESH: "会话不是最新的，请重新认证",
+      FAILED_TO_CREATE_SESSION: "创建会话失败",
+      FAILED_TO_GET_SESSION: "获取会话失败",
+      
+      // 账户错误
+      ACCOUNT_NOT_FOUND: "账户未找到",
+      ACCOUNT_BLOCKED: "您的账户已被临时冻结",
+      CREDENTIAL_ACCOUNT_NOT_FOUND: "凭证账户未找到",
+      SOCIAL_ACCOUNT_ALREADY_LINKED: "社交账户已关联",
+      LINKED_ACCOUNT_ALREADY_EXISTS: "关联账户已存在",
+      FAILED_TO_UNLINK_LAST_ACCOUNT: "无法解除最后一个账户的关联",
+      USER_ALREADY_HAS_PASSWORD: "用户已设置密码",
+      
+      // 手机号错误
       PHONE_NUMBER_ALREADY_EXISTS: "该手机号已被注册",
       INVALID_PHONE_NUMBER: "手机号格式无效",
       OTP_EXPIRED: "验证码已过期",
       INVALID_OTP: "验证码错误",
       OTP_TOO_MANY_ATTEMPTS: "验证尝试次数过多，请重新获取验证码",
+      
+      // 提供商错误
+      PROVIDER_NOT_FOUND: "提供商未找到",
+      ID_TOKEN_NOT_SUPPORTED: "不支持 ID Token",
+      FAILED_TO_GET_USER_INFO: "获取用户信息失败",
+      
+      // 安全错误
       CAPTCHA_REQUIRED: "请完成验证码验证",
       CAPTCHA_INVALID: "验证码验证失败",
+      TOO_MANY_REQUESTS: "请求过于频繁，请稍后重试",
+      CROSS_SITE_NAVIGATION_LOGIN_BLOCKED: "跨站导航登录被阻止",
+      INVALID_ORIGIN: "无效的来源",
+      MISSING_OR_NULL_ORIGIN: "来源缺失或无效",
+      
+      // 回调 URL 错误
+      INVALID_CALLBACK_URL: "无效的回调 URL",
+      INVALID_REDIRECT_URL: "无效的重定向 URL",
+      INVALID_ERROR_CALLBACK_URL: "无效的错误回调 URL",
+      INVALID_NEW_USER_CALLBACK_URL: "无效的新用户回调 URL",
+      CALLBACK_URL_REQUIRED: "需要回调 URL",
+      
+      // 验证错误
+      VALIDATION_ERROR: "验证错误",
+      MISSING_FIELD: "缺少必填字段",
+      FIELD_NOT_ALLOWED: "不允许的字段",
+      ASYNC_VALIDATION_NOT_SUPPORTED: "不支持异步验证",
+      
+      // 系统错误
+      FAILED_TO_CREATE_VERIFICATION: "创建验证失败",
       EMAIL_SEND_FAILED: "邮件发送失败，请稍后重试",
       SMS_SEND_FAILED: "短信发送失败，请稍后重试",
       UNKNOWN_ERROR: "发生未知错误"
@@ -909,6 +967,7 @@ export const zhCN: Locale = {
       },
       descriptions: {
         ai_chat: "AI 对话",
+        ai_image_generation: "AI 图像生成",
         image_generation: "图片生成",
         document_processing: "文档处理",
         purchase: "积分充值",
@@ -1197,6 +1256,80 @@ export const zhCN: Locale = {
         yesterday: "昨天",
         thisWeek: "本周",
         older: "更早"
+      }
+    },
+    image: {
+      metadata: {
+        title: "TinyShip - AI 图像生成",
+        description: "使用 AI 生成精美图像。支持通义千问图像、fal.ai Flux 和 OpenAI DALL-E。",
+        keywords: "AI, 图像生成, DALL-E, Flux, 通义千问, 文生图, 艺术, 创意"
+      },
+      title: "AI 图像生成",
+      description: "使用多种 AI 提供商从文本提示生成精美图像",
+      defaultPrompt: "一只黄色拉布拉多带着黑色金色圆墨镜在成都的场馆和两只黄白猫喝茶",
+      prompt: "提示词",
+      promptPlaceholder: "描述您想要生成的图像...",
+      negativePrompt: "负面提示词",
+      negativePromptPlaceholder: "描述您不希望在图像中出现的内容...",
+      negativePromptHint: "描述需要避免在生成图像中出现的元素",
+      generate: "生成",
+      generating: "生成中...",
+      generatedSuccessfully: "图像生成成功！",
+      download: "下载",
+      result: "结果",
+      idle: "空闲",
+      preview: "预览",
+      json: "JSON",
+      whatNext: "接下来您想做什么？",
+      costInfo: "本次请求将花费",
+      perMegapixel: "每百万像素",
+      credits: "积分",
+      providers: {
+        title: "提供商",
+        qwen: "阿里云百炼",
+        fal: "fal.ai",
+        openai: "OpenAI"
+      },
+      models: {
+        "qwen-image-plus": "通义千问图像 Plus",
+        "qwen-image-max": "通义千问图像 Max",
+        "fal-ai/qwen-image-2512/lora": "Qwen Image 2512 Lora",
+        "fal-ai/nano-banana-pro": "Nano Banana Pro",
+        "fal-ai/flux/dev": "Flux Dev",
+        "fal-ai/recraft/v3/text-to-image": "Recraft V3 Text to Image",
+        "fal-ai/flux-pro/kontext": "Flux Pro Kontext",
+        "fal-ai/bytedance/seedream/v3/text-to-image": "Bytedance Seedream V3 Text to Image",
+        "dall-e-3": "DALL-E 3",
+        "dall-e-2": "DALL-E 2"
+      },
+      settings: {
+        title: "附加设置",
+        showMore: "更多",
+        showLess: "收起",
+        imageSize: "图像尺寸",
+        imageSizeHint: "选择宽高比和分辨率",
+        numInferenceSteps: "推理步数",
+        numInferenceStepsHint: "步数越多质量越高，但速度越慢",
+        guidanceScale: "引导强度",
+        guidanceScaleHint: "控制生成图像与提示词的匹配程度",
+        seed: "种子",
+        seedHint: "使用相同的种子可以复现结果",
+        random: "随机",
+        randomize: "随机生成",
+        promptExtend: "提示词扩展",
+        promptExtendHint: "AI 将增强和扩展您的提示词",
+        watermark: "水印",
+        watermarkHint: "在生成的图像上添加通义千问水印",
+        syncMode: "同步模式",
+        syncModeHint: "返回 base64 数据而非 URL"
+      },
+      errors: {
+        generationFailed: "图像生成失败",
+        invalidPrompt: "请输入有效的提示词",
+        insufficientCredits: "积分不足",
+        insufficientCreditsDescription: "生成图像需要积分，请购买积分以继续。",
+        networkError: "网络错误，请检查您的连接。",
+        unknownError: "发生未知错误"
       }
     }
   },
@@ -1509,6 +1642,10 @@ export const zhCN: Locale = {
       ai: {
         title: "AI 对话",
         description: "大模型对话实现，可扩展设计，支持多个 Provider，需要购买积分使用"
+      },
+      aiImage: {
+        title: "AI 图像生成",
+        description: "AI 图像生成实现，可扩展设计，支持多个 Provider，需要购买积分使用"
       },
       premium: {
         title: "高级会员功能",

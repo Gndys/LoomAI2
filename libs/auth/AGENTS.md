@@ -94,7 +94,7 @@ await authClientReact.updateUser({
 });
 
 // Password reset
-await authClientReact.forgetPassword({
+await authClientReact.requestPasswordReset({
   email: 'user@example.com',
   redirectTo: '/reset-password'
 });

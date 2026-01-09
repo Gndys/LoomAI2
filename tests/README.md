@@ -1,6 +1,6 @@
-# ShipEasy 测试文档
+# TinyShip 测试文档
 
-本目录包含 ShipEasy 项目的测试用例。我们使用 [Vitest](https://vitest.dev/) 作为测试框架，它提供了与 Jest 兼容的 API 但性能更好。
+本目录包含 TinyShip 项目的测试用例。我们使用 [Vitest](https://vitest.dev/) 作为测试框架，它提供了与 Jest 兼容的 API 但性能更好。
 
 ## 目录结构
 

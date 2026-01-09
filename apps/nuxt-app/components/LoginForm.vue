@@ -115,7 +115,6 @@
 </template>
 
 <script setup lang="ts">
-import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { createValidators } from '@libs/validators'
 import { authClientVue } from '@libs/auth/authClient'
@@ -182,7 +181,7 @@ const { loginFormSchema } = createValidators(t)
 
 // Form validation
 const { handleSubmit, errors, defineField, isSubmitting } = useForm({
-  validationSchema: toTypedSchema(loginFormSchema),
+  validationSchema: loginFormSchema,
   initialValues: {
     email: '',
     password: '',
