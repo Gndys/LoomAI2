@@ -1029,14 +1029,14 @@ export const zhCN: Locale = {
       connectedAt: "关联时间:",
       noLinkedAccounts: "暂无关联账户",
       providers: {
-        credentials: "邮箱密码",
+        credential: "邮箱密码",
         google: "Google",
         github: "GitHub",
         facebook: "Facebook",
         apple: "Apple",
         discord: "Discord",
         wechat: "微信",
-        phone: "手机号"
+        "phone-number": "手机号"
       }
     },
     tabs: {

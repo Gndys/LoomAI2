@@ -5,8 +5,7 @@ const { t } = useI18n()
 
 interface LinkedAccount {
   id: string
-  providerId?: string
-  provider?: string // Next.js 版本使用 provider 字段
+  providerId: string
   accountId: string
   createdAt: string | Date
 }
@@ -57,14 +56,8 @@ const formatDate = (dateString: string | Date) => {
  * @returns Localized provider name
  */
 const getProviderDisplayName = (account: LinkedAccount) => {
-  let provider = account.provider || account.providerId || 'unknown'
-  
-  // 处理单复数差异：credential -> credentials
-  if (provider === 'credential') {
-    provider = 'credentials'
-  }
-  
-  const providerKey = `dashboard.linkedAccounts.providers.${provider}` as const
+  const providerId = account.providerId || 'unknown'
+  const providerKey = `dashboard.linkedAccounts.providers.${providerId}` as const
   return t(providerKey)
 }
 

@@ -1022,14 +1022,14 @@ export const en: Locale = {
       connectedAt: "Connected:",
       noLinkedAccounts: "No linked accounts",
       providers: {
-        credentials: "Email & Password",
+        credential: "Email & Password",
         google: "Google",
         github: "GitHub",
         facebook: "Facebook",
         apple: "Apple",
         discord: "Discord",
         wechat: "WeChat",
-        phone: "Phone Number"
+        "phone-number": "Phone Number"
       }
     },
     tabs: {

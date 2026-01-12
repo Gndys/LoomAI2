@@ -53,17 +53,17 @@ export function LinkedAccountsCard({}: LinkedAccountsCardProps) {
   };
 
   // 获取提供商显示名称
-  const getProviderDisplayName = (provider: string) => {
-    const providerKey = provider.toLowerCase() as keyof typeof t.dashboard.linkedAccounts.providers;
-    return t.dashboard.linkedAccounts.providers[providerKey] || provider;
+  const getProviderDisplayName = (providerId: string) => {
+    const providerKey = providerId.toLowerCase() as keyof typeof t.dashboard.linkedAccounts.providers;
+    return t.dashboard.linkedAccounts.providers[providerKey] || providerId;
   };
 
   // 获取提供商图标
-  const getProviderIcon = (provider: string) => {
-    switch (provider.toLowerCase()) {
-      case 'credentials':
+  const getProviderIcon = (providerId: string) => {
+    switch (providerId.toLowerCase()) {
+      case 'credential':
         return Mail;
-      case 'phone':
+      case 'phone-number':
         return Key;
       default:
         return LinkIcon;
@@ -104,7 +104,7 @@ export function LinkedAccountsCard({}: LinkedAccountsCardProps) {
       <div className="space-y-3">
         {accountsData.length > 0 ? (
           accountsData.map((account) => {
-            const ProviderIcon = getProviderIcon(account.provider);
+            const ProviderIcon = getProviderIcon(account.providerId);
             return (
               <div
                 key={account.id}
@@ -116,7 +116,7 @@ export function LinkedAccountsCard({}: LinkedAccountsCardProps) {
                   </div>
                   <div>
                     <div className="font-medium">
-                      {getProviderDisplayName(account.provider)}
+                      {getProviderDisplayName(account.providerId)}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {t.dashboard.linkedAccounts.connectedAt} {formatDate(account.createdAt)}
