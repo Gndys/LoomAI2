@@ -80,6 +80,12 @@ export default defineNuxtConfig({
     commonJS: {
       include: [/pg/, /drizzle-orm/]
     },
+    // Inline zod to avoid Nitro's incomplete bundling of zod v4.x
+    // See: https://github.com/unjs/nitro/issues - zod v4 has a complex export structure
+    // that Nitro doesn't fully copy to .output/server/node_modules
+    externals: {
+      inline: ['zod']
+    },
     // Development specific settings
     dev: process.env.NODE_ENV === 'development'
   },

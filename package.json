@@ -46,10 +46,10 @@
     "drizzle-kit": "0.30.5",
     "turbo": "^1.11.2",
     "typescript": "^5.8.3",
-    "vitest": "3.0.9",
-    "zod": "4.1.12"
+    "vitest": "3.0.9"
   },
   "dependencies": {
+    "zod": "4.2.1",
     "@ai-sdk/deepseek": "1.0.23",
     "@ai-sdk/fal": "2.0.2",
     "@ai-sdk/openai": "3.0.2",
