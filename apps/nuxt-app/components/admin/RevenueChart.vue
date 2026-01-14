@@ -39,7 +39,7 @@
           :y-grid-line="true"
           :x-formatter="xFormatter"
           :curve-type="CurveType.MonotoneX"
-          :legend-position="LegendPosition.Top"
+          :legend-position="LegendPosition.TopCenter"
           :hide-legend="true"
         />
         <template #fallback>
@@ -83,18 +83,38 @@ const { theme, colorScheme } = useTheme()
 const activeTab = ref<'revenue' | 'orders'>('revenue')
 
 // Parse OKLCH string to object format for colorizr library
+// Handles both decimal (0.5583) and percentage (55.83%) formats
+// Also handles values starting with . (like .1276)
 const parseOklchString = (oklchString: string) => {
-  // Match OKLCH format: oklch(l c h) or oklch(l c h / alpha)
-  const match = oklchString.match(/oklch\(\s*([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)(?:\s*\/\s*[0-9.]+)?\s*\)/)
+  // Match OKLCH format with:
+  // - Lightness: decimal or percentage (0.5583 or 55.83%)
+  // - Chroma: may start with . (.1276 or 0.1276)
+  // - Hue: decimal number
+  // Examples: oklch(0.5583 0.1276 42.9956), oklch(55.83% .1276 42.9956)
+  const match = oklchString.match(/oklch\(\s*([0-9.]+%?)\s+(\.?[0-9.]+)\s+([0-9.]+)(?:\s*\/\s*[0-9.]+%?)?\s*\)/)
   
   if (!match) {
     console.warn('Failed to parse OKLCH string:', oklchString)
     return null
   }
   
-  const l = parseFloat(match[1])
-  const c = parseFloat(match[2])
-  const h = parseFloat(match[3])
+  const lValue = match[1] ?? ''
+  const cValue = match[2] ?? ''
+  const hValue = match[3] ?? ''
+  
+  // Handle lightness - can be percentage (55.83%) or decimal (0.5583)
+  let l: number
+  if (lValue.endsWith('%')) {
+    // Convert percentage to decimal: 55.83% → 0.5583
+    l = parseFloat(lValue.slice(0, -1)) / 100
+  } else {
+    l = parseFloat(lValue)
+  }
+  
+  // Handle chroma - parseFloat handles values starting with . correctly
+  // .1276 → 0.1276
+  const c = parseFloat(cValue)
+  const h = parseFloat(hValue)
   
   // Validate parsed values
   if (isNaN(l) || isNaN(c) || isNaN(h)) {
@@ -151,21 +171,22 @@ const getChartColor = (colorVar: string): string => {
 const activeCategories = computed(() => {
   const chartColor = getChartColor('chart-1')
   
+  // Use Record type to avoid TypeScript union type issues
+  const categories: Record<string, { name: string; color: string }> = {}
+  
   if (activeTab.value === 'revenue') {
-    return {
-      revenue: {
-        name: props.labels.revenue,
-        color: chartColor,
-      },
+    categories.revenue = {
+      name: props.labels.revenue,
+      color: chartColor,
     }
   } else {
-    return {
-      orders: {
-        name: props.labels.orders,
-        color: chartColor,
-      },
+    categories.orders = {
+      name: props.labels.orders,
+      color: chartColor,
     }
   }
+  
+  return categories
 })
 
 // Use chartData from props, with fallback demo data
