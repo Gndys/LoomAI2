@@ -1705,7 +1705,9 @@ export const en: Locale = {
       s3: "Amazon S3",
       s3Description: "Global cloud storage",
       r2: "Cloudflare R2",
-      r2Description: "Zero egress fees"
+      r2Description: "Zero egress fees",
+      cos: "Tencent Cloud COS",
+      cosDescription: "China cloud storage"
     },
     uploadTitle: "Upload Image",
     uploadDescription: "Drag and drop image or click to browse. Max 1MB.",

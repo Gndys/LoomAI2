@@ -22,6 +22,7 @@ TinyShip 提供了统一的云存储服务，支持多个主流云存储服务�
 | **阿里云 OSS** | 中国区域访问快，与阿里云生态集成 | 面向中国用户的应用 |
 | **AWS S3** | 全球覆盖，生态成熟，功能丰富 | 面向国际用户的应用 |
 | **Cloudflare R2** | 无出口流量费用，性价比高，边缘分发 | 注重成本控制的应用 |
+| **腾讯云 COS** | 国内云存储，生态完善 | 面向中国用户的应用 |
 
 所有服务商都支持以下功能：
 - ✅ 文件上传/下载
@@ -36,7 +37,7 @@ TinyShip 提供了统一的云存储服务，支持多个主流云存储服务�
 ```typescript
 // config/storage.ts
 export const storageConfig = {
-  defaultProvider: 'oss' as const,  // 默认服务商: 'oss' | 's3' | 'r2'
+  defaultProvider: 'oss' as const,  // 默认服务商: 'oss' | 's3' | 'r2' | 'cos'
   
   oss: {
     region: 'oss-cn-shanghai',
@@ -63,6 +64,14 @@ export const storageConfig = {
     accessKeySecret: '...',
     bucket: 'your-bucket',
     defaultExpiration: 3600
+  },
+  
+  cos: {
+    region: 'ap-guangzhou',
+    secretId: '...',
+    secretKey: '...',
+    bucket: 'your-bucket-appid',
+    defaultExpiration: 3600
   }
 }
 ```
@@ -78,7 +87,7 @@ export const storageConfig = {
 
 ```env
 # 选择默认存储服务商
-STORAGE_PROVIDER=oss  # 可选：oss, s3, r2
+STORAGE_PROVIDER=oss  # 可选：oss, s3, r2, cos
 
 # 阿里云 OSS 配置
 OSS_REGION=oss-cn-shanghai
@@ -97,6 +106,12 @@ R2_ACCOUNT_ID=your_cloudflare_account_id
 R2_ACCESS_KEY_ID=your_r2_access_key_id
 R2_ACCESS_KEY_SECRET=your_r2_access_key_secret
 R2_BUCKET=your-bucket-name
+
+# 腾讯云 COS 配置
+COS_REGION=ap-guangzhou
+COS_SECRET_ID=your_secret_id
+COS_SECRET_KEY=your_secret_key
+COS_BUCKET=your-bucket-name-appid
 ```
 
 **注意**：OSS 的 Access Key 可以复用阿里云通用的 `ALIYUN_ACCESS_KEY_ID` 和 `ALIYUN_ACCESS_KEY_SECRET`，如果未单独配置 OSS 专用的 Key，系统会自动回退使用通用 Key。
@@ -132,6 +147,7 @@ import { createStorageProvider } from '@libs/storage';
 const s3Storage = createStorageProvider('s3');
 const ossStorage = createStorageProvider('oss');
 const r2Storage = createStorageProvider('r2');
+const cosStorage = createStorageProvider('cos');
 
 // 上传到 S3
 await s3Storage.uploadFile({

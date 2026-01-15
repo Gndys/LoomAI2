@@ -88,7 +88,7 @@ export interface StorageProvider {
  * Storage configuration
  */
 export interface StorageConfig {
-  provider: 'oss' | 's3' | 'r2'; // Support multiple providers
+  provider: 'oss' | 's3' | 'r2' | 'cos'; // Support multiple providers
   bucket: string;
   region: string;
   accessKeyId: string;

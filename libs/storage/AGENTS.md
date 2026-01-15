@@ -2,7 +2,7 @@
 
 ## Overview
 
-Unified storage abstraction layer supporting multiple cloud storage providers: Alibaba Cloud OSS, AWS S3, and Cloudflare R2. Provides consistent interface for file operations with type safety, signed URL generation, and comprehensive error handling. R2 uses S3Provider under the hood as it's S3-compatible.
+Unified storage abstraction layer supporting multiple cloud storage providers: Alibaba Cloud OSS, AWS S3, Cloudflare R2, and Tencent Cloud COS. Provides consistent interface for file operations with type safety, signed URL generation, and comprehensive error handling. R2 uses S3Provider under the hood as it's S3-compatible.
 
 ## Setup Commands
 
@@ -11,7 +11,7 @@ Unified storage abstraction layer supporting multiple cloud storage providers: A
 # Add to .env file:
 
 # Select default provider
-STORAGE_PROVIDER=oss  # Options: oss, s3, r2
+STORAGE_PROVIDER=oss  # Options: oss, s3, r2, cos
 
 # Alibaba Cloud OSS
 OSS_REGION=oss-cn-shanghai
@@ -31,8 +31,14 @@ R2_ACCESS_KEY_ID=your_r2_access_key_id
 R2_ACCESS_KEY_SECRET=your_r2_access_key_secret
 R2_BUCKET=your-bucket-name
 
+# Tencent Cloud COS
+COS_REGION=ap-guangzhou
+COS_SECRET_ID=your_secret_id
+COS_SECRET_KEY=your_secret_key
+COS_BUCKET=your-bucket-name-appid  # Format: bucket-appid
+
 # Dependencies already in root package.json
-# ali-oss, @aws-sdk/client-s3, @aws-sdk/s3-request-presigner
+# ali-oss, @aws-sdk/client-s3, @aws-sdk/s3-request-presigner, cos-nodejs-sdk-v5
 ```
 
 ## Code Style
@@ -72,6 +78,7 @@ import { createStorageProvider } from '@libs/storage';
 const s3Storage = createStorageProvider('s3');
 const ossStorage = createStorageProvider('oss');
 const r2Storage = createStorageProvider('r2');
+const cosStorage = createStorageProvider('cos');
 
 // Upload to S3
 await s3Storage.uploadFile({
@@ -140,7 +147,7 @@ try {
 ```typescript
 // Configuration in config.ts
 storage: {
-  defaultProvider: 'oss', // or 's3', 'r2'
+  defaultProvider: 'oss', // or 's3', 'r2', 'cos'
   
   oss: {
     region: getEnv('OSS_REGION'),
@@ -166,6 +173,14 @@ storage: {
     accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
     accessKeySecret: requireEnv('R2_ACCESS_KEY_SECRET'),
     bucket: getEnv('R2_BUCKET'),
+    defaultExpiration: 3600,
+  },
+  
+  cos: {
+    region: getEnv('COS_REGION'),
+    secretId: requireEnv('COS_SECRET_ID'),
+    secretKey: requireEnv('COS_SECRET_KEY'),
+    bucket: getEnv('COS_BUCKET'),
     defaultExpiration: 3600,
   }
 }
@@ -222,6 +237,12 @@ pnpm test libs/storage/providers/s3
 - For S3: Region must match bucket region
 - For S3-compatible: Set `S3_FORCE_PATH_STYLE=true`
 
+### COS Specific
+- Bucket name format: `bucket-appid` (e.g., `example-1250000000`)
+- Region format: `ap-xxx` (e.g., `ap-guangzhou`, `ap-shanghai`)
+- Check CAM permissions for the SecretId/SecretKey
+- For browser access: Configure CORS in Tencent Cloud console
+
 ### Network Issues
 - Check firewall/proxy settings
 - Verify endpoint URLs are reachable
@@ -237,6 +258,7 @@ pnpm test libs/storage/providers/s3
 - **Unified Interface**: All providers implement `StorageProvider` interface
 - **Factory Pattern**: `createStorageProvider()` returns appropriate provider instance
 - **R2 Implementation**: Uses `S3Provider` with R2-specific configuration (auto region, path style)
+- **COS Implementation**: Uses `cos-nodejs-sdk-v5` SDK for Tencent Cloud Object Storage
 - **Configuration**: Sensitive data in env vars, settings in `@config`
 - **Error Handling**: Consistent error messages with provider-specific details
 - **Type Safety**: Full TypeScript support with exported types
