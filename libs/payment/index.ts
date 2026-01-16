@@ -2,18 +2,23 @@ import { config } from '@config';
 import { StripeProvider } from './providers/stripe';
 import { WechatPayProvider } from './providers/wechat';
 import { CreemProvider } from './providers/creem';
+import { AlipayProvider } from './providers/alipay';
 import { PaymentProvider } from './types';
 
-export type PaymentProviderType = 'stripe' | 'wechat' | 'creem';
+export type PaymentProviderType = 'stripe' | 'wechat' | 'creem' | 'alipay';
 
 /**
- * 创建支付提供商实例
- * @param provider 支付提供商类型
- * @returns 支付提供商实例
+ * Create payment provider instance
+ * @param provider Payment provider type
+ * @returns Payment provider instance
  */
 export function createPaymentProvider<T extends PaymentProviderType>(
   provider: T
-): T extends 'stripe' ? StripeProvider : T extends 'wechat' ? WechatPayProvider : T extends 'creem' ? CreemProvider : never {
+): T extends 'stripe' ? StripeProvider 
+  : T extends 'wechat' ? WechatPayProvider 
+  : T extends 'creem' ? CreemProvider 
+  : T extends 'alipay' ? AlipayProvider 
+  : never {
   switch (provider) {
     case 'stripe':
       return new StripeProvider() as any;
@@ -21,12 +26,14 @@ export function createPaymentProvider<T extends PaymentProviderType>(
       return new WechatPayProvider() as any;
     case 'creem':
       return new CreemProvider() as any;
+    case 'alipay':
+      return new AlipayProvider() as any;
     default:
-      throw new Error(`不支持的支付提供商: ${provider}`);
+      throw new Error(`Unsupported payment provider: ${provider}`);
   }
 }
 
-// 导出类型和提供商实现，方便使用
+// Export types and provider implementations for convenience
 export * from './types';
-export { StripeProvider, WechatPayProvider, CreemProvider };
+export { StripeProvider, WechatPayProvider, CreemProvider, AlipayProvider };
 export type { CreemRedirectParams, ReturnUrlVerification } from './providers/creem'; 

@@ -82,6 +82,33 @@ export const paymentConfig = {
       get webhookSecret() {
         return requireEnvForService('CREEM_WEBHOOK_SECRET', 'Creem');
       }
+    },
+
+    /**
+     * Alipay Configuration
+     */
+    alipay: {
+      get appId() {
+        return requireEnvForService('ALIPAY_APP_ID', 'Alipay');
+      },
+      /**
+       * Application private key (PEM format with \n escape sequences)
+       * Used to sign API requests
+       */
+      get privateKey() {
+        return requireEnvForService('ALIPAY_PRIVATE_KEY', 'Alipay');
+      },
+      /**
+       * Alipay public key (PEM format with \n escape sequences)
+       * Used to verify Alipay signatures on notifications
+       */
+      get alipayPublicKey() {
+        return requireEnvForService('ALIPAY_PUBLIC_KEY', 'Alipay');
+      },
+      get notifyUrl() {
+        // Need to set as public address, use reverse proxy for local dev
+        return requireEnvForService('ALIPAY_NOTIFY_URL', 'Alipay');
+      }
     }
   },
 
@@ -341,6 +368,38 @@ export const paymentConfig = {
             '550 次 AI 对话 (含 50 赠送)',
             '积分永不过期',
             '最超值套餐'
+          ]
+        }
+      }
+    },
+
+    // Alipay plans
+    monthlyAlipay: {
+      provider: 'alipay',
+      id: 'monthlyAlipay',
+      amount: 0.01,
+      currency: 'CNY',
+      duration: {
+        months: 1,
+        type: 'one_time'
+      },
+      i18n: {
+        'en': {
+          name: 'Alipay Monthly Plan',
+          description: 'Monthly one time pay via Alipay',
+          duration: 'month',
+          features: [
+            'All premium features',
+            'Priority support'
+          ]
+        },
+        'zh-CN': {
+          name: '支付宝月度',
+          description: '通过支付宝的月度一次性支付',
+          duration: '月',
+          features: [
+            '所有高级功能',
+            '优先支持'
           ]
         }
       }
