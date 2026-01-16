@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-type StorageProvider = 'oss' | 's3' | 'r2'
+type StorageProvider = 'oss' | 's3' | 'r2' | 'cos'
 
 // Maximum file size: 1MB
 const MAX_FILE_SIZE = 1 * 1024 * 1024
@@ -62,19 +62,25 @@ const providerOptions = computed(() => [
     value: 'oss' as const,
     label: t('upload.providers.oss'),
     description: t('upload.providers.ossDescription'),
-    colorClass: 'text-orange-500',
+    colorClass: 'text-chart-1',
   },
   {
     value: 's3' as const,
     label: t('upload.providers.s3'),
     description: t('upload.providers.s3Description'),
-    colorClass: 'text-amber-500',
+    colorClass: 'text-chart-1',
   },
   {
     value: 'r2' as const,
     label: t('upload.providers.r2'),
     description: t('upload.providers.r2Description'),
-    colorClass: 'text-orange-600',
+    colorClass: 'text-chart-1',
+  },
+  {
+    value: 'cos' as const,
+    label: t('upload.providers.cos'),
+    description: t('upload.providers.cosDescription'),
+    colorClass: 'text-chart-1',
   },
 ])
 

@@ -6,12 +6,12 @@ import { getEnv, getEnvForService, requireEnvForService, requireEnvWithFallback 
 export const storageConfig = {
   /**
    * Default Storage Provider
-   * @type {'oss' | 's3' | 'r2'}
+   * @type {'oss' | 's3' | 'r2' | 'cos'}
    */
   get defaultProvider() {
     const provider = getEnv('STORAGE_PROVIDER');
-    if (provider && ['oss', 's3', 'r2'].includes(provider)) {
-      return provider as 'oss' | 's3' | 'r2';
+    if (provider && ['oss', 's3', 'r2', 'cos'].includes(provider)) {
+      return provider as 'oss' | 's3' | 'r2' | 'cos';
     }
     return 'oss' as const;
   },
@@ -82,6 +82,29 @@ export const storageConfig = {
     },
     get bucket() {
       return getEnv('R2_BUCKET') || 'tinyship';
+    },
+    defaultExpiration: 3600, // 1 hour in seconds
+  },
+
+  /**
+   * Tencent Cloud COS Configuration
+   */
+  cos: {
+    get secretId() {
+      // Fallback to TENCENT_SECRET_ID if COS_SECRET_ID is not set
+      return requireEnvWithFallback(['COS_SECRET_ID', 'TENCENT_SECRET_ID'], 'Tencent Cloud COS');
+    },
+    get secretKey() {
+      // Fallback to TENCENT_SECRET_KEY if COS_SECRET_KEY is not set
+      return requireEnvWithFallback(['COS_SECRET_KEY', 'TENCENT_SECRET_KEY'], 'Tencent Cloud COS');
+    },
+    get bucket() {
+      // COS bucket name format: bucket-appid (e.g., example-1250000000)
+      return getEnv('COS_BUCKET') || 'tinyship-1250000000';
+    },
+    get region() {
+      // COS region format: ap-xxx (e.g., ap-guangzhou, ap-shanghai, ap-beijing)
+      return getEnv('COS_REGION') || 'ap-guangzhou';
     },
     defaultExpiration: 3600, // 1 hour in seconds
   }

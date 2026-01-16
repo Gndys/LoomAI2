@@ -25,7 +25,7 @@ import {
   FileUploadTrigger,
 } from '@/components/ui/file-upload';
 
-type StorageProvider = 'oss' | 's3' | 'r2';
+type StorageProvider = 'oss' | 's3' | 'r2' | 'cos';
 
 // Maximum file size: 1MB
 const MAX_FILE_SIZE = 1 * 1024 * 1024;
@@ -51,19 +51,25 @@ export default function UploadPage() {
       value: 'oss' as const,
       label: t.upload.providers.oss,
       description: t.upload.providers.ossDescription,
-      icon: <Cloud className="size-4 text-orange-500" />,
+      icon: <Cloud className="size-4 text-chart-1" />,
     },
     {
       value: 's3' as const,
       label: t.upload.providers.s3,
       description: t.upload.providers.s3Description,
-      icon: <Cloud className="size-4 text-amber-500" />,
+      icon: <Cloud className="size-4 text-chart-1" />,
     },
     {
       value: 'r2' as const,
       label: t.upload.providers.r2,
       description: t.upload.providers.r2Description,
-      icon: <Cloud className="size-4 text-orange-600" />,
+      icon: <Cloud className="size-4 text-chart-1" />,
+    },
+    {
+      value: 'cos' as const,
+      label: t.upload.providers.cos,
+      description: t.upload.providers.cosDescription,
+      icon: <Cloud className="size-4 text-chart-1" />,
     },
   ];
 

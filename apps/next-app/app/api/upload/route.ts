@@ -19,7 +19,7 @@ const ALLOWED_MIME_TYPES = [
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
 
 // Supported storage providers
-const SUPPORTED_PROVIDERS: StorageProviderType[] = ['oss', 's3', 'r2'];
+const SUPPORTED_PROVIDERS: StorageProviderType[] = ['oss', 's3', 'r2', 'cos'];
 
 /**
  * Validate file extension

@@ -1713,7 +1713,9 @@ export const zhCN: Locale = {
       s3: "Amazon S3",
       s3Description: "全球云存储",
       r2: "Cloudflare R2",
-      r2Description: "零出口费用"
+      r2Description: "零出口费用",
+      cos: "腾讯云 COS",
+      cosDescription: "国内云存储"
     },
     uploadTitle: "上传图片",
     uploadDescription: "拖拽图片或点击浏览。最大 1MB。",

@@ -44,6 +44,14 @@
 - ✅ 元数据检索
 - ✅ 目录列表
 
+### 腾讯云 COS
+- ✅ 文件上传/下载
+- ✅ 签名 URL 生成
+- ✅ 文件删除
+- ✅ 文件存在检查
+- ✅ 元数据检索
+- ✅ 目录列表
+
 ### 计划支持
 - 🚧 Google Cloud Storage
 - 🚧 Azure Blob Storage
@@ -58,6 +66,9 @@ pnpm add ali-oss
 
 # AWS S3 和 Cloudflare R2
 pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
+
+# 腾讯云 COS
+pnpm add cos-nodejs-sdk-v5
 ```
 
 ## 配置
@@ -67,7 +78,7 @@ pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 设置 `STORAGE_PROVIDER` 环境变量来选择默认服务商：
 
 ```bash
-# 可选值：oss, s3, r2
+# 可选值：oss, s3, r2, cos
 STORAGE_PROVIDER=s3
 ```
 
@@ -106,13 +117,23 @@ R2_ACCESS_KEY_SECRET=your_r2_access_key_secret
 R2_BUCKET=your-bucket-name
 ```
 
+### 腾讯云 COS 配置
+
+```bash
+# 腾讯云 COS 配置
+COS_REGION=ap-guangzhou
+COS_SECRET_ID=your_secret_id
+COS_SECRET_KEY=your_secret_key
+COS_BUCKET=your-bucket-name-appid  # 格式：bucket-appid，如 example-1250000000
+```
+
 配置自动从 `config.ts` 加载：
 
 ```typescript
 import { config } from '@config';
 
 // 默认服务商（可通过 STORAGE_PROVIDER 环境变量设置）
-config.storage.defaultProvider // 'oss' | 's3' | 'r2'
+config.storage.defaultProvider // 'oss' | 's3' | 'r2' | 'cos'
 
 // OSS 配置
 config.storage.oss.region
@@ -133,6 +154,12 @@ config.storage.r2.accountId
 config.storage.r2.accessKeyId
 config.storage.r2.accessKeySecret
 config.storage.r2.bucket
+
+// COS 配置
+config.storage.cos.region
+config.storage.cos.secretId
+config.storage.cos.secretKey
+config.storage.cos.bucket
 ```
 
 ## 使用方法
@@ -169,6 +196,9 @@ const s3Storage = createStorageProvider('s3');
 // 创建 R2 服务商
 const r2Storage = createStorageProvider('r2');
 
+// 创建 COS 服务商
+const cosStorage = createStorageProvider('cos');
+
 // 上传到 S3
 const result = await s3Storage.uploadFile({
   file: fileBuffer,
@@ -180,12 +210,13 @@ const result = await s3Storage.uploadFile({
 ### 直接实例化服务商
 
 ```typescript
-import { OSSProvider, S3Provider, createR2Provider } from '@libs/storage';
+import { OSSProvider, S3Provider, createR2Provider, COSProvider } from '@libs/storage';
 
 // 直接创建服务商实例
 const ossProvider = new OSSProvider();
 const s3Provider = new S3Provider();
 const r2Provider = createR2Provider();
+const cosProvider = new COSProvider();
 
 // 使用自定义配置（仅 S3）
 import { S3Provider, S3ProviderConfig } from '@libs/storage';
@@ -361,6 +392,17 @@ interface S3ProviderConfig {
 }
 ```
 
+### COSProviderConfig
+```typescript
+interface COSProviderConfig {
+  secretId: string;
+  secretKey: string;
+  bucket: string;
+  region: string;
+  defaultExpiration?: number;
+}
+```
+
 ## 错误处理
 
 库提供全面的错误处理：
@@ -475,6 +517,33 @@ S3_ENDPOINT=https://nyc3.digitaloceanspaces.com
 S3_FORCE_PATH_STYLE=true
 ```
 
+### 腾讯云 COS
+
+腾讯云 COS 使用 `cos-nodejs-sdk-v5` SDK，用于服务端环境：
+
+- Bucket 名称格式为 `bucket-appid`，如 `example-1250000000`
+- Region 格式为 `ap-xxx`，如 `ap-guangzhou`、`ap-shanghai`、`ap-beijing`
+- 支持自定义元数据（以 `x-cos-meta-` 为前缀）
+
+```typescript
+import { COSProvider } from '@libs/storage';
+
+// COS 服务商已预配置正确的设置
+const cos = new COSProvider();
+
+// 或使用自定义配置
+import { COSProvider, COSProviderConfig } from '@libs/storage';
+
+const customConfig: COSProviderConfig = {
+  secretId: 'your-secret-id',
+  secretKey: 'your-secret-key',
+  bucket: 'your-bucket-1250000000',
+  region: 'ap-guangzhou'
+};
+
+const customCOS = new COSProvider(customConfig);
+```
+
 ## 开发
 
 ### 测试
@@ -523,6 +592,17 @@ Error: Failed to upload file: NoSuchBucket
 
 **R2 CORS 问题**
 如果从浏览器访问 R2，请确保已在 Cloudflare 控制台中为 R2 存储桶配置 CORS。
+
+**COS 认证错误**
+```
+Error: Failed to upload file to COS: InvalidSecretId
+```
+- 验证 `COS_SECRET_ID` 和 `COS_SECRET_KEY`
+- 检查密钥的 CAM 权限
+- 确保 Bucket 名称格式正确（bucket-appid）
+
+**COS CORS 问题**
+如果从浏览器访问 COS，请在腾讯云控制台为 COS 存储桶配置 CORS 规则。
 
 **网络超时**
 ```

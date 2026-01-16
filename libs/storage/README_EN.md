@@ -42,6 +42,14 @@ The storage library provides a unified interface for file operations across diff
 - ✅ Metadata retrieval
 - ✅ Directory listing
 
+### Tencent Cloud COS
+- ✅ File upload/download
+- ✅ Signed URL generation
+- ✅ File deletion
+- ✅ File existence checking
+- ✅ Metadata retrieval
+- ✅ Directory listing
+
 ### Planned Providers
 - 🚧 Google Cloud Storage
 - 🚧 Azure Blob Storage
@@ -56,6 +64,9 @@ pnpm add ali-oss
 
 # For AWS S3 and Cloudflare R2
 pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
+
+# For Tencent Cloud COS
+pnpm add cos-nodejs-sdk-v5
 ```
 
 ## Configuration
@@ -65,7 +76,7 @@ pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 Set the `STORAGE_PROVIDER` environment variable to choose your default provider:
 
 ```bash
-# Options: oss, s3, r2
+# Options: oss, s3, r2, cos
 STORAGE_PROVIDER=s3
 ```
 
@@ -104,13 +115,23 @@ R2_ACCESS_KEY_SECRET=your_r2_access_key_secret
 R2_BUCKET=your-bucket-name
 ```
 
+### Tencent Cloud COS Configuration
+
+```bash
+# Tencent Cloud COS Configuration
+COS_REGION=ap-guangzhou
+COS_SECRET_ID=your_secret_id
+COS_SECRET_KEY=your_secret_key
+COS_BUCKET=your-bucket-name-appid  # Format: bucket-appid, e.g., example-1250000000
+```
+
 The configuration is automatically loaded from `config.ts`:
 
 ```typescript
 import { config } from '@config';
 
 // Default provider (can be set via STORAGE_PROVIDER env var)
-config.storage.defaultProvider // 'oss' | 's3' | 'r2'
+config.storage.defaultProvider // 'oss' | 's3' | 'r2' | 'cos'
 
 // OSS configuration
 config.storage.oss.region
@@ -131,6 +152,12 @@ config.storage.r2.accountId
 config.storage.r2.accessKeyId
 config.storage.r2.accessKeySecret
 config.storage.r2.bucket
+
+// COS configuration
+config.storage.cos.region
+config.storage.cos.secretId
+config.storage.cos.secretKey
+config.storage.cos.bucket
 ```
 
 ## Usage
@@ -167,6 +194,9 @@ const s3Storage = createStorageProvider('s3');
 // Create R2 provider
 const r2Storage = createStorageProvider('r2');
 
+// Create COS provider
+const cosStorage = createStorageProvider('cos');
+
 // Upload to S3
 const result = await s3Storage.uploadFile({
   file: fileBuffer,
@@ -178,12 +208,13 @@ const result = await s3Storage.uploadFile({
 ### Direct Provider Instantiation
 
 ```typescript
-import { OSSProvider, S3Provider, createR2Provider } from '@libs/storage';
+import { OSSProvider, S3Provider, createR2Provider, COSProvider } from '@libs/storage';
 
 // Create providers directly
 const ossProvider = new OSSProvider();
 const s3Provider = new S3Provider();
 const r2Provider = createR2Provider();
+const cosProvider = new COSProvider();
 
 // Use with custom configuration (S3 only)
 import { S3Provider, S3ProviderConfig } from '@libs/storage';
@@ -359,6 +390,17 @@ interface S3ProviderConfig {
 }
 ```
 
+### COSProviderConfig
+```typescript
+interface COSProviderConfig {
+  secretId: string;
+  secretKey: string;
+  bucket: string;
+  region: string;
+  defaultExpiration?: number;
+}
+```
+
 ## Error Handling
 
 The library provides comprehensive error handling:
@@ -473,6 +515,33 @@ S3_ENDPOINT=https://nyc3.digitaloceanspaces.com
 S3_FORCE_PATH_STYLE=true
 ```
 
+### Tencent Cloud COS
+
+Tencent Cloud COS uses the `cos-nodejs-sdk-v5` SDK for server-side environments:
+
+- Bucket name format is `bucket-appid`, e.g., `example-1250000000`
+- Region format is `ap-xxx`, e.g., `ap-guangzhou`, `ap-shanghai`, `ap-beijing`
+- Supports custom metadata (prefixed with `x-cos-meta-`)
+
+```typescript
+import { COSProvider } from '@libs/storage';
+
+// COS provider is pre-configured with correct settings
+const cos = new COSProvider();
+
+// Or use custom configuration
+import { COSProvider, COSProviderConfig } from '@libs/storage';
+
+const customConfig: COSProviderConfig = {
+  secretId: 'your-secret-id',
+  secretKey: 'your-secret-key',
+  bucket: 'your-bucket-1250000000',
+  region: 'ap-guangzhou'
+};
+
+const customCOS = new COSProvider(customConfig);
+```
+
 ## Development
 
 ### Testing
@@ -521,6 +590,17 @@ Error: Failed to upload file: NoSuchBucket
 
 **R2 CORS Issues**
 If you're accessing R2 from a browser, ensure you've configured CORS on your R2 bucket through the Cloudflare dashboard.
+
+**COS Authentication Error**
+```
+Error: Failed to upload file to COS: InvalidSecretId
+```
+- Verify `COS_SECRET_ID` and `COS_SECRET_KEY`
+- Check CAM permissions for the access key
+- Ensure bucket name format is correct (bucket-appid)
+
+**COS CORS Issues**
+If you're accessing COS from a browser, configure CORS rules for your COS bucket in the Tencent Cloud console.
 
 **Network Timeout**
 ```
