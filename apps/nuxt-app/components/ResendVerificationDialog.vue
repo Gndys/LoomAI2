@@ -136,11 +136,14 @@ const handleSubmit = async () => {
     } : {})
   }
 
-  const { data, error } = await authClientVue.sendVerificationEmail({
+  const result = await authClientVue.sendVerificationEmail({
     email: props.email,
     callbackURL: `/${locale.value}`,
     fetchOptions
   })
+
+  // Handle the result - check for error property in the response
+  const error = 'error' in result ? result.error : null
 
   if (error) {
     console.error('Failed to resend verification email:', error)

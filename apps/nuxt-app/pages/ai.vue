@@ -258,13 +258,14 @@ console.log("Code block");
 ];
 
 // Use the AI SDK's Chat class
+// Note: Using 'as any' to handle version mismatch between @ai-sdk/vue and root ai package
 const chat = new Chat({
   transport: new DefaultChatTransport({ 
     api: '/api/chat',
     prepareSendMessagesRequest: ({ messages }) => {
       return { body: { messages, provider: provider.value, model: model.value } }
     }
-  }),
+  }) as any,
   messages: initialMessages,
   onError: (error: any) => {
     console.error('Chat error:', error)

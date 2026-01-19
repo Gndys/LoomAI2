@@ -85,9 +85,10 @@ export default defineEventHandler(async (event) => {
     .offset(offset)
 
     // Get total count for pagination
-    const [{ count: totalCount }] = await db.select({ 
+    const countResult = await db.select({ 
       count: count() 
     }).from(user).where(whereClause)
+    const totalCount = countResult[0]?.count ?? 0
 
     return {
       users,

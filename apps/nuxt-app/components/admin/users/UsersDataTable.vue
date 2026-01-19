@@ -150,11 +150,14 @@ const handleUserUpdated = (userUpdate: Partial<User> & { id: string }) => {
   if (index !== -1) {
     // Extract id and get the actual update properties
     const { id, ...updateProperties } = userUpdate
+    const existingUser = localData.value[index]
     
     // Dynamically update all provided properties - clean and type-safe!
-    Object.assign(localData.value[index], updateProperties, {
-      updatedAt: new Date() // Always update timestamp
-    })
+    if (existingUser) {
+      Object.assign(existingUser, updateProperties, {
+        updatedAt: new Date() // Always update timestamp
+      })
+    }
   } else {
     console.warn('User not found in localData for update:', userUpdate.id)
     // If user not found locally, trigger a full refresh
@@ -243,7 +246,7 @@ const table = useVueTable({
     // Update URL with new sorting parameters
     const query = { ...route.query }
     
-    if (newSorting.length > 0) {
+    if (newSorting.length > 0 && newSorting[0]) {
       query.sortBy = newSorting[0].id
       query.sortDirection = newSorting[0].desc ? 'desc' : 'asc'
     } else {

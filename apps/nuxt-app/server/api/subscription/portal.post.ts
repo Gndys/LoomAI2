@@ -42,6 +42,14 @@ export default defineEventHandler(async (event) => {
                               allSubscriptions.find(sub => sub.status === 'paid') ||
                               allSubscriptions[0]
 
+    // Guard against undefined (shouldn't happen due to length check above)
+    if (!activeSubscription) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'No subscription found'
+      })
+    }
+
     console.log('activeSubscription', activeSubscription)
 
     // Determine payment provider by specified provider or auto-detection

@@ -1,4 +1,5 @@
-import { createStorageProvider, StorageProviderType } from '@libs/storage';
+import { createStorageProvider } from '@libs/storage';
+import type { StorageProviderType } from '@libs/storage';
 
 // Maximum file size: 1MB
 const MAX_FILE_SIZE = 1 * 1024 * 1024;

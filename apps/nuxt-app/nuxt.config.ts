@@ -10,9 +10,28 @@ const env = loadEnv(process.env.NODE_ENV || 'development', resolve(__dirname, '.
 Object.assign(process.env, env);
 
 import { config as appConfig } from '../../config';
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
+  
+  // TypeScript configuration
+  typescript: {
+    // Enable type checking during build only (not in dev mode)
+    // Value 'build' = only check during nuxt build (not dev)
+    // See: https://nuxt.com/docs/api/nuxt-config#typecheck
+    typeCheck: 'build',
+    tsConfig: {
+      compilerOptions: {
+        // Disable verbatimModuleSyntax for better compatibility with shared libs
+        // Nuxt enables this by default, but libs use mixed import styles
+        verbatimModuleSyntax: false,
+        // Disable noUncheckedIndexedAccess to match root tsconfig
+        // Nuxt enables this by default, causing array[0] to be T | undefined
+        noUncheckedIndexedAccess: false
+      }
+    }
+  },
   devServer: {
     port: 7001,
   },

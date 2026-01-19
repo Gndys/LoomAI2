@@ -214,7 +214,7 @@ const table = useVueTable({
     // Update URL with new sorting parameters
     const query = { ...route.query }
     
-    if (newSorting.length > 0) {
+    if (newSorting.length > 0 && newSorting[0]) {
       query.sortBy = newSorting[0].id
       query.sortDirection = newSorting[0].desc ? 'desc' : 'asc'
     } else {
