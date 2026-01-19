@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack --port 7001",
     "build": "next build",
-    "start": "NODE_ENV=production next start --port 7001"
+    "start": "NODE_ENV=production next start --port 7001",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/react": "3.0.6",

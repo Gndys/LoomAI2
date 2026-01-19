@@ -100,7 +100,7 @@ export default defineEventHandler(async (event) => {
     const forwardedFor = getHeader(event, 'x-forwarded-for')
     const realIp = getHeader(event, 'x-real-ip')
     const clientIp = forwardedFor 
-      ? forwardedFor.split(',')[0].trim() 
+      ? (forwardedFor.split(',')[0]?.trim() ?? '127.0.0.1')
       : (realIp || '127.0.0.1')
     
     // Initiate payment using the payment library

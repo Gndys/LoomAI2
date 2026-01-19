@@ -39,7 +39,10 @@ watch(() => props.currentRole, (newRole) => {
   selectedRole.value = newRole
 })
 
-const handleRoleChange = async (newRole: string) => {
+const handleRoleChange = async (newRole: unknown) => {
+  if (typeof newRole !== 'string' || !newRole) {
+    return
+  }
   const { data, error } = await authClientVue.admin.setRole({
     userId: props.userId,
     role: newRole as UserRole,
