@@ -63,8 +63,8 @@ jobs:
   docker-build:
     name: Docker Build Verification
     runs-on: ubuntu-latest
-    # Only run on pushes to main/develop, skip on PRs to save CI time
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    # Run on both PRs and pushes to catch Docker-specific issues early
+    # Docker environment differs from native CI (pnpm hoisting, file structure, etc.)
     
     steps:
       - name: Checkout code

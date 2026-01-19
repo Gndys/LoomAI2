@@ -17,10 +17,12 @@ export default defineNuxtConfig({
   
   // TypeScript configuration
   typescript: {
-    // Enable type checking during build only (not in dev mode)
-    // Value 'build' = only check during nuxt build (not dev)
+    // Enable type checking during local build only
+    // Disable in Docker (BUILD_TIME=true) because:
+    // 1. Local build already validates types
+    // 2. Docker's pnpm strict mode can't resolve transitive dependency types (vue-i18n, vite)
     // See: https://nuxt.com/docs/api/nuxt-config#typecheck
-    typeCheck: 'build',
+    typeCheck: process.env.BUILD_TIME ? false : 'build',
     tsConfig: {
       compilerOptions: {
         // Disable verbatimModuleSyntax for better compatibility with shared libs
