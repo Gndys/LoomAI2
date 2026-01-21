@@ -97,8 +97,8 @@ async function getRealMonthlyData(): Promise<ChartData[]> {
         
         monthlyData.push({
           month: monthName,
-          revenue: Number(monthRevenue.total) || 0,
-          orders: monthOrders.count || 0
+          revenue: Number(monthRevenue?.total) || 0,
+          orders: monthOrders?.count || 0
         })
       } catch (error) {
         console.error(`Failed to get data for month ${targetDate.getMonth() + 1}:`, error)
@@ -238,38 +238,38 @@ export default defineEventHandler(async (event) => {
       getRealMonthlyData()
     ])
 
-    const thisMonthRevenueValue = Number(thisMonthRevenue[0].total) || 0
-    const lastMonthRevenueValue = Number(lastMonthRevenue[0].total) || 0
+    const thisMonthRevenueValue = Number(thisMonthRevenue[0]?.total) || 0
+    const lastMonthRevenueValue = Number(lastMonthRevenue[0]?.total) || 0
 
     const stats: AdminStats = {
       revenue: {
-        total: Number(totalRevenue[0].total) || 0,
+        total: Number(totalRevenue[0]?.total) || 0,
       },
       customers: {
-        new: newCustomers[0].count,
+        new: newCustomers[0]?.count ?? 0,
       },
       orders: {
-        new: newOrders[0].count,
+        new: newOrders[0]?.count ?? 0,
       },
       todayData: {
-        revenue: Number(todayRevenue[0].total) || 0,
-        newUsers: todayNewUsers[0].count,
-        orders: todayOrders[0].count,
+        revenue: Number(todayRevenue[0]?.total) || 0,
+        newUsers: todayNewUsers[0]?.count ?? 0,
+        orders: todayOrders[0]?.count ?? 0,
       },
       monthData: {
         revenue: thisMonthRevenueValue,
-        newUsers: newCustomers[0].count,
-        orders: monthlyOrders[0].count,
+        newUsers: newCustomers[0]?.count ?? 0,
+        orders: monthlyOrders[0]?.count ?? 0,
       },
       lastMonthData: {
         revenue: lastMonthRevenueValue,
-        newUsers: lastMonthUsers[0].count,
-        orders: lastMonthOrders[0].count,
+        newUsers: lastMonthUsers[0]?.count ?? 0,
+        orders: lastMonthOrders[0]?.count ?? 0,
       },
       growthRates: {
         revenue: calculateGrowthRate(thisMonthRevenueValue, lastMonthRevenueValue),
-        users: calculateGrowthRate(newCustomers[0].count, lastMonthUsers[0].count),
-        orders: calculateGrowthRate(monthlyOrders[0].count, lastMonthOrders[0].count),
+        users: calculateGrowthRate(newCustomers[0]?.count ?? 0, lastMonthUsers[0]?.count ?? 0),
+        orders: calculateGrowthRate(monthlyOrders[0]?.count ?? 0, lastMonthOrders[0]?.count ?? 0),
       },
       chartData: chartData,
     }

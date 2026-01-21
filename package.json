@@ -26,7 +26,10 @@
     "db:studio": "node libs/database/scripts.js studio",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "typecheck": "turbo run typecheck",
+    "typecheck:next": "turbo run typecheck --filter=@tinyship/next-app",
+    "typecheck:nuxt": "turbo run typecheck --filter=@tinyship/nuxt-app"
   },
   "keywords": [
     "saas",

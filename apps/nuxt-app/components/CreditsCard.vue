@@ -186,14 +186,14 @@ const totalTransactions = ref(0)
 const fetchTransactions = async (page: number) => {
   loadingTransactions.value = true
   try {
-    const response = await $fetch('/api/credits/transactions', { 
-      query: { page, limit: PAGE_SIZE } 
-    }) as { 
+    const response = await $fetch<{
       transactions: CreditTransaction[]
       total: number
       page: number
       totalPages: number
-    }
+    }>('/api/credits/transactions', { 
+      query: { page, limit: PAGE_SIZE } 
+    })
     
     transactions.value = response.transactions || []
     totalPages.value = response.totalPages || 1

@@ -285,7 +285,7 @@ interface UserData {
   id: string
   name: string
   email: string
-  role: string
+  role: 'user' | 'admin'
   image?: string | null
   phoneNumber?: string | null
   emailVerified: boolean
@@ -295,7 +295,7 @@ interface UserData {
 }
 
 // Fetch user data for edit mode
-let userData: Ref<UserData | null> = ref(null)
+let userData: Ref<UserData | undefined> = ref(undefined)
 
 if (isEditMode) {
   const { data } = await useFetch<UserData>(`/api/users/${userId}`, {
@@ -311,7 +311,7 @@ if (isEditMode) {
         setValues({
           name: data.name || '',
           email: data.email || '',
-          role: data.role || 'user',
+          role: (data.role as 'user' | 'admin') || 'user',
           image: data.image || '',
           phoneNumber: data.phoneNumber || '',
           banReason: data.banReason || ''

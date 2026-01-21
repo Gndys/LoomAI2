@@ -13,7 +13,7 @@
         v-for="column in filteredColumns"
         :key="column.id"
         class="flex items-center justify-between"
-        @select="(event) => { event.preventDefault(); column.toggleVisibility() }"
+        @select="(event: Event) => { event.preventDefault(); column.toggleVisibility() }"
       >
         <span class="capitalize">
           {{ getColumnDisplayName(column.id) }}
