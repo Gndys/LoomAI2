@@ -28,10 +28,13 @@ CREEM_SERVER_URL=https://api.creem.io
 CREEM_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Alipay (China market, CNY only)
+# Reference: https://opendocs.alipay.com/open/00dn7o (Sandbox environment)
+# Keys use Base64 string format (no PEM headers)
 ALIPAY_APP_ID=2021000000000000
-ALIPAY_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
-ALIPAY_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+ALIPAY_APP_PRIVATE_KEY="MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC..."
+ALIPAY_PUBLIC_KEY="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgatiwfGM3RTw..."
 ALIPAY_NOTIFY_URL=https://yourdomain.com/api/payment/webhook/alipay
+ALIPAY_SANDBOX=false  # Set to "true" for sandbox testing
 
 # No additional installation - configured via @config
 ```

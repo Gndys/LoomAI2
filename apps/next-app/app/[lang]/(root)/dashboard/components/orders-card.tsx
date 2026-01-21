@@ -164,6 +164,10 @@ export function OrdersCard({}: OrdersCardProps) {
         return t.dashboard.orders.provider.stripe;
       case 'wechat':
         return t.dashboard.orders.provider.wechat;
+      case 'creem':
+        return t.dashboard.orders.provider.creem
+      case 'alipay':
+        return t.dashboard.orders.provider.alipay
       default:
         return provider;
     }

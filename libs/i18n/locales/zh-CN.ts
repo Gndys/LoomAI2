@@ -567,7 +567,8 @@ export const zhCN: Locale = {
           canceled: "已取消",
           stripe: "Stripe",
           wechat: "微信支付",
-          creem: "Creem"
+          creem: "Creem",
+          alipay: "支付宝"
         },
         columns: {
           id: "订单ID",
@@ -685,6 +686,7 @@ export const zhCN: Locale = {
           stripe: "Stripe",
           creem: "Creem",
           wechat: "微信支付",
+          alipay: "支付宝",
           userEmail: "用户邮箱",
           subscriptionId: "订阅ID",
           userId: "用户ID",
@@ -999,7 +1001,8 @@ export const zhCN: Locale = {
       provider: {
         stripe: "Stripe",
         wechat: "微信支付",
-        creem: "Creem"
+        creem: "Creem",
+        alipay: "支付宝"
       },
       noOrders: "没有找到订单",
       noOrdersDescription: "您还没有下过任何订单",

@@ -86,6 +86,7 @@ export const paymentConfig = {
 
     /**
      * Alipay Configuration
+     * Reference: https://opendocs.alipay.com/open/00dn7o (Sandbox environment)
      */
     alipay: {
       get appId() {
@@ -93,14 +94,14 @@ export const paymentConfig = {
       },
       /**
        * Application private key (PEM format with \n escape sequences)
-       * Used to sign API requests
+       * Used to sign API requests to Alipay
        */
-      get privateKey() {
-        return requireEnvForService('ALIPAY_PRIVATE_KEY', 'Alipay');
+      get appPrivateKey() {
+        return requireEnvForService('ALIPAY_APP_PRIVATE_KEY', 'Alipay');
       },
       /**
        * Alipay public key (PEM format with \n escape sequences)
-       * Used to verify Alipay signatures on notifications
+       * Used to verify Alipay signatures on webhook notifications
        */
       get alipayPublicKey() {
         return requireEnvForService('ALIPAY_PUBLIC_KEY', 'Alipay');
@@ -108,6 +109,23 @@ export const paymentConfig = {
       get notifyUrl() {
         // Need to set as public address, use reverse proxy for local dev
         return requireEnvForService('ALIPAY_NOTIFY_URL', 'Alipay');
+      },
+      /**
+       * Whether to use sandbox environment for testing
+       * Sandbox gateway: https://openapi-sandbox.dl.alipaydev.com/gateway.do
+       * Production gateway: https://openapi.alipay.com/gateway.do
+       */
+      get sandbox() {
+        return getEnv('ALIPAY_SANDBOX') === 'true';
+      },
+      /**
+       * Gateway URL (automatically determined by sandbox mode)
+       */
+      get gateway() {
+        const sandbox = getEnv('ALIPAY_SANDBOX') === 'true';
+        return sandbox 
+          ? 'https://openapi-sandbox.dl.alipaydev.com/gateway.do'
+          : 'https://openapi.alipay.com/gateway.do';
       }
     }
   },
@@ -146,6 +164,38 @@ export const paymentConfig = {
         }
       }
     },
+  
+    // Alipay plans
+    monthlyAlipay: {
+      provider: 'alipay',
+      id: 'monthlyAlipay',
+      amount: 0.01,
+      currency: 'CNY',
+      duration: {
+        months: 1,
+        type: 'one_time'
+      },
+      i18n: {
+        'en': {
+          name: 'Alipay Monthly Plan',
+          description: 'Monthly one time pay via Alipay',
+          duration: 'month',
+          features: [
+            'All premium features',
+            'Priority support'
+          ]
+        },
+        'zh-CN': {
+          name: '支付宝月度',
+          description: '通过支付宝的月度一次性支付',
+          duration: '月',
+          features: [
+            '所有高级功能',
+            '优先支持'
+          ]
+        }
+      }
+    },
     monthly: {
       provider: 'stripe',
       id: 'monthly',
@@ -175,39 +225,6 @@ export const paymentConfig = {
           features: [
             '所有高级功能',
             '优先支持'
-          ]
-        }
-      }
-    },
-    'monthly-pro': {
-      provider: 'stripe',
-      id: 'monthly-pro',
-      amount: 20,
-      currency: 'USD',
-      duration: {
-        months: 1,
-        type: 'recurring'
-      },
-      stripePriceId: 'price_1RMmc4DjHLfDWeHDp9Xhpn5X',
-      i18n: {
-        'en': {
-          name: 'Stripe Monthly Pro Plan',
-          description: 'Premium monthly subscription with higher pricing',
-          duration: 'month',
-          features: [
-            'All premium features',
-            'Priority support',
-            'Free lifetime updates'
-          ]
-        },
-        'zh-CN': {
-          name: 'Stripe 月度专业版',
-          description: '高价位的月度专业订阅',
-          duration: '月',
-          features: [
-            '所有高级功能',
-            '优先支持',
-            '终身免费更新'
           ]
         }
       }
@@ -372,37 +389,5 @@ export const paymentConfig = {
         }
       }
     },
-
-    // Alipay plans
-    monthlyAlipay: {
-      provider: 'alipay',
-      id: 'monthlyAlipay',
-      amount: 0.01,
-      currency: 'CNY',
-      duration: {
-        months: 1,
-        type: 'one_time'
-      },
-      i18n: {
-        'en': {
-          name: 'Alipay Monthly Plan',
-          description: 'Monthly one time pay via Alipay',
-          duration: 'month',
-          features: [
-            'All premium features',
-            'Priority support'
-          ]
-        },
-        'zh-CN': {
-          name: '支付宝月度',
-          description: '通过支付宝的月度一次性支付',
-          duration: '月',
-          features: [
-            '所有高级功能',
-            '优先支持'
-          ]
-        }
-      }
-    }
   } as const,
 } as const;

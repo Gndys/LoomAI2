@@ -21,9 +21,9 @@ interface PaymentPlan {
 
 // Alipay notification parameters
 interface AlipayNotification {
-  // Signature info
-  sign_type: 'RSA2' | 'RSA';
+  // Signature fields (required for verification)
   sign: string;
+  sign_type: 'RSA' | 'RSA2';
   // Trade info
   out_trade_no: string;
   trade_no: string;
@@ -46,10 +46,14 @@ interface AlipayNotification {
   notify_time: string;
   subject?: string;
   body?: string;
+  // Additional fields
+  charset?: string;
+  version?: string;
+  auth_app_id?: string;
   [key: string]: any;
 }
 
-// Alipay precreate response
+// Alipay precreate response (for QR code payment - requires "当面付" permission)
 interface AlipayPrecreateResponse {
   code: string;
   msg: string;
@@ -58,6 +62,10 @@ interface AlipayPrecreateResponse {
   out_trade_no: string;
   qr_code: string;
 }
+
+// Alipay page pay response (for PC website payment - uses pageExecute)
+// pageExecute returns a URL string (GET) or HTML form string (POST)
+type AlipayPagePayResponse = string;
 
 // Alipay query response
 interface AlipayQueryResponse {
@@ -76,16 +84,28 @@ interface AlipayQueryResponse {
 export class AlipayProvider implements PaymentProvider {
   private sdk: AlipaySdk;
   private notifyUrl: string;
+  private isSandbox: boolean;
 
   constructor() {
     this.notifyUrl = config.payment.providers.alipay.notifyUrl;
+    this.isSandbox = config.payment.providers.alipay.sandbox;
     
-    console.log('Initializing Alipay SDK');
+    const gateway = config.payment.providers.alipay.gateway;
+    const alipayPublicKey = config.payment.providers.alipay.alipayPublicKey;
+    
+    console.log(`Initializing Alipay SDK (${this.isSandbox ? 'SANDBOX' : 'PRODUCTION'} mode)`);
+    console.log(`Gateway: ${gateway}`);
+    console.log(`App ID: ${config.payment.providers.alipay.appId}`);
+    console.log(`Alipay Public Key length: ${alipayPublicKey?.length || 0}`);
+    console.log(`Alipay Public Key starts with: ${alipayPublicKey?.substring(0, 40) || 'N/A'}...`);
     
     this.sdk = new AlipaySdk({
       appId: config.payment.providers.alipay.appId,
-      privateKey: config.payment.providers.alipay.privateKey,
-      alipayPublicKey: config.payment.providers.alipay.alipayPublicKey,
+      privateKey: config.payment.providers.alipay.appPrivateKey,
+      alipayPublicKey: alipayPublicKey,
+      // Set gateway for sandbox or production environment
+      // Reference: https://opendocs.alipay.com/open/00dn7o
+      gateway: gateway,
     });
     
     console.log('Alipay SDK initialized successfully');
@@ -97,33 +117,40 @@ export class AlipayProvider implements PaymentProvider {
       `${plan.i18n['zh-CN']?.name} - ${plan.i18n['zh-CN']?.description}`;
     
     try {
-      // Use curl method (API v3) to call alipay.trade.precreate for Native QR code payment
-      // Reference: https://opendocs.alipay.com/open-v3/65cd3c71_alipay.trade.precreate
-      const result = await this.sdk.curl<AlipayPrecreateResponse>('POST', '/v3/alipay/trade/precreate', {
-        body: {
-          notify_url: this.notifyUrl,
-          out_trade_no: params.orderId,
-          total_amount: (params.amount as number).toFixed(2),
-          subject: description,
-        }
+      // Use pageExecute to call alipay.trade.page.pay for PC website payment
+      // Reference: https://opendocs.alipay.com/open/59da99d0_alipay.trade.page.pay?pathHash=e26b497f&scene=22
+      // This generates a URL that redirects user to Alipay payment page
+      // After payment, user is redirected back to return_url
+      const bizContent = {
+        out_trade_no: params.orderId,
+        total_amount: (params.amount as number).toFixed(2),
+        subject: description,
+        product_code: 'FAST_INSTANT_TRADE_PAY', // Required for PC website payment
+      };
+
+      // Use pageExecute with 'GET' to generate a redirect URL
+      // The user will be redirected to Alipay's payment page
+      const paymentUrl = this.sdk.pageExecute('alipay.trade.page.pay', 'GET', {
+        bizContent,
+        notifyUrl: this.notifyUrl,
+        returnUrl: `${config.app.payment.successUrl}?provider=alipay`,
       });
 
-      console.log('Alipay precreate response:', result);
+      console.log('Alipay page pay URL generated:', paymentUrl.substring(0, 200) + '...');
 
-      if (result.data?.qr_code) {
+      if (paymentUrl) {
         return {
-          paymentUrl: result.data.qr_code,
+          paymentUrl: paymentUrl,
           providerOrderId: params.orderId,
           metadata: { 
-            result: result.data,
-            traceId: result.traceId
+            method: 'pageExecute',
+            productCode: 'FAST_INSTANT_TRADE_PAY'
           }
         };
       } else {
-        const errorMsg = result.data?.sub_msg || result.data?.msg || 'Unknown error';
-        throw new Error(`Alipay order creation failed: ${errorMsg}`);
+        throw new Error('Alipay order creation failed: No payment URL generated');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Alipay payment creation failed:', error);
       throw error;
     }
@@ -131,28 +158,67 @@ export class AlipayProvider implements PaymentProvider {
 
   async handleWebhook(payload: string | Record<string, any>, signature: string): Promise<WebhookVerification> {
     try {
-      // Parse notification data
+      // Log raw payload for debugging
+      console.log('=== Alipay Webhook Debug ===');
+      console.log('Raw payload type:', typeof payload);
+      if (typeof payload === 'string') {
+        console.log('Raw payload (first 500 chars):', payload.substring(0, 500));
+        console.log('Raw payload (full):', payload);
+      } else {
+        console.log('Raw payload (object):', JSON.stringify(payload, null, 2));
+      }
+      
+      // Parse notification data with URL decoding for signature verification
+      // checkNotifySignV2 does NOT decode values, so we must pass decoded values
+      // The signature is computed on decoded values, not URL-encoded values
       const notifyData: AlipayNotification = typeof payload === 'string' 
-        ? this.parseNotifyData(payload) 
+        ? this.parseNotifyData(payload)  // Decode values for checkNotifySignV2
         : payload as AlipayNotification;
       
-      console.log('Alipay webhook notification:', {
+      console.log('Parsed notification data (decoded):', {
         out_trade_no: notifyData.out_trade_no,
         trade_no: notifyData.trade_no,
         trade_status: notifyData.trade_status,
-        total_amount: notifyData.total_amount
+        total_amount: notifyData.total_amount,
+        sign_type: notifyData.sign_type,
+        sign: notifyData.sign ? notifyData.sign.substring(0, 50) + '...' : 'MISSING',
+        app_id: notifyData.app_id,
+        notify_time: notifyData.notify_time,
       });
+      
+      // Check if required fields for signature verification exist
+      if (!notifyData.sign) {
+        console.error('ERROR: sign field is missing from notification');
+        return { success: false };
+      }
+      if (!notifyData.sign_type) {
+        console.error('ERROR: sign_type field is missing from notification');
+        return { success: false };
+      }
 
       // Verify signature using SDK's built-in method
-      // checkNotifySignV2 doesn't decode values (recommended)
+      // checkNotifySignV2 expects decoded values (doesn't do URL decoding internally)
+      // Signature is computed on decoded parameter values
+      console.log('Attempting signature verification with checkNotifySignV2...');
+      console.log('Is sandbox mode:', this.isSandbox);
+      
       const isValid = this.sdk.checkNotifySignV2(notifyData);
       
+      console.log('Signature verification result:', isValid);
+      
       if (!isValid) {
-        console.error('Alipay notification signature verification failed');
+        console.error('=== Alipay Signature Verification Failed ===');
+        console.error('Possible causes:');
+        console.error('1. ALIPAY_PUBLIC_KEY is incorrect or not set');
+        console.error('2. Using wrong public key (sandbox vs production)');
+        console.error('3. Public key format issue (should be PEM format)');
+        console.error('4. Signature mismatch - check if values are correctly decoded');
+        console.error('============================================');
         return { success: false };
       }
 
       console.log('Alipay signature verification passed');
+      console.log('=== End Alipay Webhook Debug ===');
 
       // Process based on trade status
       // TRADE_SUCCESS: Payment completed, applicable for instant payment
@@ -379,16 +445,30 @@ export class AlipayProvider implements PaymentProvider {
   }
 
   /**
-   * Parse URL-encoded notification data to object
+   * Parse URL-encoded notification data to object (with URL decoding)
+   * The decoded values are used for:
+   * 1. Signature verification with checkNotifySignV2 (expects decoded values)
+   * 2. Business logic processing
+   * 
+   * Note: Alipay computes signatures on decoded/original values, so checkNotifySignV2
+   * (which doesn't decode internally) expects already-decoded input.
+   * 
+   * IMPORTANT: In application/x-www-form-urlencoded format:
+   * - '+' represents a space character (not %20)
+   * - decodeURIComponent() does NOT decode '+' to space
+   * - We must replace '+' with space before decoding
    */
   private parseNotifyData(data: string): AlipayNotification {
     const result: Record<string, string> = {};
     const pairs = data.split('&');
     
     for (const pair of pairs) {
-      const [key, value] = pair.split('=');
-      if (key && value !== undefined) {
-        result[decodeURIComponent(key)] = decodeURIComponent(value);
+      const idx = pair.indexOf('=');
+      if (idx > 0) {
+        const key = pair.substring(0, idx);
+        const value = pair.substring(idx + 1);
+        // Replace + with space before decoding (form-urlencoded spec)
+        result[decodeURIComponent(key.replace(/\+/g, ' '))] = decodeURIComponent(value.replace(/\+/g, ' '));
       }
     }
     
