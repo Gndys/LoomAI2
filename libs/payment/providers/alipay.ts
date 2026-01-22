@@ -96,8 +96,6 @@ export class AlipayProvider implements PaymentProvider {
     console.log(`Initializing Alipay SDK (${this.isSandbox ? 'SANDBOX' : 'PRODUCTION'} mode)`);
     console.log(`Gateway: ${gateway}`);
     console.log(`App ID: ${config.payment.providers.alipay.appId}`);
-    console.log(`Alipay Public Key length: ${alipayPublicKey?.length || 0}`);
-    console.log(`Alipay Public Key starts with: ${alipayPublicKey?.substring(0, 40) || 'N/A'}...`);
     
     this.sdk = new AlipaySdk({
       appId: config.payment.providers.alipay.appId,
@@ -157,17 +155,7 @@ export class AlipayProvider implements PaymentProvider {
   }
 
   async handleWebhook(payload: string | Record<string, any>, signature: string): Promise<WebhookVerification> {
-    try {
-      // Log raw payload for debugging
-      console.log('=== Alipay Webhook Debug ===');
-      console.log('Raw payload type:', typeof payload);
-      if (typeof payload === 'string') {
-        console.log('Raw payload (first 500 chars):', payload.substring(0, 500));
-        console.log('Raw payload (full):', payload);
-      } else {
-        console.log('Raw payload (object):', JSON.stringify(payload, null, 2));
-      }
-      
+    try {      
       // Parse notification data with URL decoding for signature verification
       // checkNotifySignV2 does NOT decode values, so we must pass decoded values
       // The signature is computed on decoded values, not URL-encoded values
@@ -199,8 +187,6 @@ export class AlipayProvider implements PaymentProvider {
       // Verify signature using SDK's built-in method
       // checkNotifySignV2 expects decoded values (doesn't do URL decoding internally)
       // Signature is computed on decoded parameter values
-      console.log('Attempting signature verification with checkNotifySignV2...');
-      console.log('Is sandbox mode:', this.isSandbox);
       
       const isValid = this.sdk.checkNotifySignV2(notifyData);
       
@@ -217,15 +203,28 @@ export class AlipayProvider implements PaymentProvider {
         return { success: false };
       }
 
-      console.log('Alipay signature verification passed');
-      console.log('=== End Alipay Webhook Debug ===');
-
       // Process based on trade status
       // TRADE_SUCCESS: Payment completed, applicable for instant payment
       // TRADE_FINISHED: Transaction completed, no refund allowed
       if (notifyData.trade_status === 'TRADE_SUCCESS' || notifyData.trade_status === 'TRADE_FINISHED') {
         const orderId = notifyData.out_trade_no;
-        
+
+        // Load order info first for idempotency
+        const orderRecord = await db.query.order.findFirst({
+          where: eq(order.id, orderId)
+        });
+
+        if (!orderRecord) {
+          console.error('Alipay webhook received for unknown order:', orderId);
+          return { success: false };
+        }
+
+        // Idempotency: skip if already processed
+        if (orderRecord.status === orderStatus.PAID) {
+          console.log('Alipay webhook already processed, skipping:', orderId);
+          return { success: true, orderId };
+        }
+
         // Update order status
         await db.update(order)
           .set({ 
@@ -234,107 +233,100 @@ export class AlipayProvider implements PaymentProvider {
             updatedAt: new Date()
           })
           .where(eq(order.id, orderId));
-          
-        // Get order info
-        const orderRecord = await db.query.order.findFirst({
-          where: eq(order.id, orderId)
-        });
         
-        if (orderRecord) {
-          const plan = config.payment.plans[orderRecord.planId as keyof typeof config.payment.plans] as PaymentPlan;
-          const now = utcNow();
+        const plan = config.payment.plans[orderRecord.planId as keyof typeof config.payment.plans] as PaymentPlan;
+        const now = utcNow();
           
-          // Handle credit pack purchase
-          if (plan.duration.type === 'credits' && plan.credits) {
-            console.log(`Alipay credit pack purchase - Adding ${plan.credits} credits to user ${orderRecord.userId}`);
-            
-            await creditService.addCredits({
-              userId: orderRecord.userId,
-              amount: plan.credits,
-              type: 'purchase',
-              orderId: orderId,
-              description: TransactionTypeCode.PURCHASE,
-              metadata: {
-                tradeNo: notifyData.trade_no,
-                planId: orderRecord.planId,
-                provider: 'alipay'
-              }
-            });
-            
-            return { success: true, orderId };
-          }
+        // Handle credit pack purchase
+        if (plan.duration.type === 'credits' && plan.credits) {
+          console.log(`Alipay credit pack purchase - Adding ${plan.credits} credits to user ${orderRecord.userId}`);
           
-          // Handle regular subscription payment
-          const months = plan.duration.months ?? 1;
-          
-          // Check if user already has active subscription
-          const existingSubscription = await db.query.subscription.findFirst({
-            where: and(
-              eq(subscription.userId, orderRecord.userId),
-              eq(subscription.planId, orderRecord.planId),
-              eq(subscription.status, subscriptionStatus.ACTIVE)
-            ),
-            orderBy: [desc(subscription.periodEnd)]
+          await creditService.addCredits({
+            userId: orderRecord.userId,
+            amount: plan.credits,
+            type: 'purchase',
+            orderId: orderId,
+            description: TransactionTypeCode.PURCHASE,
+            metadata: {
+              tradeNo: notifyData.trade_no,
+              planId: orderRecord.planId,
+              provider: 'alipay'
+            }
           });
           
-          // Calculate new period end time
-          const newPeriodEnd = new Date(now);
+          return { success: true, orderId };
+        }
+          
+        // Handle regular subscription payment
+        const months = plan.duration.months ?? 1;
+          
+        // Check if user already has active subscription
+        const existingSubscription = await db.query.subscription.findFirst({
+          where: and(
+            eq(subscription.userId, orderRecord.userId),
+            eq(subscription.planId, orderRecord.planId),
+            eq(subscription.status, subscriptionStatus.ACTIVE)
+          ),
+          orderBy: [desc(subscription.periodEnd)]
+        });
+          
+        // Calculate new period end time
+        const newPeriodEnd = new Date(now);
+        if (months >= 9999) {
+          // Lifetime subscription: set to 100 years
+          newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 100);
+        } else {
+          // Regular subscription: add months
+          newPeriodEnd.setMonth(newPeriodEnd.getMonth() + months);
+        }
+          
+        if (existingSubscription) {
+          // If subscription exists, extend the end date
+          const existingPeriodEnd = existingSubscription.periodEnd;
+          const extensionStart = existingPeriodEnd > now 
+            ? existingPeriodEnd 
+            : now;
+          
+          // Calculate new end time based on extension start
+          const extensionEnd = new Date(extensionStart);
           if (months >= 9999) {
-            // Lifetime subscription: set to 100 years
-            newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 100);
+            extensionEnd.setFullYear(extensionEnd.getFullYear() + 100);
           } else {
-            // Regular subscription: add months
-            newPeriodEnd.setMonth(newPeriodEnd.getMonth() + months);
+            extensionEnd.setMonth(extensionEnd.getMonth() + months);
           }
           
-          if (existingSubscription) {
-            // If subscription exists, extend the end date
-            const existingPeriodEnd = existingSubscription.periodEnd;
-            const extensionStart = existingPeriodEnd > now 
-              ? existingPeriodEnd 
-              : now;
-            
-            // Calculate new end time based on extension start
-            const extensionEnd = new Date(extensionStart);
-            if (months >= 9999) {
-              extensionEnd.setFullYear(extensionEnd.getFullYear() + 100);
-            } else {
-              extensionEnd.setMonth(extensionEnd.getMonth() + months);
-            }
-            
-            await db.update(subscription)
-              .set({
-                periodEnd: extensionEnd,
-                updatedAt: now,
-                metadata: JSON.stringify({
-                  ...JSON.parse(existingSubscription.metadata || '{}'),
-                  renewed: true,
-                  lastTradeNo: notifyData.trade_no,
-                  lastTradeStatus: notifyData.trade_status,
-                  lastPaymentTime: notifyData.gmt_payment,
-                  isLifetime: months >= 9999
-                })
-              })
-              .where(eq(subscription.id, existingSubscription.id));
-          } else {
-            // Create new subscription if none exists
-            await db.insert(subscription).values({
-              id: randomUUID(),
-              userId: orderRecord.userId,
-              planId: orderRecord.planId,
-              status: subscriptionStatus.ACTIVE,
-              paymentType: paymentTypes.ONE_TIME,
-              periodStart: now,
-              periodEnd: newPeriodEnd,
-              cancelAtPeriodEnd: false,
+          await db.update(subscription)
+            .set({
+              periodEnd: extensionEnd,
+              updatedAt: now,
               metadata: JSON.stringify({
-                tradeNo: notifyData.trade_no,
-                tradeStatus: notifyData.trade_status,
-                paymentTime: notifyData.gmt_payment,
+                ...JSON.parse(existingSubscription.metadata || '{}'),
+                renewed: true,
+                lastTradeNo: notifyData.trade_no,
+                lastTradeStatus: notifyData.trade_status,
+                lastPaymentTime: notifyData.gmt_payment,
                 isLifetime: months >= 9999
               })
-            });
-          }
+            })
+            .where(eq(subscription.id, existingSubscription.id));
+        } else {
+          // Create new subscription if none exists
+          await db.insert(subscription).values({
+            id: randomUUID(),
+            userId: orderRecord.userId,
+            planId: orderRecord.planId,
+            status: subscriptionStatus.ACTIVE,
+            paymentType: paymentTypes.ONE_TIME,
+            periodStart: now,
+            periodEnd: newPeriodEnd,
+            cancelAtPeriodEnd: false,
+            metadata: JSON.stringify({
+              tradeNo: notifyData.trade_no,
+              tradeStatus: notifyData.trade_status,
+              paymentTime: notifyData.gmt_payment,
+              isLifetime: months >= 9999
+            })
+          });
         }
         
         return { success: true, orderId };
