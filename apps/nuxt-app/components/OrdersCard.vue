@@ -169,7 +169,9 @@ const getProviderDisplay = (provider: string) => {
     case 'wechat':
       return t('dashboard.orders.provider.wechat')
     case 'creem':
-      return 'Creem'
+      return t('dashboard.orders.provider.creem')
+    case 'alipay':
+      return t('dashboard.orders.provider.alipay')
     default:
       return provider
   }

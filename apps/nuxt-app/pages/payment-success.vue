@@ -59,16 +59,23 @@ const { t } = useI18n()
 // Get query parameters
 const sessionId = route.query.session_id as string
 const provider = (route.query.provider as string) || 'stripe'
+// Alipay uses out_trade_no as the order identifier
+const outTradeNo = route.query.out_trade_no as string
 
-// Reactive state - WeChat payment is pre-verified through polling
-const isVerifying = ref(provider !== 'wechat')
-const isValid = ref(provider === 'wechat')
+// WeChat and Alipay don't need verification - they use webhooks for confirmation
+const skipVerification = provider === 'wechat' || provider === 'alipay'
 
-console.log('session', sessionId)
+// Reactive state
+const isVerifying = ref(!skipVerification)
+const isValid = ref(skipVerification)
+
+console.log('session', sessionId, 'provider', provider, 'out_trade_no', outTradeNo)
+
 // Verify payment session on mount
 onMounted(async () => {
-  // For WeChat, payment is already verified through polling, skip verification
-  if (provider === 'wechat') {
+  // For WeChat and Alipay, payment status is confirmed via webhook
+  // The return URL is just for user experience
+  if (provider === 'wechat' || provider === 'alipay') {
     isValid.value = true
     isVerifying.value = false
     return

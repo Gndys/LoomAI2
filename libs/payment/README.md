@@ -2,7 +2,7 @@
 
 **中文** | [English](./README_EN.md)
 
-这是一个统一的支付集成解决方案，支持微信支付、Stripe 和 Creem 三种支付方式，提供简单的工厂函数来创建支付提供商实例。
+这是一个统一的支付集成解决方案，支持微信支付、Stripe、Creem 和支付宝四种支付方式，提供简单的工厂函数来创建支付提供商实例。
 
 ## 🔧 配置说明
 
@@ -44,6 +44,16 @@ export const config = {
         currency: 'USD',
         duration: { months: 1, type: 'recurring' },
         creemProductId: 'prod_1M1c4ktVmvLgrNtpVB9oQf',
+        i18n: { /* 多语言配置 */ }
+      },
+      
+      // 支付宝计划（单次付费）
+      monthlyAlipay: {
+        provider: 'alipay',
+        id: 'monthlyAlipay',
+        amount: 0.01,
+        currency: 'CNY',
+        duration: { months: 1, type: 'one_time' },
         i18n: { /* 多语言配置 */ }
       }
     }
@@ -100,11 +110,23 @@ CREEM_SERVER_URL=https://api.creem.io
 CREEM_WEBHOOK_SECRET=whsec_xxxxxxxx
 ```
 
+#### 支付宝
+
+```env
+ALIPAY_APP_ID=2021000000000000
+# 纯 Base64 字符串格式，不需要 PEM 头尾
+ALIPAY_APP_PRIVATE_KEY="MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC..."
+ALIPAY_PUBLIC_KEY="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgatiwfGM3RTw..."
+ALIPAY_NOTIFY_URL=https://yourdomain.com/api/payment/webhook/alipay
+ALIPAY_SANDBOX=false  # 设置为 "true" 使用沙盒环境
+```
+
 ## 🎯 支持的支付方式
 
 | 支付方式 | 单次付费 | 订阅付费 | 支付方式 | 主要市场 | 币种支持 |
 |---------|---------|---------|---------|---------|---------|
 | WeChat Pay | ✅ | ❌ | 二维码扫描 | 中国大陆 | CNY |
+| Alipay | ✅ | ❌ | 页面跳转 | 中国大陆 | CNY |
 | Stripe | ✅ | ✅ | 页面跳转 | 全球 | 多币种 |
 | Creem | ✅ | ✅ | 页面跳转 | 全球 | USD, EUR等 |
 
@@ -114,6 +136,7 @@ CREEM_WEBHOOK_SECRET=whsec_xxxxxxxx
 libs/payment/
 ├── providers/           # 支付提供商实现
 │   ├── wechat.ts       # 微信支付（二维码）
+│   ├── alipay.ts       # 支付宝（页面跳转）
 │   ├── stripe.ts       # Stripe（结账会话）
 │   └── creem.ts        # Creem（结账会话）
 ├── types.ts            # TypeScript 类型定义
@@ -131,6 +154,7 @@ import { createPaymentProvider } from '@libs/payment';
 const stripeProvider = createPaymentProvider('stripe');
 const wechatProvider = createPaymentProvider('wechat');
 const creemProvider = createPaymentProvider('creem');
+const alipayProvider = createPaymentProvider('alipay');
 ```
 
 ### 发起支付
@@ -161,6 +185,19 @@ const wechatResult = await wechatProvider.createPayment({
 
 // 显示二维码供用户扫描
 console.log('WeChat QR Code URL:', wechatResult.paymentUrl);
+
+// 支付宝支付（页面跳转）
+const alipayResult = await alipayProvider.createPayment({
+  orderId: 'order_789',
+  userId: 'user_123',
+  planId: 'monthlyAlipay',
+  amount: 0.01,
+  currency: 'CNY',
+  provider: 'alipay'
+});
+
+// 跳转到支付宝页面（通过 data URL 包含的 HTML 表单自动提交）
+window.location.href = alipayResult.paymentUrl;
 ```
 
 ### Webhook 处理
@@ -221,6 +258,12 @@ const result = await provider.handleWebhook(
 前端轮询状态 → Webhook 回调 → 订单状态更新 → 订阅激活
 ```
 
+#### 支付宝流程（页面跳转）
+```
+用户选择计划 → 创建订单 → 跳转支付宝页面 → 用户登录支付 → 
+同步返回 returnUrl → Webhook 异步通知 → 订单状态更新 → 订阅激活
+```
+
 ### 订单状态
 
 - `PENDING`: 订单已创建，等待支付
@@ -240,5 +283,6 @@ const result = await provider.handleWebhook(
 
 - [支付配置详细指南](../../docs/user-guide/payment.md) - 完整的环境变量配置和申请流程
 - [微信支付开发文档](https://pay.weixin.qq.com/wiki/doc/api/index.html)
+- [支付宝开放平台](https://open.alipay.com/)
 - [Stripe 开发文档](https://stripe.com/docs)
 - [Creem API 文档](https://docs.creem.io/)
