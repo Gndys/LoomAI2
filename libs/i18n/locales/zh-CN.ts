@@ -1632,6 +1632,10 @@ export const zhCN: Locale = {
   header: {
     navigation: {
       ai: "AI 功能演示",
+      aiImageTools: "AI 图片生成",
+      clothes: "服装",
+      patterns: "版型",
+      newFeatures: "新功能",
       premiumFeatures: "高级会员功能",
       pricing: "定价",
       upload: "文件上传",
@@ -1647,6 +1651,10 @@ export const zhCN: Locale = {
         title: "AI 图像生成",
         description: "AI 图像生成实现，可扩展设计，支持多个 Provider，需要购买积分使用"
       },
+      aiImageTools: {
+        title: "AI 图片生成",
+        description: "上传图片生成平铺图或线稿，需要登录访问"
+      },
       premium: {
         title: "高级会员功能",
         description: "路由保护演示页面，只有订阅付费用户才能访问此页面"
@@ -1654,6 +1662,44 @@ export const zhCN: Locale = {
       upload: {
         title: "文件上传",
         description: "文件上传实现，可扩展设计，支持多个 Provider，需要登录访问"
+      },
+      cardBoundary: {
+        title: "卡片边界对比",
+        description: "对比卡片边框与阴影清晰度，确定最终视觉方案"
+      },
+      clothesSplit: {
+        title: "衣服拆分",
+        description: "上传服装图片并生成干净的衣服平铺图，需要登录访问"
+      },
+      clothesSketch: {
+        title: "制作画稿",
+        description: "上传平铺图生成工艺线稿（含缝线/腰线），需要登录访问"
+      },
+      clothesOriginalSketch: {
+        title: "原图转线稿",
+        description: "上传原图自动生成工艺线稿，方便后续拆解与导出"
+      },
+      clothesNanoRetouch: {
+        title: "nano 修图",
+        description: "选择历史生成或上传图片，简单描述后智能修图，需要登录访问"
+      },
+      clothesPromo: {
+        title: "宣发图制作",
+        description: "将平铺图生成淘宝/微商宣发图，需要登录访问"
+      },
+      virtualTryOn: {
+        title: "3D 虚拟试穿",
+        description: "将生成的纸样自动穿到虚拟模特上，预览版型效果。"
+      }
+    },
+    patterns: {
+      patternMaking: {
+        title: "版型拆解",
+        description: "基于服装图片生成纸样拆解思路。"
+      },
+      pngToDxf: {
+        title: "PNG 转 DXF",
+        description: "将线稿 PNG 转为可编辑的 DXF 纸样文件。"
       }
     },
     auth: {
@@ -1676,6 +1722,93 @@ export const zhCN: Locale = {
     mobile: {
       themeSettings: "主题设置",
       languageSelection: "语言选择"
+    }
+  },
+  footer: {
+    description: "TinyShip",
+    copyright: "© {year} TinyShip. 保留所有权利。",
+    sections: {
+      about: {
+        title: "关于",
+        links: {
+          demos: "功能演示",
+          pricing: "定价",
+          premium: "高级会员功能",
+          updates: "新功能"
+        }
+      },
+      tools: {
+        title: "工具",
+        links: {
+          aiImageTools: "AI 图片生成",
+          aiImage: "AI 图像生成",
+          clothesSplit: "衣服拆分",
+          clothesSketch: "制作画稿"
+        }
+      }
+    }
+  },
+  imageSplit: {
+    title: "图片拆分",
+    description: "将单张图片切分成多张小图，便于拼贴或布局。",
+    upload: {
+      title: "上传图片",
+      description: "上传需要拆分的图片。",
+      hint: "拖拽图片到这里或点击上传",
+      browse: "选择图片"
+    },
+    settings: {
+      title: "拆分设置",
+      description: "设置行列数，实时预览切分效果。",
+      rows: "行数",
+      columns: "列数",
+      tip: "切分数量过多可能影响清晰度，请根据需要调整。"
+    },
+    results: {
+      title: "拆分结果",
+      description: "预览切分效果并下载所有分片。",
+      downloadAll: "下载全部",
+      empty: "请先上传图片。",
+      original: "原图",
+      tiles: "切分图片",
+      tileLabel: "第 {index} 张",
+      download: "下载",
+      count: "共 {count} 张"
+    },
+    status: {
+      processing: "正在拆分...",
+      downloading: "正在下载..."
+    },
+    errors: {
+      maxFiles: "只能上传 1 张图片",
+      imageOnly: "仅支持图片文件",
+      fileTooLarge: "图片大小必须小于 15MB",
+      splitFailed: "图片拆分失败，请重试"
+    }
+  },
+  imageHistory: {
+    title: "图片历史",
+    description: "查看最近生成的图片与参数。",
+    empty: "暂无历史记录",
+    imageAlt: "历史生成图片",
+    actions: {
+      clear: "清空记录"
+    },
+    fields: {
+      prompt: "提示词",
+      model: "模型",
+      feature: "功能",
+      provider: "渠道商",
+      createdAt: "生成时间"
+    },
+    features: {
+      imageGenerate: "图片生成",
+      clothesSplit: "服装平铺图",
+      clothesSketch: "服装线稿",
+      clothesNanoRetouch: "智能修图",
+      clothesPromo: "宣发图",
+      patternMaking: "版型拆解",
+      unknown: "未知功能"
     }
   },
   docs: {

@@ -2,9 +2,10 @@ import { config } from '@config';
 import { OSSProvider } from './providers/oss';
 import { S3Provider, createR2Provider } from './providers/s3';
 import { COSProvider } from './providers/cos';
+import { LocalProvider } from './providers/local';
 import type { StorageProvider } from './types';
 
-export type StorageProviderType = 'oss' | 's3' | 'r2' | 'cos';
+export type StorageProviderType = 'oss' | 's3' | 'r2' | 'cos' | 'local';
 
 /**
  * Create storage provider instance
@@ -23,6 +24,8 @@ export function createStorageProvider<T extends StorageProviderType>(
       return createR2Provider();
     case 'cos':
       return new COSProvider();
+    case 'local':
+      return new LocalProvider();
     default:
       throw new Error(`Unsupported storage provider: ${provider}`);
   }
@@ -33,6 +36,7 @@ export * from './types';
 export { OSSProvider };
 export { S3Provider, createR2Provider };
 export { COSProvider, type COSProviderConfig } from './providers/cos';
+export { LocalProvider } from './providers/local';
 
 // Default storage instance for easy usage
 // Uses the defaultProvider from config, which can be set via STORAGE_PROVIDER env var

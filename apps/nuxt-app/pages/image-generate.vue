@@ -1,240 +1,242 @@
 <template>
-  <div class="flex flex-col lg:flex-row min-h-screen">
-    <!-- Left Panel - Input Form -->
-    <div class="w-full lg:w-1/2 border-r border-border bg-background p-6 overflow-y-auto">
-      <div class="max-w-2xl mx-auto space-y-6">
-        <!-- Header -->
-        <div class="flex items-center justify-between">
+  <div class="flex flex-col">
+    <section class="flex flex-col lg:flex-row min-h-screen">
+      <!-- Left Panel - Input Form -->
+      <div class="w-full lg:w-1/2 border-r border-border bg-background p-6 overflow-y-auto">
+        <div class="max-w-2xl mx-auto space-y-6">
+          <!-- Header -->
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-bold">{{ $t('ai.image.title') }}</h1>
+              <p class="text-sm text-muted-foreground mt-1">{{ $t('ai.image.description') }}</p>
+            </div>
+            <div v-if="creditBalance !== null" class="text-sm text-muted-foreground">
+              {{ $t('ai.image.credits') }}: <span class="font-semibold text-foreground">{{ creditBalance }}</span>
+            </div>
+          </div>
+
+          <!-- Provider & Model Selection -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <Label>{{ $t('ai.image.providers.title') }}</Label>
+              <Select v-model="provider">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="p in Object.keys(imageConfig.availableModels)" :key="p" :value="p">
+                    {{ $t(`ai.image.providers.${p}`) || p }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div class="space-y-2">
+              <Label>Model</Label>
+              <Select v-model="model">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="m in availableModels" :key="m" :value="m">
+                    {{ getModelDisplayName(m) }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <!-- Prompt -->
+          <div class="space-y-2">
+            <Label>{{ $t('ai.image.prompt') }}</Label>
+            <Textarea
+              v-model="prompt"
+              :placeholder="$t('ai.image.promptPlaceholder')"
+              class="min-h-[120px] resize-y"
+            />
+          </div>
+
+          <!-- Additional Settings Toggle -->
           <div>
-            <h1 class="text-2xl font-bold">{{ $t('ai.image.title') }}</h1>
-            <p class="text-sm text-muted-foreground mt-1">{{ $t('ai.image.description') }}</p>
-          </div>
-          <div v-if="creditBalance !== null" class="text-sm text-muted-foreground">
-            {{ $t('ai.image.credits') }}: <span class="font-semibold text-foreground">{{ creditBalance }}</span>
-          </div>
-        </div>
-
-        <!-- Provider & Model Selection -->
-        <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-2">
-            <Label>{{ $t('ai.image.providers.title') }}</Label>
-            <Select v-model="provider">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="p in Object.keys(imageConfig.availableModels)" :key="p" :value="p">
-                  {{ $t(`ai.image.providers.${p}`) || p }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <Button
+              variant="ghost"
+              class="w-full justify-between"
+              @click="showSettings = !showSettings"
+            >
+              <span>{{ $t('ai.image.settings.title') }}</span>
+              <ChevronUp v-if="showSettings" class="h-4 w-4" />
+              <ChevronDown v-else class="h-4 w-4" />
+            </Button>
           </div>
 
-          <div class="space-y-2">
-            <Label>Model</Label>
-            <Select v-model="model">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="m in availableModels" :key="m" :value="m">
-                  {{ getModelDisplayName(m) }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          <!-- Additional Settings -->
+          <div v-if="showSettings" class="space-y-6 border rounded-lg p-4 bg-muted/30">
+            <!-- Negative Prompt -->
+            <div class="space-y-2">
+              <Label>{{ $t('ai.image.negativePrompt') }}</Label>
+              <Textarea
+                v-model="negativePrompt"
+                :placeholder="$t('ai.image.negativePromptPlaceholder')"
+                class="min-h-[80px] resize-y"
+              />
+              <p class="text-xs text-muted-foreground">{{ $t('ai.image.negativePromptHint') }}</p>
+            </div>
+
+            <!-- Image Size -->
+            <div class="space-y-2">
+              <Label>{{ $t('ai.image.settings.imageSize') }}</Label>
+              <Select v-model="size">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="s in availableSizes" :key="s.value" :value="s.value">
+                    {{ s.label }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <!-- Fal-specific settings -->
+            <template v-if="provider === 'fal'">
+              <!-- Inference Steps -->
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <Label>{{ $t('ai.image.settings.numInferenceSteps') }}</Label>
+                  <span class="text-sm text-muted-foreground">{{ numInferenceSteps }}</span>
+                </div>
+                <Slider
+                  :model-value="[numInferenceSteps]"
+                  @update:model-value="(v) => { if (v && v[0] !== undefined) numInferenceSteps = v[0] }"
+                  :min="1"
+                  :max="50"
+                  :step="1"
+                />
+                <p class="text-xs text-muted-foreground">{{ $t('ai.image.settings.numInferenceStepsHint') }}</p>
+              </div>
+
+              <!-- Guidance Scale -->
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <Label>{{ $t('ai.image.settings.guidanceScale') }}</Label>
+                  <span class="text-sm text-muted-foreground">{{ guidanceScale }}</span>
+                </div>
+                <Slider
+                  :model-value="[guidanceScale]"
+                  @update:model-value="(v) => { if (v && v[0] !== undefined) guidanceScale = v[0] }"
+                  :min="1"
+                  :max="20"
+                  :step="0.5"
+                />
+                <p class="text-xs text-muted-foreground">{{ $t('ai.image.settings.guidanceScaleHint') }}</p>
+              </div>
+            </template>
+
+            <!-- Seed -->
+            <div class="space-y-2">
+              <Label>{{ $t('ai.image.settings.seed') }}</Label>
+              <div class="flex gap-2">
+                <Input
+                  v-model="seed"
+                  :placeholder="$t('ai.image.settings.random')"
+                  class="flex-1"
+                />
+                <Button variant="outline" size="icon" @click="randomizeSeed">
+                  <RefreshCw class="h-4 w-4" />
+                </Button>
+              </div>
+              <p class="text-xs text-muted-foreground">{{ $t('ai.image.settings.seedHint') }}</p>
+            </div>
+
+            <!-- Qwen-specific settings -->
+            <template v-if="provider === 'qwen'">
+              <div class="flex items-center justify-between">
+                <div>
+                  <Label>{{ $t('ai.image.settings.promptExtend') }}</Label>
+                  <p class="text-xs text-muted-foreground">{{ $t('ai.image.settings.promptExtendHint') }}</p>
+                </div>
+                <Switch v-model:checked="promptExtend" />
+              </div>
+
+              <div class="flex items-center justify-between">
+                <div>
+                  <Label>{{ $t('ai.image.settings.watermark') }}</Label>
+                  <p class="text-xs text-muted-foreground">{{ $t('ai.image.settings.watermarkHint') }}</p>
+                </div>
+                <Switch v-model:checked="watermark" />
+              </div>
+            </template>
           </div>
-        </div>
 
-        <!-- Prompt -->
-        <div class="space-y-2">
-          <Label>{{ $t('ai.image.prompt') }}</Label>
-          <Textarea
-            v-model="prompt"
-            :placeholder="$t('ai.image.promptPlaceholder')"
-            class="min-h-[120px] resize-y"
-          />
-        </div>
-
-        <!-- Additional Settings Toggle -->
-        <div>
+          <!-- Generate Button -->
           <Button
-            variant="ghost"
-            class="w-full justify-between"
-            @click="showSettings = !showSettings"
+            class="w-full"
+            size="lg"
+            :disabled="isGenerating || !prompt.trim()"
+            @click="handleGenerate"
           >
-            <span>{{ $t('ai.image.settings.title') }}</span>
-            <ChevronUp v-if="showSettings" class="h-4 w-4" />
-            <ChevronDown v-else class="h-4 w-4" />
+            <template v-if="isGenerating">
+              <RefreshCw class="mr-2 h-4 w-4 animate-spin" />
+              {{ $t('ai.image.generating') }}
+            </template>
+            <template v-else>
+              <ImageIcon class="mr-2 h-4 w-4" />
+              {{ $t('ai.image.generate') }}
+            </template>
           </Button>
         </div>
+      </div>
 
-        <!-- Additional Settings -->
-        <div v-if="showSettings" class="space-y-6 border rounded-lg p-4 bg-muted/30">
-          <!-- Negative Prompt -->
-          <div class="space-y-2">
-            <Label>{{ $t('ai.image.negativePrompt') }}</Label>
-            <Textarea
-              v-model="negativePrompt"
-              :placeholder="$t('ai.image.negativePromptPlaceholder')"
-              class="min-h-[80px] resize-y"
-            />
-            <p class="text-xs text-muted-foreground">{{ $t('ai.image.negativePromptHint') }}</p>
+      <!-- Right Panel - Result -->
+      <div class="w-full lg:w-1/2 bg-muted/30 p-6 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <h2 class="text-lg font-semibold">{{ $t('ai.image.result') }}</h2>
+            <span class="text-xs bg-muted px-2 py-1 rounded">
+              {{ isGenerating ? $t('ai.image.generating') : $t('ai.image.idle') }}
+            </span>
           </div>
-
-          <!-- Image Size -->
-          <div class="space-y-2">
-            <Label>{{ $t('ai.image.settings.imageSize') }}</Label>
-            <Select v-model="size">
-              <SelectTrigger>
-                <SelectValue placeholder="Select size" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="s in availableSizes" :key="s.value" :value="s.value">
-                  {{ s.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <!-- Fal-specific settings -->
-          <template v-if="provider === 'fal'">
-            <!-- Inference Steps -->
-            <div class="space-y-2">
-              <div class="flex justify-between">
-                <Label>{{ $t('ai.image.settings.numInferenceSteps') }}</Label>
-                <span class="text-sm text-muted-foreground">{{ numInferenceSteps }}</span>
-              </div>
-              <Slider
-                :model-value="[numInferenceSteps]"
-                @update:model-value="(v) => { if (v && v[0] !== undefined) numInferenceSteps = v[0] }"
-                :min="1"
-                :max="50"
-                :step="1"
-              />
-              <p class="text-xs text-muted-foreground">{{ $t('ai.image.settings.numInferenceStepsHint') }}</p>
-            </div>
-
-            <!-- Guidance Scale -->
-            <div class="space-y-2">
-              <div class="flex justify-between">
-                <Label>{{ $t('ai.image.settings.guidanceScale') }}</Label>
-                <span class="text-sm text-muted-foreground">{{ guidanceScale }}</span>
-              </div>
-              <Slider
-                :model-value="[guidanceScale]"
-                @update:model-value="(v) => { if (v && v[0] !== undefined) guidanceScale = v[0] }"
-                :min="1"
-                :max="20"
-                :step="0.5"
-              />
-              <p class="text-xs text-muted-foreground">{{ $t('ai.image.settings.guidanceScaleHint') }}</p>
-            </div>
-          </template>
-
-          <!-- Seed -->
-          <div class="space-y-2">
-            <Label>{{ $t('ai.image.settings.seed') }}</Label>
-            <div class="flex gap-2">
-              <Input
-                v-model="seed"
-                :placeholder="$t('ai.image.settings.random')"
-                class="flex-1"
-              />
-              <Button variant="outline" size="icon" @click="randomizeSeed">
-                <RefreshCw class="h-4 w-4" />
-              </Button>
-            </div>
-            <p class="text-xs text-muted-foreground">{{ $t('ai.image.settings.seedHint') }}</p>
-          </div>
-
-          <!-- Qwen-specific settings -->
-          <template v-if="provider === 'qwen'">
-            <div class="flex items-center justify-between">
-              <div>
-                <Label>{{ $t('ai.image.settings.promptExtend') }}</Label>
-                <p class="text-xs text-muted-foreground">{{ $t('ai.image.settings.promptExtendHint') }}</p>
-              </div>
-              <Switch v-model:checked="promptExtend" />
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div>
-                <Label>{{ $t('ai.image.settings.watermark') }}</Label>
-                <p class="text-xs text-muted-foreground">{{ $t('ai.image.settings.watermarkHint') }}</p>
-              </div>
-              <Switch v-model:checked="watermark" />
-            </div>
-          </template>
         </div>
 
-        <!-- Generate Button -->
-        <Button
-          class="w-full"
-          size="lg"
-          :disabled="isGenerating || !prompt.trim()"
-          @click="handleGenerate"
-        >
+        <!-- Result Display -->
+        <div class="flex-1 flex items-center justify-center bg-background rounded-lg border border-border min-h-[400px] relative overflow-hidden">
           <template v-if="isGenerating">
-            <RefreshCw class="mr-2 h-4 w-4 animate-spin" />
-            {{ $t('ai.image.generating') }}
+            <div class="flex flex-col items-center gap-4">
+              <RefreshCw class="h-8 w-8 animate-spin text-primary" />
+              <p class="text-muted-foreground">{{ $t('ai.image.generating') }}</p>
+            </div>
+          </template>
+          <template v-else-if="result">
+            <img
+              :src="result.imageUrl"
+              alt="Generated image"
+              class="max-w-full max-h-full object-contain"
+            />
+          </template>
+          <template v-else-if="error">
+            <div class="text-center text-destructive">
+              <p class="font-medium">{{ $t('ai.image.errors.generationFailed') }}</p>
+              <p class="text-sm mt-1">{{ error }}</p>
+            </div>
           </template>
           <template v-else>
-            <ImageIcon class="mr-2 h-4 w-4" />
-            {{ $t('ai.image.generate') }}
+            <div class="text-center text-muted-foreground">
+              <ImageIcon class="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>{{ $t('ai.image.idle') }}</p>
+            </div>
           </template>
-        </Button>
-      </div>
-    </div>
+        </div>
 
-    <!-- Right Panel - Result -->
-    <div class="w-full lg:w-1/2 bg-muted/30 p-6 flex flex-col">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center gap-2">
-          <h2 class="text-lg font-semibold">{{ $t('ai.image.result') }}</h2>
-          <span class="text-xs bg-muted px-2 py-1 rounded">
-            {{ isGenerating ? $t('ai.image.generating') : $t('ai.image.idle') }}
-          </span>
+        <!-- Actions -->
+        <div v-if="result" class="mt-4 space-y-4">
+          <p class="text-sm text-muted-foreground">{{ $t('ai.image.whatNext') }}</p>
+          <Button class="w-full" @click="handleDownload">
+            <Download class="mr-2 h-4 w-4" />
+            {{ $t('ai.image.download') }}
+          </Button>
         </div>
       </div>
-
-      <!-- Result Display -->
-      <div class="flex-1 flex items-center justify-center bg-background rounded-lg border border-border min-h-[400px] relative overflow-hidden">
-        <template v-if="isGenerating">
-          <div class="flex flex-col items-center gap-4">
-            <RefreshCw class="h-8 w-8 animate-spin text-primary" />
-            <p class="text-muted-foreground">{{ $t('ai.image.generating') }}</p>
-          </div>
-        </template>
-        <template v-else-if="result">
-          <img
-            :src="result.imageUrl"
-            alt="Generated image"
-            class="max-w-full max-h-full object-contain"
-          />
-        </template>
-        <template v-else-if="error">
-          <div class="text-center text-destructive">
-            <p class="font-medium">{{ $t('ai.image.errors.generationFailed') }}</p>
-            <p class="text-sm mt-1">{{ error }}</p>
-          </div>
-        </template>
-        <template v-else>
-          <div class="text-center text-muted-foreground">
-            <ImageIcon class="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>{{ $t('ai.image.idle') }}</p>
-          </div>
-        </template>
-      </div>
-
-      <!-- Actions -->
-      <div v-if="result" class="mt-4 space-y-4">
-        <p class="text-sm text-muted-foreground">{{ $t('ai.image.whatNext') }}</p>
-        <Button class="w-full" @click="handleDownload">
-          <Download class="mr-2 h-4 w-4" />
-          {{ $t('ai.image.download') }}
-        </Button>
-      </div>
-    </div>
+    </section>
   </div>
 </template>
 

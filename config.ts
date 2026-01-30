@@ -17,6 +17,7 @@ import { databaseConfig } from './config/database';
 import { storageConfig } from './config/storage';
 import { aiConfig } from './config/ai';
 import { aiImageConfig } from './config/aiImage';
+import { evolinkConfig } from './config/evolink';
 
 // Re-export types for backwards compatibility
 export type { RecurringPlan, OneTimePlan, CreditPlan, Plan } from './config/types';
@@ -33,7 +34,7 @@ export const config = {
      * Application Name
      * This will be used throughout the application for branding
      */
-    name: 'TinyShip',
+    name: 'LoomAI',
 
     /**
      * Logo Configuration
@@ -152,4 +153,5 @@ export const config = {
   storage: storageConfig,
   ai: aiConfig,
   aiImage: aiImageConfig,
+  evolink: evolinkConfig,
 } as const;

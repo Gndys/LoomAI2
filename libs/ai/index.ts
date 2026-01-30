@@ -18,6 +18,7 @@ export {
   calculateImageCreditCost,
   getImageSizesForProvider,
 } from './image';
+export * from './evolink';
 
 // Re-export image config from config folder
 export { aiImageConfig } from '../../config/aiImage';

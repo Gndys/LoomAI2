@@ -22,10 +22,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-type StorageProvider = 'oss' | 's3' | 'r2' | 'cos'
+type StorageProvider = 'oss' | 's3' | 'r2' | 'cos' | 'local'
 
-// Maximum file size: 1MB
-const MAX_FILE_SIZE = 1 * 1024 * 1024
+// Maximum file size: 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 // Maximum files allowed
 const MAX_FILES = 1
 
@@ -182,7 +182,12 @@ const uploadSingleFile = async (
       } else {
         try {
           const errorResponse = JSON.parse(xhr.responseText)
-          const error = new Error(errorResponse.error || `Upload failed with status ${xhr.status}`)
+          const message =
+            errorResponse.statusMessage ||
+            errorResponse.message ||
+            errorResponse.error ||
+            `Upload failed with status ${xhr.status}`
+          const error = new Error(message)
           options.onError(file, error)
           reject(error)
         } catch {
@@ -206,6 +211,7 @@ const uploadSingleFile = async (
     })
 
     xhr.open('POST', '/api/upload')
+    xhr.withCredentials = true
     xhr.send(formData)
   })
 }

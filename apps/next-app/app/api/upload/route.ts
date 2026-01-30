@@ -3,8 +3,8 @@ import { auth } from '@libs/auth';
 import { headers } from 'next/headers';
 import { createStorageProvider, StorageProviderType } from '@libs/storage';
 
-// Maximum file size: 1MB
-const MAX_FILE_SIZE = 1 * 1024 * 1024;
+// Maximum file size: 10MB (matches Evolink input limit)
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 // Allowed image MIME types
 const ALLOWED_MIME_TYPES = [
@@ -155,4 +155,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

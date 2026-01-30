@@ -46,7 +46,7 @@ export class OSSProvider implements StorageProvider {
       // Prepare upload options
       const options: any = {
         headers: {},
-        meta: metadata || {}
+        meta: metadata ? sanitizeMeta(metadata) : {}
       };
 
       if (contentType) {
@@ -203,3 +203,10 @@ export class OSSProvider implements StorageProvider {
   }
 }
 
+function sanitizeMeta(metadata: Record<string, string>): Record<string, string> {
+  const sanitized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    sanitized[key] = encodeURIComponent(value);
+  }
+  return sanitized;
+}

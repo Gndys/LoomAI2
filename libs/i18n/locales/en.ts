@@ -1624,6 +1624,10 @@ export const en: Locale = {
   header: {
     navigation: {
       ai: "AI Demo",
+      aiImageTools: "AI Image Tools",
+      clothes: "Apparel",
+      patterns: "Patterns",
+      newFeatures: "New Features",
       premiumFeatures: "Premium Features",
       pricing: "Pricing",
       upload: "Upload",
@@ -1639,6 +1643,10 @@ export const en: Locale = {
         title: "AI Image Generation",
         description: "AI image generation with extensible design, multi-provider support. Login required."
       },
+      aiImageTools: {
+        title: "AI Image Tools",
+        description: "Upload images to generate flat lays or line sketches. Login required."
+      },
       premium: {
         title: "Premium Features",
         description: "Route protection demo. Only paid users can access this page."
@@ -1646,6 +1654,44 @@ export const en: Locale = {
       upload: {
         title: "File Upload",
         description: "File upload with extensible design, multi-provider support. Login required."
+      },
+      cardBoundary: {
+        title: "Card Boundary Playground",
+        description: "Compare card border and shadow clarity."
+      },
+      clothesSplit: {
+        title: "Clothes Split",
+        description: "Upload garment photos and generate clean flat lays."
+      },
+      clothesSketch: {
+        title: "Tech Sketch",
+        description: "Generate technical line art from flat lay images."
+      },
+      clothesOriginalSketch: {
+        title: "Original to Sketch",
+        description: "Convert original images into technical line art."
+      },
+      clothesNanoRetouch: {
+        title: "Nano Retouch",
+        description: "Upload or pick history images and retouch with a prompt."
+      },
+      clothesPromo: {
+        title: "Promo Image",
+        description: "Turn flat lays into marketing images."
+      },
+      virtualTryOn: {
+        title: "Virtual Try-On",
+        description: "Fit generated patterns on a virtual model."
+      }
+    },
+    patterns: {
+      patternMaking: {
+        title: "Pattern Making",
+        description: "Generate pattern-making inspiration from garment images."
+      },
+      pngToDxf: {
+        title: "PNG to DXF",
+        description: "Convert sketch PNGs to editable DXF patterns."
       }
     },
     auth: {
@@ -1668,6 +1714,93 @@ export const en: Locale = {
     mobile: {
       themeSettings: "Theme Settings",
       languageSelection: "Language Selection"
+    }
+  },
+  footer: {
+    description: "TinyShip",
+    copyright: "© {year} TinyShip. All rights reserved.",
+    sections: {
+      about: {
+        title: "About",
+        links: {
+          demos: "Demos",
+          pricing: "Pricing",
+          premium: "Premium Features",
+          updates: "New Features"
+        }
+      },
+      tools: {
+        title: "Tools",
+        links: {
+          aiImageTools: "AI Image Tools",
+          aiImage: "AI Image Generation",
+          clothesSplit: "Clothes Split",
+          clothesSketch: "Tech Sketch"
+        }
+      }
+    }
+  },
+  imageSplit: {
+    title: "Image Split",
+    description: "Split a single image into multiple tiles.",
+    upload: {
+      title: "Upload Image",
+      description: "Upload the image you want to split.",
+      hint: "Drag an image here or click to upload",
+      browse: "Choose image"
+    },
+    settings: {
+      title: "Split Settings",
+      description: "Pick rows and columns to control the grid.",
+      rows: "Rows",
+      columns: "Columns",
+      tip: "Too many tiles may reduce clarity. Adjust as needed."
+    },
+    results: {
+      title: "Results",
+      description: "Preview the grid and download all tiles.",
+      downloadAll: "Download all",
+      empty: "Upload an image to get started.",
+      original: "Original",
+      tiles: "Tiles",
+      tileLabel: "Tile {index}",
+      download: "Download",
+      count: "{count} tiles"
+    },
+    status: {
+      processing: "Splitting...",
+      downloading: "Downloading..."
+    },
+    errors: {
+      maxFiles: "You can upload only 1 image",
+      imageOnly: "Only image files are supported",
+      fileTooLarge: "Image must be smaller than 15MB",
+      splitFailed: "Image split failed, please try again"
+    }
+  },
+  imageHistory: {
+    title: "Image History",
+    description: "Review recent generations and parameters.",
+    empty: "No history yet",
+    imageAlt: "Generated image history",
+    actions: {
+      clear: "Clear history"
+    },
+    fields: {
+      prompt: "Prompt",
+      model: "Model",
+      feature: "Feature",
+      provider: "Provider",
+      createdAt: "Created at"
+    },
+    features: {
+      imageGenerate: "Image Generation",
+      clothesSplit: "Clothes Flat Lay",
+      clothesSketch: "Clothes Sketch",
+      clothesNanoRetouch: "Retouch",
+      clothesPromo: "Promo Image",
+      patternMaking: "Pattern Making",
+      unknown: "Unknown"
     }
   },
   docs: {

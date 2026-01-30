@@ -90,6 +90,41 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     requiresAuth: true
   },
   {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/clothes-split(\\/.*)?$`),
+    type: 'page',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/clothes-sketch(\\/.*)?$`),
+    type: 'page',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/clothes-original-sketch(\\/.*)?$`),
+    type: 'page',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/clothes-nano-retouch(\\/.*)?$`),
+    type: 'page',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/clothes-promo(\\/.*)?$`),
+    type: 'page',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/pattern-making(\\/.*)?$`),
+    type: 'page',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/png-to-dxf(\\/.*)?$`),
+    type: 'page',
+    requiresAuth: true,
+  },
+  {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/premium-features(\\/.*)?$`), 
     type: 'page',
     requiresAuth: true,
@@ -198,6 +233,36 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     type: 'api',
     requiresAuth: true
   },
+  {
+    pattern: new RegExp('^/api/clothes-split(\\/.*)?$'),
+    type: 'api',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp('^/api/clothes-sketch(\\/.*)?$'),
+    type: 'api',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp('^/api/clothes-nano-retouch(\\/.*)?$'),
+    type: 'api',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp('^/api/clothes-promo(\\/.*)?$'),
+    type: 'api',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp('^/api/pattern-making(\\/.*)?$'),
+    type: 'api',
+    requiresAuth: true,
+  },
+  {
+    pattern: new RegExp('^/api/png-to-dxf(\\/.*)?$'),
+    type: 'api',
+    requiresAuth: true,
+  },
 ];
 // ----------------------------------------
 
@@ -210,14 +275,23 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
     return undefined; 
   }
 
+  const tryGetSession = async () => {
+    try {
+      const requestHeaders = new Headers(request.headers);
+      return await auth.api.getSession({
+        headers: requestHeaders,
+      });
+    } catch (error) {
+      console.error('Failed to get session:', error);
+      return null;
+    }
+  };
+
   // Handle auth routes: redirect logged-in users to dashboard
   if (matchedRoute.isAuthRoute) {
     console.log(`🔐 Auth route detected: ${pathname}`);
     
-    const requestHeaders = new Headers(request.headers);
-    const session = await auth.api.getSession({
-        headers: requestHeaders
-    });
+    const session = await tryGetSession();
 
     if (session && session.user) {
       console.log(`↩️ User already authenticated, redirecting from ${pathname} to dashboard`);
@@ -231,10 +305,7 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
   }
 
   console.log(`Protected route accessed: ${pathname}, Type: ${matchedRoute.type}`);
-  const requestHeaders = new Headers(request.headers);
-  const session = await auth.api.getSession({
-      headers: requestHeaders
-  });
+  const session = await tryGetSession();
 
   // --- 1. Authentication Check ---
   if (!session && matchedRoute.requiresAuth !== false) {

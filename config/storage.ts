@@ -6,12 +6,12 @@ import { getEnv, getEnvForService, requireEnvForService, requireEnvWithFallback 
 export const storageConfig = {
   /**
    * Default Storage Provider
-   * @type {'oss' | 's3' | 'r2' | 'cos'}
+   * @type {'oss' | 's3' | 'r2' | 'cos' | 'local'}
    */
   get defaultProvider() {
     const provider = getEnv('STORAGE_PROVIDER');
-    if (provider && ['oss', 's3', 'r2', 'cos'].includes(provider)) {
-      return provider as 'oss' | 's3' | 'r2' | 'cos';
+    if (provider && ['oss', 's3', 'r2', 'cos', 'local'].includes(provider)) {
+      return provider as 'oss' | 's3' | 'r2' | 'cos' | 'local';
     }
     return 'oss' as const;
   },

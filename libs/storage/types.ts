@@ -88,7 +88,7 @@ export interface StorageProvider {
  * Storage configuration
  */
 export interface StorageConfig {
-  provider: 'oss' | 's3' | 'r2' | 'cos'; // Support multiple providers
+  provider: 'oss' | 's3' | 'r2' | 'cos' | 'local'; // Support multiple providers
   bucket: string;
   region: string;
   accessKeyId: string;
@@ -96,4 +96,3 @@ export interface StorageConfig {
   endpoint?: string;
   defaultExpiration?: number; // Default URL expiration in seconds
 }
-

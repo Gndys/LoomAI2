@@ -1,7 +1,7 @@
 import { createStorageProvider, StorageProviderType } from '@libs/storage';
 
-// Maximum file size: 1MB
-const MAX_FILE_SIZE = 1 * 1024 * 1024;
+// Maximum file size: 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 // Allowed image MIME types
 const ALLOWED_MIME_TYPES = [
@@ -16,7 +16,18 @@ const ALLOWED_MIME_TYPES = [
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
 
 // Supported storage providers
-const SUPPORTED_PROVIDERS: StorageProviderType[] = ['oss', 's3', 'r2', 'cos'];
+const SUPPORTED_PROVIDERS: StorageProviderType[] = ['oss', 's3', 'r2', 'cos', 'local'];
+
+function shouldFallbackToLocal(error: unknown): boolean {
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
+  if (!error || typeof error !== 'object') {
+    return true;
+  }
+  const message = (error as { message?: string }).message || '';
+  return message.includes('Missing') || message.includes('required environment variable');
+}
 
 /**
  * Validate file extension
@@ -124,7 +135,17 @@ export default defineEventHandler(async (event) => {
     const folder = `uploads/${userId}`;
 
     // Create storage provider and upload
-    const storage = createStorageProvider(provider);
+    let storage;
+    try {
+      storage = createStorageProvider(provider);
+    } catch (error) {
+      if (shouldFallbackToLocal(error)) {
+        provider = 'local';
+        storage = createStorageProvider(provider);
+      } else {
+        throw error;
+      }
+    }
     const uploadResult = await storage.uploadFile({
       file: fileData.data,
       fileName: uniqueFileName,
@@ -172,4 +193,3 @@ export default defineEventHandler(async (event) => {
     });
   }
 });
-

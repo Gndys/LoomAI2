@@ -5,7 +5,8 @@ import { Upload, X, Cloud, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/use-translation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FeatureCard, FeatureDropzone, FeaturePageShell } from '@/components/feature-page-shell';
+import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -15,7 +16,6 @@ import {
 } from '@/components/ui/select';
 import {
   FileUpload,
-  FileUploadDropzone,
   FileUploadItem,
   FileUploadItemDelete,
   FileUploadItemMetadata,
@@ -27,8 +27,8 @@ import {
 
 type StorageProvider = 'oss' | 's3' | 'r2' | 'cos';
 
-// Maximum file size: 1MB
-const MAX_FILE_SIZE = 1 * 1024 * 1024;
+// Maximum file size: 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 // Maximum files allowed
 const MAX_FILES = 1;
 
@@ -204,21 +204,15 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="container py-8">
-      <div className="max-w-2xl mx-auto space-y-6">
-        {/* Page Header */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
-            {t.upload.title}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {t.upload.description}
-          </p>
-        </div>
-
-        {/* Provider Selection Card */}
-        <Card>
-          <CardHeader>
+    <FeaturePageShell
+      title={t.upload.title}
+      description={t.upload.description}
+      badge={{ icon: <Upload className="size-3.5" />, label: t.upload.title }}
+      className="max-w-2xl"
+    >
+      <div className="space-y-6">
+        <FeatureCard>
+          <CardHeader className="space-y-2">
             <CardTitle className="text-lg">
               {t.upload.providerTitle}
             </CardTitle>
@@ -264,11 +258,10 @@ export default function UploadPage() {
               </SelectContent>
             </Select>
           </CardContent>
-        </Card>
+        </FeatureCard>
 
-        {/* File Upload Card */}
-        <Card>
-          <CardHeader>
+        <FeatureCard>
+          <CardHeader className="space-y-2">
             <CardTitle className="text-lg">
               {t.upload.uploadTitle}
             </CardTitle>
@@ -289,7 +282,7 @@ export default function UploadPage() {
               className="w-full"
               disabled={isUploading}
             >
-              <FileUploadDropzone className="min-h-[200px]">
+              <FeatureDropzone className="min-h-[200px]">
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex items-center justify-center rounded-full border-2 border-dashed p-4">
                     <Upload className="size-8 text-muted-foreground" />
@@ -308,13 +301,13 @@ export default function UploadPage() {
                     </Button>
                   </FileUploadTrigger>
                 </div>
-              </FileUploadDropzone>
+              </FeatureDropzone>
 
               <FileUploadList className="mt-4">
                 {files.map((file) => {
                   const uploadedFile = uploadedFiles.find((uf) => uf.file === file);
                   return (
-                    <FileUploadItem key={file.name} value={file} className="relative">
+                    <FileUploadItem key={file.name} value={file} className="relative bg-background/70">
                       <FileUploadItemPreview className="size-12 rounded-md" />
                       <FileUploadItemMetadata />
                       <FileUploadItemProgress variant="linear" className="absolute bottom-0 left-0 right-0 h-1 rounded-b-md" />
@@ -353,12 +346,11 @@ export default function UploadPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </FeatureCard>
 
-        {/* Uploaded Files Summary */}
         {uploadedFiles.length > 0 && (
-          <Card>
-            <CardHeader>
+          <FeatureCard>
+            <CardHeader className="space-y-2">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Check className="size-5 text-primary" />
                 {t.upload.uploadedTitle}
@@ -399,10 +391,9 @@ export default function UploadPage() {
                 ))}
               </div>
             </CardContent>
-          </Card>
+          </FeatureCard>
         )}
 
-        {/* Upload Status */}
         {isUploading && (
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
@@ -410,6 +401,6 @@ export default function UploadPage() {
           </div>
         )}
       </div>
-    </div>
+    </FeaturePageShell>
   );
 }

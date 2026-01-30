@@ -27,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Check, Globe, ChevronDown, Bot, Crown, Upload, ImageIcon } from "lucide-react";
+import { Check, Globe, ChevronDown, Bot, Crown, Upload, ImageIcon, Scissors, Pencil, Paintbrush, History, Grid2x2, Grid3x3, Megaphone, DraftingCompass, Shirt, Square, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { type SupportedLocale, locales } from "@libs/i18n";
 import { useTranslation } from "@/hooks/use-translation";
@@ -85,7 +85,7 @@ export default function Header({ className }: HeaderProps) {
             {/* Demos Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button 
+                <button
                   type="button"
                   className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -104,19 +104,6 @@ export default function Header({ className }: HeaderProps) {
                         <span className="font-semibold text-sm">{t.header.demos.ai.title}</span>
                         <span className="text-sm text-muted-foreground leading-snug mt-0.5">
                           {t.header.demos.ai.description}
-                        </span>
-                      </div>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="p-0">
-                    <Link href={`/${currentLocale}/image-generate`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
-                        <ImageIcon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-sm">{t.header.demos.aiImage.title}</span>
-                        <span className="text-sm text-muted-foreground leading-snug mt-0.5">
-                          {t.header.demos.aiImage.description}
                         </span>
                       </div>
                     </Link>
@@ -143,6 +130,19 @@ export default function Header({ className }: HeaderProps) {
                         <span className="font-semibold text-sm">{t.header.demos.upload.title}</span>
                         <span className="text-sm text-muted-foreground leading-snug mt-0.5">
                           {t.header.demos.upload.description}
+                        </span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="p-0">
+                    <Link href={`/${currentLocale}/card-boundary-playground`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
+                        <Square className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm">{t.header.demos.cardBoundary.title}</span>
+                        <span className="text-sm text-muted-foreground leading-snug mt-0.5">
+                          {t.header.demos.cardBoundary.description}
                         </span>
                       </div>
                     </Link>
@@ -301,13 +301,6 @@ export default function Header({ className }: HeaderProps) {
                     <span className="block text-xs text-muted-foreground">{t.header.demos.ai.description}</span>
                   </div>
                 </Link>
-                <Link href={`/${currentLocale}/image-generate`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
-                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <span className="block">{t.header.demos.aiImage.title}</span>
-                    <span className="block text-xs text-muted-foreground">{t.header.demos.aiImage.description}</span>
-                  </div>
-                </Link>
                 <Link href={`/${currentLocale}/premium-features`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
                   <Crown className="h-5 w-5 text-muted-foreground" />
                   <div>
@@ -322,8 +315,16 @@ export default function Header({ className }: HeaderProps) {
                     <span className="block text-xs text-muted-foreground">{t.header.demos.upload.description}</span>
                   </div>
                 </Link>
+                <Link href={`/${currentLocale}/card-boundary-playground`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
+                  <Square className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="block">{t.header.demos.cardBoundary.title}</span>
+                    <span className="block text-xs text-muted-foreground">{t.header.demos.cardBoundary.description}</span>
+                  </div>
+                </Link>
               </div>
             </div>
+
             <div className="border-t border-border my-2" />
             <Link href={`/${currentLocale}/pricing`} className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-foreground hover:bg-muted">
               {t.header.navigation.pricing}

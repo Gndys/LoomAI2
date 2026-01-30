@@ -1,90 +1,36 @@
-"use client"
-import Image from "next/image";
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { BentoGrid, BentoCard } from "@/components/magicui/bento-grid";
 import { useTranslation } from "@/hooks/use-translation";
-import { useRef, useState, useEffect } from "react";
-import { motion, useInView, useAnimation } from "framer-motion";
+import { useState } from "react";
+import { motion } from "framer-motion";
 import React from "react";
 import { 
   Check, 
-  Shield, 
-  Globe, 
-  Zap, 
-  BarChart3, 
-  Smartphone, 
   Star, 
-  CreditCard, 
-  Users, 
-  Brain, 
-  Code, 
   Layers, 
   Palette, 
-  Play, 
-  Settings, 
   FileText, 
-  BookOpen 
+  Shield,
+  Shirt,
+  MousePointerClick,
+  Scan,
+  Scissors,
+  Wand2
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
-import { translations } from "@libs/i18n";
-
-interface PageProps {
-  params: { lang: string }
-}
-
-// export default async function Home({ params }: PageProps) {
-//   const { lang } = await params;
-//   const t = translations[lang as keyof typeof translations];
-
-//   return (
-//     <>
-//       <ClientHomePage t={t} />
-//     </>
-//   );
-// }
 
 // Icon mappings for features
-const iconMap = [Layers, Shield, Globe, Zap, BarChart3, Smartphone, Brain, Code];
+const iconMap = [Shirt, Layers, FileText, Palette, Scan, Shield, MousePointerClick, Wand2];
 
-const appIconMap = [Globe, BarChart3, Brain];  
-const roadmapIconMap = [Check, Settings, BookOpen, Palette, Play, FileText];
+const appIconMap = [Shirt, MousePointerClick, FileText];
+const roadmapIconMap = [Shirt, Layers, FileText, Scan, Palette, Scissors];
 
 // Client component for interactive features
 export default function Home() {
   const { t, locale: currentLocale } = useTranslation();
-  const [stats, setStats] = useState({
-    developers: 0,
-    frameworks: 0,
-    features: 0,
-    satisfaction: 0
-  });
-
-  const statsRef = useRef(null);
-  const isStatsInView = useInView(statsRef, { once: true });
-
-  // Animate stats numbers
-  useEffect(() => {
-    if (isStatsInView) {
-      const animateValue = (start: number, end: number, duration: number, setter: (value: number) => void) => {
-        let startTimestamp: number | null = null;
-        const step = (timestamp: number) => {
-          if (!startTimestamp) startTimestamp = timestamp;
-          const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-          setter(Math.floor(progress * (end - start) + start));
-          if (progress < 1) {
-            window.requestAnimationFrame(step);
-          }
-        };
-        window.requestAnimationFrame(step);
-      };
-
-      animateValue(0, 10000, 2000, (value) => setStats(prev => ({ ...prev, developers: value })));
-      animateValue(0, 2, 2000, (value) => setStats(prev => ({ ...prev, frameworks: value })));
-      animateValue(0, 50, 2500, (value) => setStats(prev => ({ ...prev, features: value })));
-      animateValue(0, 99, 2000, (value) => setStats(prev => ({ ...prev, satisfaction: value })));
-    }
-  }, [isStatsInView]);
 
   const [activeFeature, setActiveFeature] = useState(0);
 
@@ -157,17 +103,19 @@ export default function Home() {
                 transition={{ duration: 0.8, delay: 0.6 }}
               >
                 <Button 
+                  asChild
                   size="lg" 
                   className="px-8 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105"
                 >
-                  {t.home.hero.buttons.purchase}
+                  <Link href={`/${currentLocale}/upload`}>{t.home.hero.buttons.purchase}</Link>
                 </Button>
                 <Button 
+                  asChild
                   size="lg" 
                   variant="outline" 
                   className="px-8 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105"
                 >
-                  {t.home.hero.buttons.demo}
+                  <Link href={`/${currentLocale}/pricing`}>{t.home.hero.buttons.demo}</Link>
                 </Button>
               </motion.div>
 
@@ -220,7 +168,7 @@ export default function Home() {
                   <BentoCard
                     name={feature.title}
                     description={feature.description}
-                    Icon={iconMap[index]}
+                    Icon={iconMap[index % iconMap.length]}
                     className={`${feature.className} group hover:scale-[1.02] transition-all duration-300 hover:shadow-xl bg-card border border-border hover:border-border/80 h-full`}
                     background={
                       <div 
@@ -228,7 +176,7 @@ export default function Home() {
                       />
                     }
                     cta={t.home.common.learnMore}
-                    href='#'
+                    href={`/${currentLocale}/upload`}
                   />
                 </motion.div>
               ))}
@@ -347,7 +295,7 @@ export default function Home() {
                     <div className="aspect-[16/10] bg-gradient-to-br from-primary/5 to-muted rounded-2xl border border-border flex items-center justify-center overflow-hidden">
                       <div className="w-full h-full bg-gradient-to-br from-primary/10 to-muted/50 flex items-center justify-center">
                         <div className="text-center space-y-4">
-                          {React.createElement(appIconMap[activeFeature], {
+                          {React.createElement(appIconMap[activeFeature % appIconMap.length], {
                             className: "h-20 w-20 text-primary mx-auto"
                           })}
                           <div className="text-muted-foreground font-medium text-lg">{t.home.applicationFeatures.items[activeFeature].imageTitle}</div>
@@ -449,7 +397,7 @@ export default function Home() {
                             ? 'bg-chart-2 text-white'
                             : 'bg-muted text-muted-foreground'
                         }`}>
-                          {React.createElement(roadmapIconMap[index], {
+                          {React.createElement(roadmapIconMap[index % roadmapIconMap.length], {
                             className: "h-6 w-6"
                           })}
                         </div>
@@ -515,7 +463,7 @@ export default function Home() {
         </section>
 
         {/* Stats Section */}
-        <section className="py-24 bg-background" ref={statsRef}>
+        <section className="py-24 bg-background">
           <div className="container px-4 md:px-6">
             <motion.div 
               className="text-center mb-16"
@@ -530,57 +478,21 @@ export default function Home() {
             </motion.div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              <motion.div 
-                className="text-center"
-                initial={{ opacity: 0, scale: 0.5 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                viewport={{ once: true }}
-              >
-                <div className="text-4xl md:text-5xl font-bold text-foreground mb-2">
-                  {stats.developers.toLocaleString()}+
-                </div>
-                <div className="text-muted-foreground">{t.home.stats.items.users}</div>
-              </motion.div>
-              
-              <motion.div 
-                className="text-center"
-                initial={{ opacity: 0, scale: 0.5 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                viewport={{ once: true }}
-              >
-                <div className="text-4xl md:text-5xl font-bold text-foreground mb-2">
-                  {stats.frameworks}
-                </div>
-                <div className="text-muted-foreground">{t.home.stats.items.frameworks}</div>
-              </motion.div>
-              
-              <motion.div 
-                className="text-center"
-                initial={{ opacity: 0, scale: 0.5 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                viewport={{ once: true }}
-              >
-                <div className="text-4xl md:text-5xl font-bold text-foreground mb-2">
-                  {stats.features}+
-                </div>
-                <div className="text-muted-foreground">{t.home.stats.items.features}</div>
-              </motion.div>
-              
-              <motion.div 
-                className="text-center"
-                initial={{ opacity: 0, scale: 0.5 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                viewport={{ once: true }}
-              >
-                <div className="text-4xl md:text-5xl font-bold text-foreground mb-2">
-                  {stats.satisfaction}%
-                </div>
-                <div className="text-muted-foreground">{t.home.stats.items.satisfaction}</div>
-              </motion.div>
+              {t.home.stats.items.map((item: any, index: number) => (
+                <motion.div 
+                  key={index}
+                  className="text-center"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, delay: 0.1 + index * 0.1 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="text-4xl md:text-5xl font-bold text-foreground mb-2">
+                    {item.value}{item.suffix}
+                  </div>
+                  <div className="text-muted-foreground">{item.label}</div>
+                </motion.div>
+              ))}
             </div>
           </div>
         </section>
@@ -656,17 +568,19 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button 
+                  asChild
                   size="lg" 
                   className="px-8 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105"
                 >
-                  {t.home.finalCta.buttons.purchase}
+                  <Link href={`/${currentLocale}/upload`}>{t.home.finalCta.buttons.purchase}</Link>
                 </Button>
                 <Button 
+                  asChild
                   size="lg" 
                   variant="outline" 
                   className="px-8 py-4 text-lg rounded-full transition-all duration-300 hover:scale-105"
                 >
-                  {t.home.finalCta.buttons.demo}
+                  <Link href={`/${currentLocale}/pricing`}>{t.home.finalCta.buttons.demo}</Link>
                 </Button>
               </div>
             </motion.div>

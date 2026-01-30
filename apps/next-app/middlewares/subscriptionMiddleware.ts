@@ -38,9 +38,14 @@ export async function subscriptionMiddleware(
   const requestHeaders = new Headers(request.headers);
   
   // 获取当前用户会话
-  const session = await auth.api.getSession({
-    headers: requestHeaders
-  });
+  const session = await auth.api
+    .getSession({
+      headers: requestHeaders,
+    })
+    .catch((error) => {
+      console.error('Failed to get session:', error);
+      return null;
+    });
   
   // 未登录，重定向到登录页面
   if (!session || !session.user) {
