@@ -51,14 +51,14 @@ const totalOrders = ref(0)
 const fetchOrders = async (page: number) => {
   loadingOrders.value = true
   try {
-    const response = await $fetch('/api/orders', { 
-      query: { page, limit: PAGE_SIZE } 
-    }) as { 
+    const response = await $fetch<{
       orders: Order[]
       total: number
       page: number
       totalPages: number
-    }
+    }>('/api/orders', { 
+      query: { page, limit: PAGE_SIZE } 
+    })
     
     ordersData.value = response.orders || []
     totalPages.value = response.totalPages || 1
@@ -169,7 +169,9 @@ const getProviderDisplay = (provider: string) => {
     case 'wechat':
       return t('dashboard.orders.provider.wechat')
     case 'creem':
-      return 'Creem'
+      return t('dashboard.orders.provider.creem')
+    case 'alipay':
+      return t('dashboard.orders.provider.alipay')
     default:
       return provider
   }

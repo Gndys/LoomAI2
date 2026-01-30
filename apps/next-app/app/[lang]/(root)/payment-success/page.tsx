@@ -13,17 +13,23 @@ function PaymentSuccessContent() {
   const router = useRouter();
   const sessionId = searchParams.get('session_id');
   const provider = searchParams.get('provider');
-  const [isVerifying, setIsVerifying] = useState(provider !== 'wechat');
-  const [isValid, setIsValid] = useState(provider === 'wechat');
+  // Alipay uses out_trade_no as the order identifier
+  const outTradeNo = searchParams.get('out_trade_no');
+  
+  // WeChat and Alipay don't need verification - they use webhooks for confirmation
+  const skipVerification = provider === 'wechat' || provider === 'alipay';
+  const [isVerifying, setIsVerifying] = useState(!skipVerification);
+  const [isValid, setIsValid] = useState(skipVerification);
 
   useEffect(() => {
-    // 如果是微信支付，已经在前一个页面通过轮询确认过支付状态，直接视为有效
-    if (provider === 'wechat') {
+    // For WeChat and Alipay, payment status is confirmed via webhook
+    // The return URL is just for user experience
+    if (provider === 'wechat' || provider === 'alipay') {
       return;
     }
 
-    // 对于其他支付方式（如 Stripe、Creem），需要验证 session
-    // 对于 Creem，我们需要验证完整的 URL（包含签名）
+    // For Stripe and Creem, verify the session
+    // For Creem, we need to verify the full URL (including signature)
     if (!sessionId && provider !== 'creem') {
       router.replace('/');
       return;
@@ -31,15 +37,15 @@ function PaymentSuccessContent() {
 
     async function verifySession() {
       try {
-        // 根据 provider 确定验证端点
+        // Determine verification endpoint based on provider
         let verifyUrl;
         if (provider === 'stripe') {
           verifyUrl = `/api/payment/verify/stripe?session_id=${sessionId}`;
         } else if (provider === 'creem') {
-          // Creem 验证需要传递完整的 URL 以进行签名验证
+          // Creem verification needs the full URL for signature verification
           verifyUrl = `/api/payment/verify/creem${window.location.search}`;
         } else {
-          // 默认使用 Stripe 验证（向后兼容）
+          // Default to Stripe verification (backward compatibility)
           verifyUrl = `/api/payment/verify/stripe?session_id=${sessionId}`;
         }
 

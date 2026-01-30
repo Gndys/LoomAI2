@@ -6,7 +6,7 @@ alwaysApply: false
 # Payment Integration Guidelines
 
 ## Overview
-The payment system supports WeChat Pay, Stripe, and Creem, handling one-time payments, subscriptions, and **credit purchases** through a factory-based implementation. Includes a complete credit system for AI-powered features with consumption tracking.
+The payment system supports WeChat Pay, Stripe, Creem, and Alipay, handling one-time payments, subscriptions, and **credit purchases** through a factory-based implementation. Includes a complete credit system for AI-powered features with consumption tracking.
 
 ## Key Concepts
 
@@ -14,6 +14,7 @@ The payment system supports WeChat Pay, Stripe, and Creem, handling one-time pay
 - `stripe`: Stripe Checkout Session based implementation
 - `wechat`: WeChat Native QR code based implementation
 - `creem`: Creem payment integration
+- `alipay`: Alipay PC website payment (page redirect)
 
 ### Payment Plan Types
 - `one_time`: Single payment (all providers)
@@ -36,6 +37,8 @@ import { createPaymentProvider } from '@/libs/payment';
 const stripeProvider = createPaymentProvider('stripe');
 // Or WeChat provider
 const wechatProvider = createPaymentProvider('wechat');
+// Or Alipay provider
+const alipayProvider = createPaymentProvider('alipay');
 ```
 
 ### 2. Initiating Payment
@@ -126,6 +129,13 @@ WECHAT_PAY_API_KEY=...
 WECHAT_PAY_NOTIFY_URL=...
 WECHAT_PAY_PUBLIC_KEY_PATH=...
 WECHAT_PAY_PRIVATE_KEY_PATH=...
+
+# Alipay Configuration (Base64 string format, no PEM headers)
+ALIPAY_APP_ID=2021...
+ALIPAY_APP_PRIVATE_KEY="MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC..."
+ALIPAY_PUBLIC_KEY="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgatiwfGM3RTw..."
+ALIPAY_NOTIFY_URL=https://yourdomain.com/api/payment/webhook/alipay
+ALIPAY_SANDBOX=false  # Set to "true" for sandbox testing
 ```
 
 ### Config File
@@ -149,12 +159,19 @@ export const config = {
         apiKey: string,
         serverUrl: string,
         webhookSecret: string
+      },
+      alipay: {
+        appId: string,
+        appPrivateKey: string,
+        alipayPublicKey: string,
+        notifyUrl: string,
+        sandbox: boolean
       }
     },
     plans: {
       [planId: string]: {
         id: string,
-        provider: 'stripe' | 'wechat' | 'creem',
+        provider: 'stripe' | 'wechat' | 'creem' | 'alipay',
         amount: number,
         currency: string,
         duration: {

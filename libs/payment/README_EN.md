@@ -2,7 +2,7 @@
 
 [中文文档](./README.md) | **English**
 
-This is a unified payment integration solution supporting WeChat Pay, Stripe, and Creem payment methods, providing simple factory functions to create payment provider instances.
+This is a unified payment integration solution supporting WeChat Pay, Stripe, Creem, and Alipay payment methods, providing simple factory functions to create payment provider instances.
 
 ## 🔧 Configuration Guide
 
@@ -44,6 +44,16 @@ export const config = {
         currency: 'USD',
         duration: { months: 1, type: 'recurring' },
         creemProductId: 'prod_1M1c4ktVmvLgrNtpVB9oQf',
+        i18n: { /* Multi-language configuration */ }
+      },
+      
+      // Alipay plan (one-time payment)
+      monthlyAlipay: {
+        provider: 'alipay',
+        id: 'monthlyAlipay',
+        amount: 0.01,
+        currency: 'CNY',
+        duration: { months: 1, type: 'one_time' },
         i18n: { /* Multi-language configuration */ }
       }
     }
@@ -100,11 +110,23 @@ CREEM_SERVER_URL=https://api.creem.io
 CREEM_WEBHOOK_SECRET=whsec_xxxxxxxx
 ```
 
+#### Alipay
+
+```env
+ALIPAY_APP_ID=2021000000000000
+# Base64 string format, no PEM headers required
+ALIPAY_APP_PRIVATE_KEY="MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC..."
+ALIPAY_PUBLIC_KEY="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgatiwfGM3RTw..."
+ALIPAY_NOTIFY_URL=https://yourdomain.com/api/payment/webhook/alipay
+ALIPAY_SANDBOX=false  # Set to "true" for sandbox testing
+```
+
 ## 🎯 Supported Payment Methods
 
 | Payment Method | One-time | Subscription | Payment Flow | Primary Market | Currency Support |
 |---------------|----------|---------------|---------------|----------------|------------------|
 | WeChat Pay | ✅ | ❌ | QR Code Scan | Mainland China | CNY |
+| Alipay | ✅ | ❌ | Page Redirect | Mainland China | CNY |
 | Stripe | ✅ | ✅ | Page Redirect | Global | Multi-currency |
 | Creem | ✅ | ✅ | Page Redirect | Global | USD, EUR, etc. |
 
@@ -114,6 +136,7 @@ CREEM_WEBHOOK_SECRET=whsec_xxxxxxxx
 libs/payment/
 ├── providers/           # Payment provider implementations
 │   ├── wechat.ts       # WeChat Pay (QR code)
+│   ├── alipay.ts       # Alipay (page redirect)
 │   ├── stripe.ts       # Stripe (checkout session)
 │   └── creem.ts        # Creem (checkout session)
 ├── types.ts            # TypeScript type definitions
@@ -131,6 +154,7 @@ import { createPaymentProvider } from '@libs/payment';
 const stripeProvider = createPaymentProvider('stripe');
 const wechatProvider = createPaymentProvider('wechat');
 const creemProvider = createPaymentProvider('creem');
+const alipayProvider = createPaymentProvider('alipay');
 ```
 
 ### Initiate Payment
@@ -161,6 +185,19 @@ const wechatResult = await wechatProvider.createPayment({
 
 // Display QR code for user to scan
 console.log('WeChat QR Code URL:', wechatResult.paymentUrl);
+
+// Alipay Payment (Page Redirect)
+const alipayResult = await alipayProvider.createPayment({
+  orderId: 'order_789',
+  userId: 'user_123',
+  planId: 'monthlyAlipay',
+  amount: 0.01,
+  currency: 'CNY',
+  provider: 'alipay'
+});
+
+// Redirect to Alipay page (via data URL containing auto-submitting HTML form)
+window.location.href = alipayResult.paymentUrl;
 ```
 
 ### Webhook Handling
@@ -221,6 +258,12 @@ User selects plan → Create order → Generate QR code → User scans and pays 
 Frontend polls status → Webhook callback → Order status update → Subscription activation
 ```
 
+#### Alipay Flow (Page Redirect)
+```
+User selects plan → Create order → Redirect to Alipay page → User logs in and pays → 
+Sync redirect to returnUrl → Webhook async notification → Order status update → Subscription activation
+```
+
 ### Order Status
 
 - `PENDING`: Order created, awaiting payment
@@ -240,5 +283,6 @@ Frontend polls status → Webhook callback → Order status update → Subscript
 
 - [Payment Configuration Guide](../../docs/user-guide/payment.md) - Complete environment variable configuration and application process
 - [WeChat Pay Developer Documentation](https://pay.weixin.qq.com/wiki/doc/api/index.html)
+- [Alipay Open Platform](https://open.alipay.com/)
 - [Stripe Developer Documentation](https://stripe.com/docs)
 - [Creem API Documentation](https://docs.creem.io/)

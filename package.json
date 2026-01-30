@@ -26,7 +26,10 @@
     "db:studio": "node libs/database/scripts.js studio",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "typecheck": "turbo run typecheck",
+    "typecheck:next": "turbo run typecheck --filter=@tinyship/next-app",
+    "typecheck:nuxt": "turbo run typecheck --filter=@tinyship/nuxt-app"
   },
   "keywords": [
     "saas",
@@ -49,7 +52,6 @@
     "vitest": "3.0.9"
   },
   "dependencies": {
-    "zod": "4.2.1",
     "@ai-sdk/deepseek": "1.0.23",
     "@ai-sdk/fal": "2.0.2",
     "@ai-sdk/openai": "3.0.2",
@@ -66,6 +68,7 @@
     "@types/negotiator": "0.6.3",
     "ai": "6.0.6",
     "ali-oss": "^6.21.0",
+    "alipay-sdk": "4.14.0",
     "better-auth": "1.4.10",
     "chalk": "5.4.1",
     "cos-nodejs-sdk-v5": "^2.15.3",
@@ -83,6 +86,7 @@
     "stripe": "18.1.0",
     "tsx": "^4.19.3",
     "twilio": "5.5.2",
-    "validation-better-auth": "1.1.1"
+    "validation-better-auth": "1.1.1",
+    "zod": "4.2.1"
   }
 }

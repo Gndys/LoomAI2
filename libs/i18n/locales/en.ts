@@ -560,7 +560,8 @@ export const en: Locale = {
           allProviders: "All Providers",
           stripe: "Stripe",
           wechat: "WeChat",
-          creem: "Creem"
+          creem: "Creem",
+          alipay: "Alipay"
         },
         columns: {
           id: "Order ID",
@@ -678,6 +679,7 @@ export const en: Locale = {
           stripe: "Stripe",
           creem: "Creem",
           wechat: "WeChat",
+          alipay: "Alipay",
           userEmail: "User Email",
           subscriptionId: "Subscription ID",
           userId: "User ID",
@@ -992,7 +994,8 @@ export const en: Locale = {
       provider: {
         stripe: "Stripe",
         wechat: "WeChat Pay",
-        creem: "Creem"
+        creem: "Creem",
+        alipay: "Alipay"
       },
       noOrders: "No orders found",
       noOrdersDescription: "You haven't placed any orders yet",

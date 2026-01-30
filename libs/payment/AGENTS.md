@@ -2,7 +2,7 @@
 
 ## Overview
 
-Unified payment integration library supporting WeChat Pay, Stripe, and Creem payment providers. Handles one-time payments, recurring subscriptions, and **credit purchases** with webhook processing, database integration, and automated plan configuration from `@config`. Includes a complete credit system for AI-powered features with consumption tracking.
+Unified payment integration library supporting WeChat Pay, Stripe, Creem, and Alipay payment providers. Handles one-time payments, recurring subscriptions, and **credit purchases** with webhook processing, database integration, and automated plan configuration from `@config`. Includes a complete credit system for AI-powered features with consumption tracking.
 
 ## Setup Commands
 
@@ -27,6 +27,15 @@ CREEM_API_KEY=creem_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 CREEM_SERVER_URL=https://api.creem.io
 CREEM_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
+# Alipay (China market, CNY only)
+# Reference: https://opendocs.alipay.com/open/00dn7o (Sandbox environment)
+# Keys use Base64 string format (no PEM headers)
+ALIPAY_APP_ID=2021000000000000
+ALIPAY_APP_PRIVATE_KEY="MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC..."
+ALIPAY_PUBLIC_KEY="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgatiwfGM3RTw..."
+ALIPAY_NOTIFY_URL=https://yourdomain.com/api/payment/webhook/alipay
+ALIPAY_SANDBOX=false  # Set to "true" for sandbox testing
+
 # No additional installation - configured via @config
 ```
 
@@ -36,7 +45,7 @@ CREEM_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 - Unified interface: `PaymentProvider` with `createPayment()` and `handleWebhook()` methods
 - Configuration integration: Payment plans from `config.payment.plans` with auto-pricing page generation
 - Database integration: Orders and subscriptions tracked via `@libs/database`
-- Multi-currency support: CNY (WeChat), USD/EUR (Stripe/Creem)
+- Multi-currency support: CNY (WeChat/Alipay), USD/EUR (Stripe/Creem)
 - Webhook verification: Provider-specific signature validation
 
 ## Usage Examples
@@ -49,6 +58,7 @@ import { createPaymentProvider } from '@libs/payment';
 const stripeProvider = createPaymentProvider('stripe');
 const wechatProvider = createPaymentProvider('wechat');
 const creemProvider = createPaymentProvider('creem');
+const alipayProvider = createPaymentProvider('alipay');
 
 // Create payment (unified interface)
 const paymentResult = await stripeProvider.createPayment({
@@ -126,6 +136,19 @@ export const config = {
         duration: { months: 1, type: 'recurring' },
         creemProductId: 'prod_1M1c4ktVmvLgrNtpVB9oQf', // Required for Creem
         i18n: { /* ... */ }
+      },
+      
+      // Alipay (one-time only, similar to WeChat Pay)
+      monthlyAlipay: {
+        provider: 'alipay',
+        id: 'monthlyAlipay',
+        amount: 0.01,
+        currency: 'CNY',
+        duration: { months: 1, type: 'one_time' },
+        i18n: {
+          'en': { name: 'Alipay Monthly', description: '...', features: [...] },
+          'zh-CN': { name: '支付宝月度', description: '...', features: [...] }
+        }
       }
     }
   }
@@ -217,6 +240,7 @@ credits: {
 - **WeChat Pay**: One-time payments and credit purchases, CNY currency, requires business license
 - **Stripe**: Full subscription management, credit purchases, global currencies, customer portal
 - **Creem**: Developer-friendly, credit purchases, global currencies, simplified onboarding
+- **Alipay**: One-time payments and credit purchases, CNY currency, uses official `alipay-sdk`
 
 ### Payment Types
 - **One-time**: Single payment (supported by all providers)
@@ -253,6 +277,7 @@ credits: {
 # WeChat Pay: Uses real 0.01 CNY payments (no sandbox)
 # Stripe: Use test mode keys (sk_test_..., pk_test_...)
 # Creem: Use test mode credentials
+# Alipay: Use sandbox credentials from Alipay Open Platform
 
 # Webhook testing with tools like ngrok for local development
 # Verify signature validation and database updates
@@ -284,6 +309,7 @@ credits: {
 - **WeChat Pay**: Certificate validation, public key configuration
 - **Stripe**: API version compatibility, webhook endpoint setup
 - **Creem**: API key permissions, product configuration
+- **Alipay**: Private key format (PEM), public key for signature verification, webhook returns "success"/"fail" plain text
 
 ## Architecture Notes
 
