@@ -1662,6 +1662,10 @@ export const en: Locale = {
         title: "Card Boundary Playground",
         description: "Compare card border and shadow clarity."
       },
+      playground: {
+        title: "Interaction Playground",
+        description: "Hover text swap and upload highlight effects."
+      },
       clothesSplit: {
         title: "Clothes Split",
         description: "Upload garment photos and generate clean flat lays."
@@ -1741,6 +1745,116 @@ export const en: Locale = {
           clothesSketch: "Tech Sketch"
         }
       }
+    }
+  },
+  aiGenerate: {
+    title: "AI Image Generation",
+    description: "Upload an image, write a prompt, and generate professional results quickly.",
+    badge: "AI Generate",
+    preview: {
+      title: "Preview",
+      description: "Expected before/after result",
+      before: "Before",
+      after: "After",
+      caption: "Lighting · Material · Edges"
+    },
+    upload: {
+      title: "Upload Image",
+      description: "Supports PNG, JPG up to 10MB",
+      hint: "Drag an image here or click to upload",
+      formats: "Supports PNG, JPG up to 10MB",
+      fileTooLarge: "File size must be under 10MB",
+      examples: {
+        flatLay: "Model shot to flat lay",
+        sketch: "Flat lay to tech sketch",
+        promo: "Generate a promo scene"
+      }
+    },
+    hints: [
+      "Generate a clean product flat lay",
+      "Generate a clear apparel tech sketch",
+      "Generate a promo scene",
+      "Break down pattern structure and details",
+      "Split garment into pattern pieces"
+    ],
+    hoverHint: "Please upload an image first",
+    prompt: {
+      title: "Prompt Editor",
+      description: "Describe the look you want or use a preset",
+      positiveLabel: "Positive Prompt",
+      positivePlaceholder: "Describe the look you want...",
+      negativeToggleShow: "+ Negative Prompt",
+      negativeToggleHide: "- Hide Negative Prompt",
+      random: "Random Prompt",
+      clear: "Clear",
+      negativeLabel: "Negative Prompt",
+      negativeHint: "(things you do NOT want)",
+      negativePlaceholder: "person, model, human, hands, face..."
+    },
+    params: {
+      title: "Parameters",
+      description: "Adjust settings for the best result",
+      sizeLabel: "Image Size",
+      sizePlaceholder: "Select size",
+      styleLabel: "Style",
+      stylePlaceholder: "Select style",
+      modelLabel: "AI Model",
+      modelPlaceholder: "Select model",
+      options: {
+        size: {
+          Auto: "Auto",
+          "1:1": "1:1 Square",
+          "16:9": "16:9 Landscape",
+          "9:16": "9:16 Portrait",
+          custom: "Custom"
+        },
+        style: {
+          "无风格": "No Style",
+          "技术线稿": "Tech Sketch",
+          "生活方式": "Lifestyle",
+          "技术插图": "Technical Illustration",
+          "保持原样": "Preserve Original"
+        },
+        model: {
+          "loom-pro": "Loom Pro"
+        }
+      }
+    },
+    generate: {
+      button: "Generate Image",
+      generating: "Generating...",
+      credits: "(Costs {credits} credits)"
+    },
+    result: {
+      title: "Result",
+      description: "The generated image will appear here",
+      generating: "Generating...",
+      eta: "About 30 seconds remaining",
+      waiting: "Waiting to generate...",
+      download: "Download",
+      regenerate: "Regenerate"
+    },
+    comparison: {
+      title: "Comparison",
+      description: "Compare before and after",
+      reference: "Reference",
+      empty: "No image uploaded"
+    },
+    promptsUsed: {
+      title: "Used prompt:",
+      negativeTitle: "Negative prompt:"
+    },
+    buttons: {
+      changeImage: "Change Image",
+      reupload: "Re-upload"
+    },
+    toasts: {
+      uploadSuccess: "Image uploaded successfully",
+      clearedUpload: "Upload cleared",
+      clearedAll: "All settings cleared",
+      needUploadPrompt: "Please upload an image and enter a prompt",
+      generateSuccess: "Generated successfully!",
+      generateFailed: "Generation failed, please try again"
     }
   },
   imageSplit: {

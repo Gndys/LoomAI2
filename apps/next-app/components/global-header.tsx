@@ -96,6 +96,19 @@ export default function Header({ className }: HeaderProps) {
               <DropdownMenuContent align="center" className="w-96 p-4">
                 <div className="space-y-1">
                   <DropdownMenuItem asChild className="p-0">
+                    <Link href={`/${currentLocale}/ai-generate`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
+                        <Sparkles className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm">AI 图片生成</span>
+                        <span className="text-sm text-muted-foreground leading-snug mt-0.5">
+                          服装平铺图、线稿、宣传图等专业生成
+                        </span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="p-0">
                     <Link href={`/${currentLocale}/ai`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
                         <Bot className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -147,7 +160,44 @@ export default function Header({ className }: HeaderProps) {
                       </div>
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="p-0">
+                    <Link href={`/${currentLocale}/playground`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
+                        <Grid3x3 className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm">{t.header.demos.playground.title}</span>
+                        <span className="text-sm text-muted-foreground leading-snug mt-0.5">
+                          {t.header.demos.playground.description}
+                        </span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
                 </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Test Pages Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  测试页面
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-64 p-2">
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={`/${currentLocale}/play`}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    <Grid2x2 className="h-4 w-4 text-muted-foreground" />
+                    Play 主页
+                  </Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             
@@ -294,6 +344,13 @@ export default function Header({ className }: HeaderProps) {
                 {t.header.navigation.demos}
               </p>
               <div className="space-y-1">
+                <Link href={`/${currentLocale}/ai-generate`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
+                  <Sparkles className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="block">AI 图片生成</span>
+                    <span className="block text-xs text-muted-foreground">服装平铺图、线稿、宣传图等专业生成</span>
+                  </div>
+                </Link>
                 <Link href={`/${currentLocale}/ai`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
                   <Bot className="h-5 w-5 text-muted-foreground" />
                   <div>
@@ -320,6 +377,13 @@ export default function Header({ className }: HeaderProps) {
                   <div>
                     <span className="block">{t.header.demos.cardBoundary.title}</span>
                     <span className="block text-xs text-muted-foreground">{t.header.demos.cardBoundary.description}</span>
+                  </div>
+                </Link>
+                <Link href={`/${currentLocale}/playground`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
+                  <Grid3x3 className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="block">{t.header.demos.playground.title}</span>
+                    <span className="block text-xs text-muted-foreground">{t.header.demos.playground.description}</span>
                   </div>
                 </Link>
               </div>

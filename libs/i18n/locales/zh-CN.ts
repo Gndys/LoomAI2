@@ -1338,176 +1338,176 @@ export const zhCN: Locale = {
   },
   home: {
     metadata: {
-      title: "TinyShip - 现代化全栈 SaaS 开发启动器",
-      description: "现代化、功能齐全的 monorepo 启动套件，用于构建支持国内外双市场的 SaaS 应用程序。基于 Next.js/Nuxt.js、TypeScript 和完整认证系统构建。",
-      keywords: "SaaS, monorepo, 启动套件, Next.js, Nuxt.js, TypeScript, 认证, 国际化, 中国市场, 国际市场"
+      title: "LoomAI - AI驱动的服装设计智能平台",
+      description: "专为服装设计师打造的AI工具平台。一键生成专业平铺图，智能转换线稿为CAD制版图，让设计效率提升10倍。",
+      keywords: "服装设计, AI设计工具, 平铺图生成, 线稿转CAD, 制版图, 服装AI, 设计师工具"
     },
     hero: {
-      title: "虽然是小船，也能载你远航",
-      titlePrefix: "虽然是",
-      titleHighlight: "小船",
-      titleSuffix: "，也能载你远航",
-      subtitle: "现代化全栈 SaaS 开发平台，支持国内外双市场。一次购买，终身使用，快速构建你的商业项目。",
+      title: "让AI成为你的设计助手",
+      titlePrefix: "让",
+      titleHighlight: "AI",
+      titleSuffix: "成为你的设计助手",
+      subtitle: "专为服装设计师打造的AI工具平台。从灵感到成品，从草图到制版，AI让设计更高效、更专业。",
       buttons: {
-        purchase: "立即购买",
+        purchase: "开始使用",
         demo: "查看演示"
       },
       features: {
-        lifetime: "一次购买终身使用",
-        earlyBird: "早鸟价限时优惠"
+        lifetime: "30秒生成专业平铺图",
+        earlyBird: "智能识别，精准转换"
       }
     },
     features: {
-      title: "全栈 SaaS 开发平台",
-      subtitle: "从双框架支持到 AI 集成，从全球化到本土化，TinyShip 为你的商业项目提供完整的现代化技术解决方案。",
+      title: "专业工具，极致效率",
+      subtitle: "从灵感捕捉到制版输出，AI驱动的完整设计工作流，让你的创意快速落地。",
       items: [
         {
-          title: "双框架支持",
-          description: "灵活选择 Next.js 或 Nuxt.js，React 和 Vue 开发者都能找到熟悉的技术栈，同时享受相同的强大后端能力。",
-          className: "col-span-1 row-span-1"
-        },
-        {
-          title: "全面身份认证",
-          description: "基于 Better-Auth 的企业级认证系统，支持邮箱/手机/OAuth 登录，2FA 多因子认证，会话管理等完整认证体系。",
-          className: "col-span-1 row-span-1"
-        },
-        {
-          title: "全球化 + 本土化",
-          description: "既支持国际市场的 Stripe、OAuth 登录，也深度适配中国本土市场的微信登录、微信支付，双市场无缝覆盖。",
+          title: "智能平铺图生成",
+          description: "上传服装照片，AI自动去除背景、调整角度，30秒生成专业级平铺图。支持批量处理，效率提升10倍。",
           className: "col-span-2 row-span-1"
         },
         {
-          title: "现代化技术栈",
-          description: "采用最新技术：TailwindCSS v4、shadcn/ui、Magic UI、TypeScript、Zod 类型安全验证，开发体验极佳。",
-          className: "col-span-1 row-span-1"
-        },
-        {
-          title: "无厂商锁定架构",
-          description: "开放式 Monorepo 架构，libs 抽象接口设计，可自由选择任何云服务商、数据库、支付提供商，避免技术绑定。",
+          title: "线稿转CAD制版",
+          description: "手绘线稿一键转换为精确的CAD制版图。自动识别版型部件、提取尺寸标注、生成矢量轮廓，支持DXF/SVG/PDF多格式导出。",
           className: "col-span-2 row-span-1"
         },
         {
-          title: "通信服务集成",
-          description: "多渠道通信支持：邮件服务（Resend/SendGrid）、短信服务（阿里云/Twilio），全球化通信无障碍。",
+          title: "AI款式识别",
+          description: "智能识别服装款式、版型、工艺细节。自动标注肩宽、胸围、衣长等专业术语，生成详细的款式分析报告。",
           className: "col-span-1 row-span-1"
         },
         {
-          title: "AI 开发就绪",
-          description: "集成 Vercel AI SDK，支持多 AI 提供商，内置 Cursor 开发规则，AI 辅助开发，智能化构建应用。",
+          title: "面料智能分析",
+          description: "AI识别面料材质、纹理和质感，推测成分含量，提供改色建议和配色方案，让设计更专业。",
           className: "col-span-1 row-span-1"
         },
         {
-          title: "主题系统",
-          description: "基于 shadcn/ui 的现代化主题系统，支持暗黑模式，深度定制和品牌化，让应用拥有独特视觉体验。",
+          title: "对话式交互",
+          description: "像和设计师对话一样使用AI。描述你的想法，AI帮你生成设计稿、调整细节、优化版型。",
+          className: "col-span-1 row-span-1"
+        },
+        {
+          title: "批量处理",
+          description: "一次上传多个文件，自动排队处理。整套服装设计一键完成，大幅提升工作效率。",
+          className: "col-span-1 row-span-1"
+        },
+        {
+          title: "专业术语内置",
+          description: "内置服装行业专业术语库和提示词模板，让AI输出更精准、更符合行业标准。",
+          className: "col-span-1 row-span-1"
+        },
+        {
+          title: "质量智能检查",
+          description: "自动检查尺寸合理性、轮廓完整性、对称性等，发现问题并给出优化建议。",
           className: "col-span-1 row-span-1"
         }
       ],
       techStack: {
-        title: "基于现代化技术栈构建",
+        title: "基于先进AI技术构建",
         items: [
-          "Next.js / Nuxt.js",
-          "TailwindCSS v4",
-          "Better-Auth",
-          "Vercel AI SDK",
-          "TypeScript + Zod",
-          "shadcn/ui + Magic UI",
-          "Drizzle ORM + PostgreSQL"
+          "Google Gemini AI",
+          "智能图像识别",
+          "矢量化处理",
+          "专业术语库",
+          "批量处理引擎",
+          "多格式导出",
+          "实时预览编辑"
         ]
       }
     },
     applicationFeatures: {
-      title: "核心应用特性",
-      subtitle: "从国内外双体系支持到 AI 集成，TinyShip 为你的商业项目提供完整的技术解决方案。",
+      title: "核心功能",
+      subtitle: "三大核心功能，覆盖服装设计全流程，让专业工作变得简单高效。",
       items: [
         {
-          title: "国内外双体系支持",
-          subtitle: "一套代码，双市场覆盖",
-          description: "完美适配国内外不同市场需求。国内支持微信登录、手机号登录、微信支付等本土化功能；国外支持主流 OAuth 登录（Google、GitHub、Apple）、Stripe 和 Creem 支付体系。一套代码，双市场覆盖。",
+          title: "服装平铺图生成",
+          subtitle: "30秒生成专业平铺图",
+          description: "上传任意服装照片，AI自动识别并去除背景、调整角度、优化光影。生成符合电商标准的专业平铺图，支持批量处理。传统手工需要2小时，现在只需30秒，效率提升240倍。",
           highlights: [
-            "微信登录 & 手机号登录",
-            "OAuth 登录（Google、GitHub、Apple）",
-            "微信支付 & Stripe & Creem",
-            "国内外无缝切换"
+            "自动去背景",
+            "智能角度调整",
+            "专业光影优化",
+            "批量处理"
           ],
-          imageTitle: "双体系架构"
+          imageTitle: "平铺图生成"
         },
         {
-          title: "内置 Admin Panel",
-          subtitle: "企业级管理后台，开箱即用",
-          description: "开箱即用的管理后台，提供轻量级的用户管理、订阅管理、订单管理等功能。基于现代化 UI 组件库构建，支持角色权限控制、实时数据监控等功能。让你专注于业务逻辑，而非重复的管理界面开发。",
+          title: "线稿转CAD制版图",
+          subtitle: "手绘秒变专业制版图",
+          description: "手绘线稿或拍照上传，AI智能识别版型部件、自动提取尺寸标注、生成精确矢量轮廓。自动添加缝份线、对位记号、纱向标识。支持DXF/SVG/PDF/PLT多格式导出，直接对接工厂生产。",
           highlights: [
-            "用户管理",
-            "订阅管理",
-            "角色权限控制",
-            "订单管理"
+            "智能识别版型",
+            "自动提取尺寸",
+            "矢量化处理",
+            "多格式导出"
           ],
-          imageTitle: "管理后台"
+          imageTitle: "制版图转换"
         },
         {
-          title: "AI Ready 集成",
-          subtitle: "基于 Vercel AI SDK，即插即用",
-          description: "基于 Vercel AI SDK 构建的完整 AI 解决方案。内置简易的 AI Chat 页面，支持多种 AI 模型切换（OpenAI、Claude、Gemini 等），让你的应用瞬间具备 AI 能力。",
+          title: "AI设计助手",
+          subtitle: "像和设计师对话一样使用AI",
+          description: "对话式交互，描述你的设计想法，AI帮你生成款式图、分析面料、提供配色建议。内置服装行业专业术语库，让AI输出更精准、更专业。支持款式识别、面料分析、改色建议等智能功能。",
           highlights: [
-            "Vercel AI SDK 集成",
-            "多模型支持（OpenAI、Claude、Gemini 等）",
-            "流式响应",
+            "对话式设计",
+            "款式智能识别",
+            "面料分析",
+            "配色建议"
           ],
-          imageTitle: "AI 集成"
+          imageTitle: "AI设计助手"
         }
       ]
     },
     roadmap: {
       title: "产品路线图",
-      subtitle: "持续迭代，不断创新。我们致力于为开发者提供更强大、更灵活的 SaaS 开发解决方案。",
+      subtitle: "持续迭代，不断创新。我们致力于为服装设计师提供更智能、更高效的AI设计工具。",
       items: [
         {
-          title: "核心平台搭建",
-          description: "完成 TinyShip 核心平台的开发，包括双框架支持、身份认证、支付集成、国际化等基础功能模块。",
-          timeline: "2025 Q3",
+          title: "核心功能上线",
+          description: "完成平铺图生成、线稿转CAD、AI设计助手三大核心功能。支持多格式导出、批量处理、实时预览编辑等基础功能。",
+          timeline: "2026 Q1",
           status: "completed",
           statusText: "已完成",
-          features: ["双框架支持", "身份认证系统", "支付集成", "国际化支持", "AI 开发就绪", "内置 Admin Panel"]
+          features: ["平铺图生成", "线稿转CAD", "AI设计助手", "批量处理", "多格式导出"]
         },
         {
-          title: "主题系统升级",
-          description: "推出全新的主题系统，提供多种精美的 UI 主题和布局选择。支持深度定制和品牌化，让你的应用拥有独特的视觉体验。",
-          timeline: "2025 Q3",
-          status: "completed",
-          statusText: "已完成",
-          features: ["多套 UI 主题", "深色模式支持", "组件库扩展"]
-        },
-        {
-          title: "第三方服务扩展",
-          description: "大幅扩展第三方服务支持，覆盖更多云服务商和 SaaS 工具。通过统一的接口设计，让你轻松切换和集成各种服务提供商。",
-          timeline: "2025 Q4",
+          title: "智能优化升级",
+          description: "提升AI识别精度，优化处理速度。增强面料分析、款式识别能力，支持更多服装品类和复杂工艺的识别。",
+          timeline: "2026 Q2",
           status: "in-progress",
           statusText: "开发中",
-          features: ["更多支付网关", "云存储服务", "更多短信服务商"]
+          features: ["识别精度提升", "处理速度优化", "更多品类支持", "复杂工艺识别"]
         },
         {
-          title: "博客/文档系统",
-          description: "内置完整的博客和文档管理系统，支持 Markdown 编辑、SEO 优化、评论系统等功能。让你的 SaaS 产品拥有完整的内容营销能力。",
-          timeline: "2026 Q1",
-          status: "planned",
-          statusText: "计划中",
-          features: ["博客系统", "文档系统", "知识库搜索"]
-        },
-
-        {
-          title: "视频教程体系",
-          description: "制作完整的视频教程系列，从基础使用到高级定制，帮助开发者快速掌握 TinyShip 的各项功能和最佳实践。",
+          title: "3D虚拟试穿",
+          description: "基于AI的3D建模技术，实现虚拟试穿功能。上传人体照片和服装设计，即可预览穿着效果，大幅降低打样成本。",
           timeline: "2026 Q3",
           status: "planned",
           statusText: "计划中",
-          features: ["入门教程", "进阶开发", "部署指南", "实战案例"]
+          features: ["3D建模", "虚拟试穿", "多角度预览", "尺码推荐"]
         },
         {
-          title: "行业模板库",
-          description: "针对不同行业和应用场景，提供开箱即用的项目模板。每个模板都包含完整的业务逻辑、UI 设计和最佳实践，让你快速启动项目。作为基础版本的扩展包，需要单独购买，但基础版本用户享受大力度优惠。",
+          title: "智能改版建议",
+          description: "AI分析现有款式，基于流行趋势和市场数据，提供智能改版建议。包括版型优化、配色调整、工艺改进等。",
           timeline: "2026 Q4",
           status: "planned",
           statusText: "计划中",
-          features: ["SaaS 应用模板", "软件售卖模板", "AI 项目模板", "电商平台模板", "企业官网模板", "基础版用户专享优惠"]
+          features: ["趋势分析", "版型优化", "配色建议", "工艺改进"]
+        },
+        {
+          title: "协作与分享",
+          description: "团队协作功能，支持设计稿分享、评论、版本管理。建立设计师社区，分享作品和经验，共同成长。",
+          timeline: "2027 Q1",
+          status: "planned",
+          statusText: "计划中",
+          features: ["团队协作", "版本管理", "设计师社区", "作品分享"]
+        },
+        {
+          title: "供应链对接",
+          description: "打通设计到生产的完整链路。对接面料供应商、打样工厂、生产工厂，实现从设计到成衣的一站式服务。",
+          timeline: "2027 Q2",
+          status: "planned",
+          statusText: "计划中",
+          features: ["面料库对接", "工厂对接", "在线打样", "订单管理"]
         }
       ],
       footer: "持续更新中，敬请期待更多功能..."
@@ -1516,52 +1516,52 @@ export const zhCN: Locale = {
       title: "值得信赖的选择",
       items: [
         {
-          value: "10000",
+          value: "1000",
           suffix: "+",
-          label: "用户选择"
+          label: "设计师用户"
         },
         {
-          value: "2",
-          suffix: "",
-          label: "前端框架支持"
+          value: "240",
+          suffix: "倍",
+          label: "效率提升"
         },
         {
-          value: "50",
-          suffix: "+",
-          label: "内置功能模块"
-        },
-        {
-          value: "99",
+          value: "90",
           suffix: "%",
-          label: "用户满意度"
+          label: "识别准确率"
+        },
+        {
+          value: "30",
+          suffix: "秒",
+          label: "平均处理时间"
         }
       ]
     },
     testimonials: {
-      title: "用户真实反馈",
+      title: "设计师真实反馈",
       items: [
         {
-          quote: "早鸟价太值了！完整的源码和终身更新，帮我快速搭建了自己的 SaaS 项目，一个月就回本了。",
-          author: "张伟",
-          role: "独立开发者"
+          quote: "以前做平铺图要2小时，现在30秒就搞定！批量处理功能太实用了，一次能处理整个系列。",
+          author: "张设计",
+          role: "独立服装设计师"
         },
         {
-          quote: "技术支持很给力，遇到问题都能快速解决。双框架支持让团队可以选择熟悉的技术栈。",
-          author: "李小明",
-          role: "创业公司 CTO"
+          quote: "线稿转CAD功能简直是神器！手绘稿直接变成制版图，省去了大量重复劳动，可以把更多时间放在创意上。",
+          author: "李制版",
+          role: "制版师"
         },
         {
-          quote: "出海功能特别实用，国际化和支付都配置好了，省了我们大量的开发时间。",
-          author: "王芳",
-          role: "产品经理"
+          quote: "AI识别很准确，面料分析和配色建议都很专业。对我这种刚入行的新人来说，就像有个老师傅在旁边指导。",
+          author: "王小白",
+          role: "服装设计新人"
         }
       ]
     },
     finalCta: {
-      title: "准备好开始你的远航了吗？",
-      subtitle: "加入数千名用户的行列，用 TinyShip 快速构建你的下一个商业项目。虽然是小船，但足以载你驶向成功的彼岸。早鸟价仅限前 100 名用户！",
+      title: "让AI成为你的设计助手",
+      subtitle: "加入1000+服装设计师的行列，用AI工具让设计更高效、更专业。从灵感到成品，AI助你一臂之力。",
       buttons: {
-        purchase: "立即抢购 ¥299",
+        purchase: "开始使用",
         demo: "查看演示"
       }
     },
@@ -1670,6 +1670,10 @@ export const zhCN: Locale = {
         title: "卡片边界对比",
         description: "对比卡片边框与阴影清晰度，确定最终视觉方案"
       },
+      playground: {
+        title: "交互演示",
+        description: "提示词悬停与上传框高亮的动效对比"
+      },
       clothesSplit: {
         title: "衣服拆分",
         description: "上传服装图片并生成干净的衣服平铺图，需要登录访问"
@@ -1749,6 +1753,116 @@ export const zhCN: Locale = {
           clothesSketch: "制作画稿"
         }
       }
+    }
+  },
+  aiGenerate: {
+    title: "AI 图片生成",
+    description: "上传图片，填写提示词，快速生成专业效果",
+    badge: "AI 生成",
+    preview: {
+      title: "效果预览",
+      description: "生成前后的对比预期",
+      before: "之前",
+      after: "之后",
+      caption: "光影变化 · 材质优化 · 轮廓清晰"
+    },
+    upload: {
+      title: "上传图片",
+      description: "支持 PNG、JPG 格式，最大 10MB",
+      hint: "拖拽图片到这里或点击上传",
+      formats: "支持 PNG、JPG 格式，最大 10MB",
+      fileTooLarge: "文件大小不能超过 10MB",
+      examples: {
+        flatLay: "模特图转平铺图",
+        sketch: "平铺图转线稿",
+        promo: "生成宣传场景图"
+      }
+    },
+    hints: [
+      "生成干净的商品平铺图",
+      "生成清晰的服装技术线稿",
+      "生成用于宣传的场景图",
+      "拆解版型结构与细节",
+      "将成衣拆分为纸样图"
+    ],
+    hoverHint: "请先上传图像",
+    prompt: {
+      title: "提示词编辑",
+      description: "描述你想要的效果，或使用预设模板",
+      positiveLabel: "正向提示词",
+      positivePlaceholder: "描述你想要的效果...",
+      negativeToggleShow: "+ 负面提示词",
+      negativeToggleHide: "- 隐藏负面提示词",
+      random: "随机提示词",
+      clear: "清除",
+      negativeLabel: "负面提示词",
+      negativeHint: "（描述你不想要的元素）",
+      negativePlaceholder: "person, model, human, hands, face..."
+    },
+    params: {
+      title: "参数设置",
+      description: "调整生成参数以获得最佳效果",
+      sizeLabel: "图片尺寸",
+      sizePlaceholder: "选择尺寸",
+      styleLabel: "生成风格",
+      stylePlaceholder: "选择风格",
+      modelLabel: "AI 模型",
+      modelPlaceholder: "选择模型",
+      options: {
+        size: {
+          Auto: "Auto",
+          "1:1": "1:1 正方形",
+          "16:9": "16:9 横屏",
+          "9:16": "9:16 竖屏",
+          custom: "自定义"
+        },
+        style: {
+          "无风格": "无风格",
+          "技术线稿": "技术线稿",
+          "生活方式": "生活方式",
+          "技术插图": "技术插图",
+          "保持原样": "保持原样"
+        },
+        model: {
+          "loom-pro": "Loom Pro"
+        }
+      }
+    },
+    generate: {
+      button: "生成图片",
+      generating: "生成中...",
+      credits: "（消耗 {credits} 积分）"
+    },
+    result: {
+      title: "生成结果",
+      description: "AI 生成的图片将显示在这里",
+      generating: "生成中...",
+      eta: "预计还需 30 秒",
+      waiting: "等待生成...",
+      download: "下载",
+      regenerate: "重新生成"
+    },
+    comparison: {
+      title: "生成对比",
+      description: "对比生成前后的视觉效果",
+      reference: "参考图",
+      empty: "未上传图片"
+    },
+    promptsUsed: {
+      title: "使用的提示词：",
+      negativeTitle: "负面提示词："
+    },
+    buttons: {
+      changeImage: "更换图片",
+      reupload: "重新上传"
+    },
+    toasts: {
+      uploadSuccess: "图片上传成功",
+      clearedUpload: "已清除上传图片",
+      clearedAll: "已清除所有设置",
+      needUploadPrompt: "请先上传图片并填写提示词",
+      generateSuccess: "生成成功！",
+      generateFailed: "生成失败，请重试"
     }
   },
   imageSplit: {
