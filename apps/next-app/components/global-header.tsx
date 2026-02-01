@@ -213,6 +213,9 @@ export default function Header({ className }: HeaderProps) {
             <Link href={`/${currentLocale}/pricing`} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               {t.header.navigation.pricing}
             </Link>
+            <Link href={`/${currentLocale}/canvas`} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              无限画布
+            </Link>
           </nav>
 
           {/* User menu or Auth buttons */}
