@@ -1787,7 +1787,7 @@ export const zhCN: Locale = {
     ],
     hoverHint: "请先上传图像",
     prompt: {
-      title: "提示词编辑",
+      title: "描述提示词",
       description: "描述你想要的效果，或使用预设模板",
       positiveLabel: "正向提示词",
       positivePlaceholder: "描述你想要的效果...",
@@ -1853,6 +1853,7 @@ export const zhCN: Locale = {
       negativeTitle: "负面提示词："
     },
     buttons: {
+      addImage: "添加图片",
       changeImage: "更换图片",
       reupload: "重新上传"
     },

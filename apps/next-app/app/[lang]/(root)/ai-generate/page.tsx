@@ -1,18 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles } from 'lucide-react'
+import type { ChangeEvent } from 'react'
+import { Sparkles, X, Check, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { useTranslation } from '@/hooks/use-translation'
 import { FeaturePageShell, FeatureCard } from '@/components/feature-page-shell'
 import { CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ImageUploader } from './components/ImageUploader'
 import { ResultDisplay } from './components/ResultDisplay'
 import { PromptEditor } from './components/PromptEditor'
-import { ParamControls } from './components/ParamControls'
-import { GenerateButton } from './components/GenerateButton'
+import { generateRandomPrompt, modelOptions, sizeOptions, styleOptions } from '@libs/ai/prompt-engine'
 
 export default function AIGeneratePage() {
   const { t } = useTranslation()
@@ -21,12 +29,19 @@ export default function AIGeneratePage() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [prompt, setPrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('')
+  const [showNegative, setShowNegative] = useState(false)
   const [size, setSize] = useState('Auto')
   const [style, setStyle] = useState('无风格')
   const [model, setModel] = useState('loom-pro')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [activeMenu, setActiveMenu] = useState<'size' | 'style' | null>(null)
 
   const hintItems = t.aiGenerate.hints
+  const sizeLabels = t.aiGenerate.params.options?.size as Record<string, string> | undefined
+  const styleLabels = t.aiGenerate.params.options?.style as Record<string, string> | undefined
+  const modelLabels = t.aiGenerate.params.options?.model as Record<string, string> | undefined
+  const sizeLabel = sizeLabels?.[size] ?? size
+  const styleLabel = styleLabels?.[style] ?? style
 
   // 上传图片
   const handleImageUpload = (imageData: string) => {
@@ -42,13 +57,36 @@ export default function AIGeneratePage() {
     toast.info(t.aiGenerate.toasts.clearedUpload)
   }
 
+  const handleInlineFileInput = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t.aiGenerate.upload.fileTooLarge)
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const result = e.target?.result as string
+      handleImageUpload(result)
+    }
+    reader.readAsDataURL(file)
+  }
+
   // 清除所有设置
   const handleClear = () => {
     setPrompt('')
     setNegativePrompt('')
+    setShowNegative(false)
     setSize('Auto')
     setStyle('无风格')
     toast.info(t.aiGenerate.toasts.clearedAll)
+  }
+
+  const handleRandom = () => {
+    const randomPrompt = generateRandomPrompt()
+    setPrompt(randomPrompt)
   }
 
   // 生成图片
@@ -70,7 +108,7 @@ export default function AIGeneratePage() {
         body: JSON.stringify({
           image: uploadedImage,
           prompt,
-          negativePrompt,
+          negativePrompt: showNegative ? negativePrompt : '',
           size,
           style,
           model,
@@ -102,6 +140,14 @@ export default function AIGeneratePage() {
 
   const panelClass =
     'border-border/60 bg-card/40 shadow-[0_30px_80px_-60px_hsl(var(--primary)/0.25)] backdrop-blur-xl'
+  const pillClass = (active: boolean) =>
+    `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
+      active
+        ? 'border-transparent bg-foreground text-background'
+        : 'border-border/60 bg-background/70 text-foreground/90 hover:bg-muted/40'
+    }`
+  const panelClassName =
+    'rounded-xl border border-border/60 bg-background/80 p-3 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)]'
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -172,53 +218,178 @@ export default function AIGeneratePage() {
           {uploadedImage && (
             <FeatureCard className={panelClass}>
               <CardContent className="pt-6">
-                <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
-                  <div className="space-y-3">
-                    <div className="text-sm font-semibold text-foreground">
-                      {t.aiGenerate.comparison.reference}
+                <div className="rounded-2xl border border-border/60 bg-background/70 p-4 shadow-[0_12px_40px_-32px_rgba(15,23,42,0.2)]">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        {t.aiGenerate.prompt.title}
+                      </div>
                     </div>
-                    <div className="relative aspect-square rounded-2xl overflow-hidden border border-border/60 bg-muted/20">
+                    <div>
+                      <input
+                        id="inline-image-upload"
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg"
+                        onChange={handleInlineFileInput}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="inline-image-upload"
+                        className="inline-flex cursor-pointer items-center rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-foreground/80 hover:bg-muted/40 hover:text-foreground"
+                      >
+                        {t.aiGenerate.buttons.addImage}
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-col lg:flex-row gap-4">
+                    <div
+                      className="relative shrink-0 rounded-2xl border border-border/60 bg-gradient-to-br from-muted/40 via-muted/10 to-transparent overflow-hidden"
+                      style={{ aspectRatio: '1 / 1', width: '160px', maxWidth: '200px' }}
+                    >
                       <Image
                         src={uploadedImage}
                         alt="Uploaded"
                         fill
                         className="object-contain"
                       />
+                      <button
+                        type="button"
+                        onClick={handleClearUpload}
+                        className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:text-foreground"
+                        aria-label={t.aiGenerate.buttons.reupload}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleClearUpload}
-                      className="w-full border-border/60 bg-background/70 text-foreground/90 hover:bg-muted/40 hover:text-foreground"
-                    >
-                      {t.aiGenerate.buttons.changeImage}
-                    </Button>
-                  </div>
 
-                  <div className="space-y-6">
                     <PromptEditor
                       prompt={prompt}
                       negativePrompt={negativePrompt}
+                      showNegative={showNegative}
                       onPromptChange={setPrompt}
                       onNegativePromptChange={setNegativePrompt}
-                      onClear={handleClear}
                     />
+                  </div>
 
-                    <ParamControls
-                      size={size}
-                      style={style}
-                      model={model}
-                      onSizeChange={setSize}
-                      onStyleChange={setStyle}
-                      onModelChange={setModel}
-                    />
+                  <div className="mt-3 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveMenu((current) => (current === 'size' ? null : 'size'))}
+                        className={pillClass(activeMenu === 'size')}
+                      >
+                        {sizeLabel}
+                        <ChevronDown className="h-3 w-3 opacity-70" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveMenu((current) => (current === 'style' ? null : 'style'))}
+                        className={pillClass(activeMenu === 'style')}
+                      >
+                        {styleLabel}
+                        <ChevronDown className="h-3 w-3 opacity-70" />
+                      </button>
+                    </div>
 
-                    <div className="flex justify-end">
-                      <GenerateButton
+                    {activeMenu === 'size' && (
+                      <div className={panelClassName}>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {sizeOptions.map((option) => {
+                            const selected = size === option.value
+                            return (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => {
+                                  setSize(option.value)
+                                  setActiveMenu(null)
+                                }}
+                                className={pillClass(selected)}
+                              >
+                                {selected && <Check className="h-3 w-3" />}
+                                {sizeLabels?.[option.value] ?? option.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeMenu === 'style' && (
+                      <div className={panelClassName}>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {styleOptions.map((option) => {
+                            const selected = style === option.value
+                            return (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => {
+                                  setStyle(option.value)
+                                  setActiveMenu(null)
+                                }}
+                                className={pillClass(selected)}
+                              >
+                                {selected && <Check className="h-3 w-3" />}
+                                {styleLabels?.[option.value] ?? option.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2 text-xs text-foreground/80">
+                        <span>{t.aiGenerate.prompt.negativeLabel}</span>
+                        <Switch checked={showNegative} onCheckedChange={setShowNegative} />
+                      </div>
+
+                      <Select value={model} onValueChange={setModel}>
+                        <SelectTrigger className="h-8 rounded-md border-border/60 bg-background/60 px-3 text-xs text-foreground/80 hover:bg-muted/40">
+                          <span className="text-xs text-foreground/80">模型：</span>
+                          <SelectValue placeholder={t.aiGenerate.params.modelPlaceholder} />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border-border/60 text-foreground">
+                          {modelOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                              {modelLabels?.[option.value] ?? option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleClear}
+                        className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 shadow-sm hover:bg-muted/40 hover:text-foreground"
+                      >
+                        {t.aiGenerate.prompt.clear}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRandom}
+                        className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 shadow-sm hover:bg-muted/40 hover:text-foreground"
+                      >
+                        {t.aiGenerate.prompt.random}
+                      </Button>
+                      <Button
+                        type="button"
                         onClick={handleGenerate}
                         disabled={!canGenerate}
-                        isGenerating={isGenerating}
-                      />
+                        className="h-9 rounded-full px-5 text-xs font-medium text-background shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)] bg-foreground hover:opacity-90 disabled:opacity-50"
+                      >
+                        {isGenerating ? t.aiGenerate.generate.generating : t.aiGenerate.generate.button}
+                      </Button>
                     </div>
                   </div>
                 </div>

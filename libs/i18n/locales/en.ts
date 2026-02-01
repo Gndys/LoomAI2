@@ -1779,7 +1779,7 @@ export const en: Locale = {
     ],
     hoverHint: "Please upload an image first",
     prompt: {
-      title: "Prompt Editor",
+      title: "Description Prompt",
       description: "Describe the look you want or use a preset",
       positiveLabel: "Positive Prompt",
       positivePlaceholder: "Describe the look you want...",
@@ -1845,6 +1845,7 @@ export const en: Locale = {
       negativeTitle: "Negative prompt:"
     },
     buttons: {
+      addImage: "Add Image",
       changeImage: "Change Image",
       reupload: "Re-upload"
     },
