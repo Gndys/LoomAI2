@@ -2,9 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { Upload, RefreshCcw, Trash2 } from 'lucide-react'
+import {
+  ArrowUpRight,
+  ChevronDown,
+  Download,
+  Hand,
+  ImagePlus,
+  MousePointer2,
+  RefreshCcw,
+  Share2,
+  Sparkles,
+  Trash2,
+  Type,
+  Upload,
+  Wand2,
+  Square,
+  type LucideIcon,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { ColorSchemeToggle, ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 
 type CanvasItem = {
@@ -57,6 +74,8 @@ const MAX_PERSISTED_SRC_LENGTH = 200_000
 const MAX_PERSISTED_TOTAL_LENGTH = 3_000_000
 const DEBUG_CANVAS = false
 
+type ToolId = 'select' | 'hand' | 'text' | 'image' | 'shape'
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 const isEditableTarget = (target: EventTarget | null) => {
@@ -80,6 +99,7 @@ export function InfiniteCanvas() {
   const [hasHydrated, setHasHydrated] = useState(false)
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({})
+  const [activeTool, setActiveTool] = useState<ToolId>('select')
 
   const getViewportRect = () => viewportRef.current?.getBoundingClientRect()
 
@@ -113,6 +133,33 @@ export function InfiniteCanvas() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    const handleWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+      }
+    }
+
+    const handleGesture = (event: Event) => {
+      event.preventDefault()
+    }
+
+    viewport.addEventListener('wheel', handleWheel, { passive: false })
+    viewport.addEventListener('gesturestart', handleGesture, { passive: false } as AddEventListenerOptions)
+    viewport.addEventListener('gesturechange', handleGesture, { passive: false } as AddEventListenerOptions)
+    viewport.addEventListener('gestureend', handleGesture, { passive: false } as AddEventListenerOptions)
+
+    return () => {
+      viewport.removeEventListener('wheel', handleWheel)
+      viewport.removeEventListener('gesturestart', handleGesture as EventListener)
+      viewport.removeEventListener('gesturechange', handleGesture as EventListener)
+      viewport.removeEventListener('gestureend', handleGesture as EventListener)
     }
   }, [])
 
@@ -176,14 +223,14 @@ export function InfiniteCanvas() {
   }, [camera, items, hasHydrated])
 
   const gridStyle = useMemo(() => {
-    const gridSize = 24 * camera.scale
+    const gridSize = 22 * camera.scale
     const positionX = camera.x % gridSize
     const positionY = camera.y % gridSize
 
     return {
-      backgroundColor: '#F6F2E9',
+      backgroundColor: 'hsl(var(--background))',
       backgroundImage:
-        'radial-gradient(circle, rgba(148, 120, 84, 0.35) 1px, transparent 1px)',
+        'radial-gradient(circle, hsl(var(--muted-foreground) / 0.25) 1.1px, transparent 1.1px)',
       backgroundSize: `${gridSize}px ${gridSize}px`,
       backgroundPosition: `${positionX}px ${positionY}px`,
     }
@@ -216,7 +263,7 @@ export function InfiniteCanvas() {
   }
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button === 1 || isSpaceDown) {
+    if (event.button === 1 || isSpaceDown || activeTool === 'hand') {
       event.preventDefault()
       dragStateRef.current = {
         kind: 'pan',
@@ -447,29 +494,147 @@ export function InfiniteCanvas() {
   }
 
   const zoomPercent = Math.round(camera.scale * 100)
+  const tools: { id: ToolId; label: string; Icon: LucideIcon }[] = [
+    { id: 'select', label: '选择', Icon: MousePointer2 },
+    { id: 'hand', label: '拖拽', Icon: Hand },
+    { id: 'text', label: '文本', Icon: Type },
+    { id: 'image', label: '图片', Icon: ImagePlus },
+    { id: 'shape', label: '形状', Icon: Square },
+  ]
 
   return (
-    <div className="relative h-full min-h-[70vh] w-full">
-      <div className="absolute left-6 top-6 z-20 flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={handleUploadClick}>
-          <Upload className="mr-2 h-4 w-4" />
-          上传图片
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => updateCamera({ x: 0, y: 0, scale: 1 })}>
-          <RefreshCcw className="mr-2 h-4 w-4" />
-          复位视图
-        </Button>
-        <Button size="sm" variant="ghost" onClick={handleClear}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          清空
-        </Button>
+    <div className="relative h-screen w-screen overflow-hidden bg-background">
+      <div className="pointer-events-none absolute left-1/2 top-4 z-30 w-[min(1200px,calc(100%-2.5rem))] -translate-x-1/2">
+        <div className="pointer-events-auto flex items-center justify-between rounded-full border border-border bg-background/80 px-4 py-2 shadow-sm backdrop-blur">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+              LA
+            </div>
+            <div className="flex flex-col leading-tight">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                无限画布
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <span className="text-xs text-muted-foreground">Phase 0 · LoomAI</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <ColorSchemeToggle />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              分享
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Download className="h-3.5 w-3.5" />
+              导出
+            </Button>
+            <div className="flex items-center gap-1 rounded-full border border-border bg-background/70 px-2 py-1 text-xs font-medium text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+              8
+            </div>
+            <Button
+              size="sm"
+              className="h-8 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
+            >
+              升级
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <div className="absolute right-6 top-6 z-20 rounded-full border border-border bg-background/90 px-3 py-1 text-xs text-muted-foreground">
-        缩放 {zoomPercent}%
+      <div className="pointer-events-none absolute left-5 top-24 z-20">
+        <div className="pointer-events-auto flex flex-col items-center gap-2 rounded-2xl border border-border bg-background/85 p-2 shadow-md backdrop-blur">
+          {tools.map(({ id, label, Icon }) => (
+            <Button
+              key={id}
+              size="icon"
+              variant="ghost"
+              onClick={() => setActiveTool(id)}
+              aria-label={label}
+              className={cn(
+                'h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground',
+                activeTool === id &&
+                  'bg-primary/10 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.25)]'
+              )}
+            >
+              <Icon className="h-5 w-5" />
+            </Button>
+          ))}
+          <div className="my-1 h-px w-6 bg-border" />
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={handleUploadClick}
+            aria-label="上传图片"
+            className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <Upload className="h-5 w-5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => updateCamera({ x: 0, y: 0, scale: 1 })}
+            aria-label="复位视图"
+            className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <RefreshCcw className="h-5 w-5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={handleClear}
+            aria-label="清空画布"
+            className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <Trash2 className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
-      <div className="absolute left-6 bottom-6 z-20 rounded-lg border border-border bg-background/90 px-3 py-2 text-xs text-muted-foreground">
+      <div className="pointer-events-none absolute right-5 top-24 z-20">
+        <div className="pointer-events-auto rounded-full border border-border bg-background/85 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+          缩放 {zoomPercent}%
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 w-[min(720px,calc(100%-3rem))] -translate-x-1/2">
+        <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-border bg-background/85 px-4 py-3 shadow-lg backdrop-blur">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Wand2 className="h-4 w-4" />
+          </div>
+          <input
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            placeholder="你想要创作什么？"
+          />
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={handleUploadClick}
+            aria-label="添加参考图"
+            className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ImagePlus className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            className="h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
+            aria-label="发送"
+          >
+            <ArrowUpRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute left-5 bottom-5 z-20 hidden items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-1 text-xs text-muted-foreground shadow-sm md:flex">
         滚轮缩放 · 空格+拖拽平移 · 双击复位
       </div>
 
@@ -487,7 +652,7 @@ export function InfiniteCanvas() {
       <div
         ref={viewportRef}
         className={cn(
-          'relative h-full w-full overflow-hidden rounded-2xl border border-border',
+          'absolute inset-0 z-0 overflow-hidden',
           dragMode === 'pan' ? 'cursor-grabbing' : isSpaceDown ? 'cursor-grab' : 'cursor-default'
         )}
         style={gridStyle}
@@ -529,14 +694,14 @@ export function InfiniteCanvas() {
                   </div>
                 )}
                 {!loadedImages[item.id] && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 text-xs text-muted-foreground">
+                  <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-dashed border-border bg-muted/50 text-xs text-muted-foreground">
                     {brokenImages[item.id] ? '图片加载失败' : '图片加载中'}
                   </div>
                 )}
                 <img
                   src={item.data.src}
                   alt={item.data.name ?? 'canvas'}
-                  className="h-full w-full rounded-lg object-contain shadow-sm"
+                  className="h-full w-full rounded-2xl object-contain shadow-[0_16px_40px_-28px_hsl(var(--foreground)/0.35)]"
                   draggable={false}
                   onLoad={() => {
                     setLoadedImages((prev) => ({ ...prev, [item.id]: true }))
@@ -546,15 +711,15 @@ export function InfiniteCanvas() {
                   }}
                 />
                 {selected && (
-                  <div className="pointer-events-none absolute -inset-1 rounded-xl border border-primary/70 shadow-[0_0_0_1px_rgba(59,130,246,0.3)]" />
+                  <div className="pointer-events-none absolute -inset-1 rounded-[20px] border border-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.2)]" />
                 )}
               </div>
             )
           })}
 
           {items.length === 0 && (
-            <div className="absolute left-1/2 top-1/2 w-[360px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-dashed border-border bg-background/80 p-6 text-center text-sm text-muted-foreground">
-              拖拽图片到画布或点击左上角上传
+            <div className="absolute left-1/2 top-1/2 w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-dashed border-border bg-background/80 p-6 text-center text-sm text-muted-foreground shadow-[0_12px_35px_-25px_hsl(var(--foreground)/0.25)]">
+              拖拽图片到画布，或点击左侧工具栏上传
             </div>
           )}
         </div>
