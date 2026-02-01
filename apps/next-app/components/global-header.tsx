@@ -198,6 +198,15 @@ export default function Header({ className }: HeaderProps) {
                     Play 主页
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={`/${currentLocale}/ai-generate-test`}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                    AI 图片生成测试
+                  </Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             

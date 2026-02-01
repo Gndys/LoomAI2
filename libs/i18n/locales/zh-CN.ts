@@ -1804,8 +1804,26 @@ export const zhCN: Locale = {
       description: "调整生成参数以获得最佳效果",
       sizeLabel: "图片尺寸",
       sizePlaceholder: "选择尺寸",
-      styleLabel: "生成风格",
-      stylePlaceholder: "选择风格",
+      styleLabel: "服装类型",
+      stylePlaceholder: "选择服装类型",
+      colorLabel: "配色方案",
+      colorPlaceholder: "选择配色",
+      fabricLabel: "面料材质",
+      fabricPlaceholder: "选择面料",
+      viewLabel: "展示方式",
+      viewPlaceholder: "选择视角",
+      fitLabel: "版型设计",
+      fitPlaceholder: "选择版型",
+      elementLabel: "设计元素",
+      elementPlaceholder: "选择元素",
+      genderLabel: "目标人群",
+      genderPlaceholder: "选择人群",
+      ageLabel: "年龄段",
+      agePlaceholder: "选择年龄",
+      sceneLabel: "使用场景",
+      scenePlaceholder: "选择场景",
+      seasonLabel: "季节",
+      seasonPlaceholder: "选择季节",
       modelLabel: "AI 模型",
       modelPlaceholder: "选择模型",
       options: {
@@ -1817,11 +1835,81 @@ export const zhCN: Locale = {
           custom: "自定义"
         },
         style: {
-          "无风格": "无风格",
-          "技术线稿": "技术线稿",
-          "生活方式": "生活方式",
-          "技术插图": "技术插图",
-          "保持原样": "保持原样"
+          casual: "休闲装",
+          formal: "正装",
+          sports: "运动装",
+          street: "街头风",
+          vintage: "复古风",
+          minimal: "极简风",
+          punk: "朋克风",
+          couture: "高定"
+        },
+        color: {
+          morandi: "莫兰迪色系",
+          earth: "大地色系",
+          mono: "黑白灰",
+          contrast: "撞色搭配",
+          gradient: "渐变色",
+          seasonal: "季节色彩",
+          custom: "自定义色板"
+        },
+        fabric: {
+          cotton: "棉质",
+          silk: "丝绸",
+          denim: "牛仔",
+          leather: "皮革",
+          knit: "针织",
+          chiffon: "雪纺",
+          linen: "麻料",
+          tech: "功能面料"
+        },
+        view: {
+          flat_lay: "平铺图",
+          front: "正面视图",
+          back: "背面视图",
+          side: "侧面视图",
+          detail: "细节特写",
+          on_model: "上身效果",
+          hanging: "悬挂展示",
+          turntable: "360°旋转视图"
+        },
+        fit: {
+          slim: "修身",
+          loose: "宽松",
+          regular: "直筒",
+          oversized: "廓形",
+          a_line: "A字型",
+          h_line: "H字型",
+          x_line: "X字型"
+        },
+        element: {
+          pattern: "印花图案",
+          embroidery: "刺绣",
+          patchwork: "拼接",
+          pleats: "褶皱",
+          pockets: "口袋设计",
+          collar: "领型",
+          sleeve: "袖型"
+        },
+        gender: {
+          male: "男装",
+          female: "女装",
+          kids: "童装"
+        },
+        age: {
+          "18-25": "18-25",
+          "26-35": "26-35",
+          "36-45": "36-45"
+        },
+        scene: {
+          commute: "通勤",
+          date: "约会",
+          sport: "运动",
+          home: "居家"
+        },
+        season: {
+          spring_summer: "春夏",
+          autumn_winter: "秋冬"
         },
         model: {
           "loom-pro": "Loom Pro"

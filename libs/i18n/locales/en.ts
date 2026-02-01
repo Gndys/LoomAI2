@@ -1796,8 +1796,26 @@ export const en: Locale = {
       description: "Adjust settings for the best result",
       sizeLabel: "Image Size",
       sizePlaceholder: "Select size",
-      styleLabel: "Style",
-      stylePlaceholder: "Select style",
+      styleLabel: "Apparel Type",
+      stylePlaceholder: "Select type",
+      colorLabel: "Color Scheme",
+      colorPlaceholder: "Select color",
+      fabricLabel: "Fabric",
+      fabricPlaceholder: "Select fabric",
+      viewLabel: "View",
+      viewPlaceholder: "Select view",
+      fitLabel: "Fit",
+      fitPlaceholder: "Select fit",
+      elementLabel: "Design Element",
+      elementPlaceholder: "Select element",
+      genderLabel: "Target",
+      genderPlaceholder: "Select target",
+      ageLabel: "Age Range",
+      agePlaceholder: "Select age",
+      sceneLabel: "Scene",
+      scenePlaceholder: "Select scene",
+      seasonLabel: "Season",
+      seasonPlaceholder: "Select season",
       modelLabel: "AI Model",
       modelPlaceholder: "Select model",
       options: {
@@ -1809,11 +1827,81 @@ export const en: Locale = {
           custom: "Custom"
         },
         style: {
-          "无风格": "No Style",
-          "技术线稿": "Tech Sketch",
-          "生活方式": "Lifestyle",
-          "技术插图": "Technical Illustration",
-          "保持原样": "Preserve Original"
+          casual: "Casual Wear",
+          formal: "Formal Wear",
+          sports: "Sportswear",
+          street: "Streetwear",
+          vintage: "Vintage",
+          minimal: "Minimalist",
+          punk: "Punk",
+          couture: "Haute Couture"
+        },
+        color: {
+          morandi: "Morandi",
+          earth: "Earth Tones",
+          mono: "Black/White/Gray",
+          contrast: "High Contrast",
+          gradient: "Gradient",
+          seasonal: "Seasonal",
+          custom: "Custom Palette"
+        },
+        fabric: {
+          cotton: "Cotton",
+          silk: "Silk",
+          denim: "Denim",
+          leather: "Leather",
+          knit: "Knit",
+          chiffon: "Chiffon",
+          linen: "Linen",
+          tech: "Tech Fabric"
+        },
+        view: {
+          flat_lay: "Flat Lay",
+          front: "Front View",
+          back: "Back View",
+          side: "Side View",
+          detail: "Detail Shot",
+          on_model: "On Model",
+          hanging: "Hanging",
+          turntable: "360° Turntable"
+        },
+        fit: {
+          slim: "Slim Fit",
+          loose: "Loose Fit",
+          regular: "Regular Fit",
+          oversized: "Oversized",
+          a_line: "A-line",
+          h_line: "H-line",
+          x_line: "X-line"
+        },
+        element: {
+          pattern: "Pattern",
+          embroidery: "Embroidery",
+          patchwork: "Patchwork",
+          pleats: "Pleats",
+          pockets: "Pockets",
+          collar: "Collar Style",
+          sleeve: "Sleeve Style"
+        },
+        gender: {
+          male: "Menswear",
+          female: "Womenswear",
+          kids: "Kidswear"
+        },
+        age: {
+          "18-25": "18-25",
+          "26-35": "26-35",
+          "36-45": "36-45"
+        },
+        scene: {
+          commute: "Commute",
+          date: "Date",
+          sport: "Sport",
+          home: "Home"
+        },
+        season: {
+          spring_summer: "Spring/Summer",
+          autumn_winter: "Autumn/Winter"
         },
         model: {
           "loom-pro": "Loom Pro"
