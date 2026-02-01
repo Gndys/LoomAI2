@@ -21,6 +21,7 @@ import { FeaturePageShell, FeatureCard } from '@/components/feature-page-shell'
 import { CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -75,6 +76,26 @@ const viewOptions: Option[] = [
   { value: 'on_model', label: '上身效果' },
   { value: 'hanging', label: '悬挂展示' },
   { value: 'turntable', label: '360° 旋转' },
+]
+
+const modelOptions: Option[] = [
+  { value: 'raphael_basic', label: 'Raphael Basic' },
+  { value: 'raphael_pro', label: 'Raphael Pro' },
+  { value: 'loom_pro', label: 'Loom Pro' },
+]
+
+const lightingOptions: Option[] = [
+  { value: 'none', label: 'None' },
+  { value: 'dramatic', label: 'Dramatic' },
+  { value: 'dimly_lit', label: 'Dimly Lit' },
+  { value: 'studio', label: 'Studio' },
+  { value: 'low_light', label: 'Low Light' },
+  { value: 'golden_hour', label: 'Golden Hour' },
+  { value: 'backlight', label: 'Backlight' },
+  { value: 'volumetric', label: 'Volumetric' },
+  { value: 'crepuscular', label: 'Crepuscular Rays' },
+  { value: 'sunlight', label: 'Sunlight' },
+  { value: 'rim', label: 'Rim Lighting' },
 ]
 
 const fitOptions: Option[] = [
@@ -914,24 +935,44 @@ function VariantD() {
 
 function VariantE() {
   const params = useFashionParams(samplePrompts[0])
+  const [lighting, setLighting] = useState('none')
+  const [activeMenu, setActiveMenu] = useState<'lighting' | null>('lighting')
   const previewAspect =
     params.view === 'detail' ? '1 / 1' : params.view === 'flat_lay' ? '4 / 3' : '3 / 4'
+  const lightingLabel =
+    lighting === 'none' ? 'No Lighting' : getLabel(lightingOptions, lighting, 'No Lighting')
+  const pillClass = (active: boolean) =>
+    `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
+      active
+        ? 'border-transparent bg-foreground text-background'
+        : 'border-border/60 bg-background/70 text-foreground/90 hover:bg-muted/40'
+    }`
 
   return (
     <FeatureCard className={panelClass}>
       <CardContent className="pt-6 space-y-6">
         <VariantHeader
           icon={LayoutPanelLeft}
-          title="版本 E：按钮内嵌 + 自适应预览"
-          description="操作按钮放在提示词框内，图片自适应比例，减少干扰。"
-          tag="Embedded"
+          title="版本 E：胶囊选项 + 内联面板"
+          description="参考 AI Image Generator：选项菜单内联展开，图片嵌入提示词区域。"
+          tag="Inline Menu"
         />
 
         <div className="rounded-2xl border border-border/60 bg-background/70 p-4 shadow-[0_12px_40px_-32px_rgba(15,23,42,0.2)]">
-          <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>描述提示词</span>
+            <button
+              type="button"
+              className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-foreground/80 hover:text-foreground"
+            >
+              添加图片
+            </button>
+          </div>
+
+          <div className="mt-3 flex flex-col lg:flex-row gap-4">
             <div
               className="relative shrink-0 rounded-2xl border border-border/60 bg-gradient-to-br from-muted/40 via-muted/10 to-transparent"
-              style={{ aspectRatio: previewAspect, width: '180px', maxWidth: '220px' }}
+              style={{ aspectRatio: previewAspect, width: '160px', maxWidth: '200px' }}
             >
               <button
                 type="button"
@@ -941,117 +982,94 @@ function VariantE() {
                 <X className="h-3.5 w-3.5" />
               </button>
               <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-                上传参考图
+                已上传参考图
               </div>
             </div>
 
-            <div className="flex-1 space-y-3">
+            <div className="flex-1 overflow-hidden rounded-2xl border border-border/60 bg-background/60">
               <Textarea
                 value={params.prompt}
                 onChange={(e) => params.setPrompt(e.target.value)}
-                placeholder="您想看到什么？"
-                className="min-h-[140px] resize-none bg-background border-border/60 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
+                placeholder="What do you want to see?"
+                className="min-h-[110px] resize-none border-0 bg-transparent px-3 py-2 text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               />
-
-              <div className="flex flex-wrap items-center gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button type="button">
-                      <MinimalChip
-                        text={labelOrNone('类型', getLabel(clothingTypeOptions, params.category, ''))}
-                      />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    <DropdownMenuRadioGroup value={params.category} onValueChange={params.setCategory}>
-                      {clothingTypeOptions.map((option) => (
-                        <DropdownMenuRadioItem key={option.value} value={option.value}>
-                          {option.label}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button type="button">
-                      <MinimalChip
-                        text={labelOrNone('配色', getLabel(colorOptions, params.colorScheme, ''))}
-                      />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    <DropdownMenuRadioGroup value={params.colorScheme} onValueChange={params.setColorScheme}>
-                      {colorOptions.map((option) => (
-                        <DropdownMenuRadioItem key={option.value} value={option.value}>
-                          {option.label}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button type="button">
-                      <MinimalChip
-                        text={labelOrNone('面料', getMultiLabel(fabricOptions, params.fabrics))}
-                      />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    {fabricOptions.map((option) => (
-                      <DropdownMenuCheckboxItem
-                        key={option.value}
-                        checked={params.fabrics.includes(option.value)}
-                        onCheckedChange={() =>
-                          toggleMultiValue(params.fabrics, option.value, params.setFabrics)
-                        }
-                      >
-                        {option.label}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button type="button">
-                      <MinimalChip text={labelOrNone('视角', getLabel(viewOptions, params.view, ''))} />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    <DropdownMenuRadioGroup value={params.view} onValueChange={params.setView}>
-                      {viewOptions.map((option) => (
-                        <DropdownMenuRadioItem key={option.value} value={option.value}>
-                          {option.label}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <AdvancedMenu params={params} />
-
-                <button
-                  type="button"
-                  onClick={() => params.setShowNegative((prev) => !prev)}
-                  className="inline-flex items-center gap-1 text-xs text-foreground/80 hover:text-foreground transition"
-                >
-                  {params.showNegative ? '隐藏负面' : '负面'}
-                </button>
-              </div>
-
               {params.showNegative && (
-                <Textarea
-                  value={params.negativePrompt}
-                  onChange={(e) => params.setNegativePrompt(e.target.value)}
-                  placeholder="排除元素..."
-                  className="min-h-[70px] resize-none bg-background border-border/60 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
-                />
+                <>
+                  <div className="h-px bg-border/60" />
+                  <div className="px-3 py-2">
+                    <div className="text-[11px] text-muted-foreground">Remove (negative prompt)</div>
+                    <Textarea
+                      value={params.negativePrompt}
+                      onChange={(e) => params.setNegativePrompt(e.target.value)}
+                      placeholder="What do you want to avoid?"
+                      className="mt-2 min-h-[70px] resize-none border-0 bg-transparent px-0 py-0 text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                  </div>
+                </>
               )}
             </div>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={pillClass(false)}>
+                1:1
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Style
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Color
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMenu((current) => (current === 'lighting' ? null : 'lighting'))}
+                className={pillClass(activeMenu === 'lighting')}
+              >
+                {lightingLabel}
+                <ChevronDown className="h-3 w-3 opacity-70" />
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Composition
+              </button>
+              <button
+                type="button"
+                onClick={() => params.setShowNegative((prev) => !prev)}
+                className="inline-flex items-center gap-1 text-xs text-foreground/80 hover:text-foreground transition"
+              >
+                {params.showNegative ? '隐藏负面' : '负面'}
+              </button>
+            </div>
+
+            {activeMenu === 'lighting' && (
+              <div className="rounded-xl border border-border/60 bg-background/80 p-3 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)]">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {lightingOptions.map((option) => {
+                    const selected = lighting === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setLighting(option.value)}
+                        className={pillClass(selected)}
+                      >
+                        {selected && <Check className="h-3 w-3" />}
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {params.showNegative && (
+              <Textarea
+                value={params.negativePrompt}
+                onChange={(e) => params.setNegativePrompt(e.target.value)}
+                placeholder="排除元素..."
+                className="min-h-[70px] resize-none bg-background border-border/60 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
+              />
+            )}
           </div>
 
           <div className="mt-4 flex items-center justify-end gap-2">
@@ -1398,6 +1416,560 @@ function VariantF() {
   )
 }
 
+function VariantG() {
+  const params = useFashionParams(samplePrompts[0])
+  const [lighting, setLighting] = useState('none')
+  const [activeMenu, setActiveMenu] = useState<'lighting' | null>('lighting')
+  const [model, setModel] = useState(modelOptions[1].value)
+  const previewAspect =
+    params.view === 'detail' ? '1 / 1' : params.view === 'flat_lay' ? '4 / 3' : '3 / 4'
+  const lightingLabel =
+    lighting === 'none' ? 'No Lighting' : getLabel(lightingOptions, lighting, 'No Lighting')
+  const pillClass = (active: boolean) =>
+    `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
+      active
+        ? 'border-transparent bg-foreground text-background'
+        : 'border-border/60 bg-background/70 text-foreground/90 hover:bg-muted/40'
+    }`
+
+  return (
+    <FeatureCard className={panelClass}>
+      <CardContent className="pt-6 space-y-6">
+        <VariantHeader
+          icon={PanelsTopLeft}
+          title="版本 G：底部辅助条"
+          description="负面提示词与模型选择下移到底部，减少主操作干扰。"
+          tag="Bottom Row"
+        />
+
+        <div className="rounded-2xl border border-border/60 bg-background/70 p-4 shadow-[0_12px_40px_-32px_rgba(15,23,42,0.2)]">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>描述提示词</span>
+            <button
+              type="button"
+              className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-foreground/80 hover:text-foreground"
+            >
+              添加图片
+            </button>
+          </div>
+
+          <div className="mt-3 flex flex-col lg:flex-row gap-4">
+            <div
+              className="relative shrink-0 rounded-2xl border border-border/60 bg-gradient-to-br from-muted/40 via-muted/10 to-transparent"
+              style={{ aspectRatio: previewAspect, width: '160px', maxWidth: '200px' }}
+            >
+              <button
+                type="button"
+                className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:text-foreground"
+                aria-label="清除图片"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+              <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+                已上传参考图
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden rounded-2xl border border-border/60 bg-background/60">
+              <Textarea
+                value={params.prompt}
+                onChange={(e) => params.setPrompt(e.target.value)}
+                placeholder="What do you want to see?"
+                className="min-h-[110px] resize-none border-0 bg-transparent px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+              {params.showNegative && (
+                <>
+                  <div className="h-px bg-border/60" />
+                  <div className="px-3 py-2">
+                    <div className="text-[11px] text-muted-foreground">Remove (negative prompt)</div>
+                    <Textarea
+                      value={params.negativePrompt}
+                      onChange={(e) => params.setNegativePrompt(e.target.value)}
+                      placeholder="What do you want to avoid?"
+                      className="mt-2 min-h-[70px] resize-none border-0 bg-transparent px-0 py-0 text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={pillClass(false)}>
+                1:1
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Style
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Color
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMenu((current) => (current === 'lighting' ? null : 'lighting'))}
+                className={pillClass(activeMenu === 'lighting')}
+              >
+                {lightingLabel}
+                <ChevronDown className="h-3 w-3 opacity-70" />
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Composition
+              </button>
+            </div>
+
+            {activeMenu === 'lighting' && (
+              <div className="rounded-xl border border-border/60 bg-background/80 p-3 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)]">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {lightingOptions.map((option) => {
+                    const selected = lighting === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setLighting(option.value)}
+                        className={pillClass(selected)}
+                      >
+                        {selected && <Check className="h-3 w-3" />}
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {params.showNegative && (
+              <Textarea
+                value={params.negativePrompt}
+                onChange={(e) => params.setNegativePrompt(e.target.value)}
+                placeholder="排除元素..."
+                className="min-h-[70px] resize-none bg-background border-border/60 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/40"
+              />
+            )}
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => params.setShowNegative((prev) => !prev)}
+                className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-xs text-foreground/85 hover:bg-muted/40 hover:text-foreground"
+              >
+                {params.showNegative ? '隐藏负面' : '负面提示词'}
+              </button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className={pillClass(false)}>
+                    模型：{getLabel(modelOptions, model, '')}
+                    <ChevronDown className="h-3 w-3 opacity-70" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuRadioGroup value={model} onValueChange={setModel}>
+                    {modelOptions.map((option) => (
+                      <DropdownMenuRadioItem key={option.value} value={option.value}>
+                        {option.label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={params.handleClear}
+                className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 shadow-sm hover:bg-muted/40 hover:text-foreground"
+              >
+                清除
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={params.handleRandomPrompt}
+                className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 shadow-sm hover:bg-muted/40 hover:text-foreground"
+              >
+                随机
+              </Button>
+              <Button className="h-9 rounded-full px-5 text-xs font-medium text-background shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)] bg-foreground hover:opacity-90">
+                在画布中生成
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </FeatureCard>
+  )
+}
+
+function VariantH() {
+  const params = useFashionParams(samplePrompts[0])
+  const [lighting, setLighting] = useState('none')
+  const [activeMenu, setActiveMenu] = useState<'lighting' | null>('lighting')
+  const [model, setModel] = useState(modelOptions[1].value)
+  const previewAspect =
+    params.view === 'detail' ? '1 / 1' : params.view === 'flat_lay' ? '4 / 3' : '3 / 4'
+  const lightingLabel =
+    lighting === 'none' ? 'No Lighting' : getLabel(lightingOptions, lighting, 'No Lighting')
+  const pillClass = (active: boolean) =>
+    `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
+      active
+        ? 'border-transparent bg-foreground text-background'
+        : 'border-border/60 bg-background/70 text-foreground/90 hover:bg-muted/40'
+    }`
+  const bottomActionClass =
+    'inline-flex items-center gap-2 rounded-md border border-border/60 bg-background/60 px-2.5 py-1 text-xs text-foreground/80 hover:bg-muted/40 hover:text-foreground transition'
+
+  return (
+    <FeatureCard className={panelClass}>
+      <CardContent className="pt-6 space-y-6">
+        <VariantHeader
+          icon={PanelsTopLeft}
+          title="版本 H：统一底部按钮"
+          description="模型选择与负面提示词同一胶囊样式，整行风格统一。"
+          tag="Unified Row"
+        />
+
+        <div className="rounded-2xl border border-border/60 bg-background/70 p-4 shadow-[0_12px_40px_-32px_rgba(15,23,42,0.2)]">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>描述提示词</span>
+            <button
+              type="button"
+              className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-foreground/80 hover:text-foreground"
+            >
+              添加图片
+            </button>
+          </div>
+
+          <div className="mt-3 flex flex-col lg:flex-row gap-4">
+            <div
+              className="relative shrink-0 rounded-2xl border border-border/60 bg-gradient-to-br from-muted/40 via-muted/10 to-transparent"
+              style={{ aspectRatio: previewAspect, width: '160px', maxWidth: '200px' }}
+            >
+              <button
+                type="button"
+                className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:text-foreground"
+                aria-label="清除图片"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+              <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+                已上传参考图
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden rounded-2xl border border-border/60 bg-background/60">
+              <Textarea
+                value={params.prompt}
+                onChange={(e) => params.setPrompt(e.target.value)}
+                placeholder="What do you want to see?"
+                className="min-h-[110px] resize-none border-0 bg-transparent px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+              {params.showNegative && (
+                <>
+                  <div className="h-px bg-border/60" />
+                  <div className="px-3 py-2">
+                    <div className="text-[11px] text-muted-foreground">Remove (negative prompt)</div>
+                    <Textarea
+                      value={params.negativePrompt}
+                      onChange={(e) => params.setNegativePrompt(e.target.value)}
+                      placeholder="What do you want to avoid?"
+                      className="mt-2 min-h-[70px] resize-none border-0 bg-transparent px-0 py-0 text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={pillClass(false)}>
+                1:1
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Style
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Color
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMenu((current) => (current === 'lighting' ? null : 'lighting'))}
+                className={pillClass(activeMenu === 'lighting')}
+              >
+                {lightingLabel}
+                <ChevronDown className="h-3 w-3 opacity-70" />
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Composition
+              </button>
+            </div>
+
+            {activeMenu === 'lighting' && (
+              <div className="rounded-xl border border-border/60 bg-background/80 p-3 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)]">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {lightingOptions.map((option) => {
+                    const selected = lighting === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setLighting(option.value)}
+                        className={pillClass(selected)}
+                      >
+                        {selected && <Check className="h-3 w-3" />}
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 text-xs text-foreground/80">
+                <span>负面提示词</span>
+                <Switch checked={params.showNegative} onCheckedChange={params.setShowNegative} />
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className={bottomActionClass}>
+                    模型：{getLabel(modelOptions, model, '')}
+                    <ChevronDown className="h-3 w-3 opacity-70" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuRadioGroup value={model} onValueChange={setModel}>
+                    {modelOptions.map((option) => (
+                      <DropdownMenuRadioItem key={option.value} value={option.value}>
+                        {option.label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={params.handleClear}
+                className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 shadow-sm hover:bg-muted/40 hover:text-foreground"
+              >
+                清除
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={params.handleRandomPrompt}
+                className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 shadow-sm hover:bg-muted/40 hover:text-foreground"
+              >
+                随机
+              </Button>
+              <Button className="h-9 rounded-full px-5 text-xs font-medium text-background shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)] bg-foreground hover:opacity-90">
+                在画布中生成
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </FeatureCard>
+  )
+}
+
+function VariantI() {
+  const params = useFashionParams(samplePrompts[0])
+  const [lighting, setLighting] = useState('none')
+  const [activeMenu, setActiveMenu] = useState<'lighting' | null>('lighting')
+  const [model, setModel] = useState(modelOptions[1].value)
+  const previewAspect =
+    params.view === 'detail' ? '1 / 1' : params.view === 'flat_lay' ? '4 / 3' : '3 / 4'
+  const lightingLabel =
+    lighting === 'none' ? 'No Lighting' : getLabel(lightingOptions, lighting, 'No Lighting')
+  const pillClass = (active: boolean) =>
+    `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
+      active
+        ? 'border-transparent bg-foreground text-background'
+        : 'border-border/60 bg-background/70 text-foreground/90 hover:bg-muted/40'
+    }`
+  const bottomActionClass =
+    'inline-flex items-center gap-2 rounded-md border border-border/60 bg-background/60 px-2.5 py-1 text-xs text-foreground/80 hover:bg-muted/40 hover:text-foreground transition'
+
+  return (
+    <FeatureCard className={panelClass}>
+      <CardContent className="pt-6 space-y-6">
+        <VariantHeader
+          icon={Dock}
+          title="版本 I：无分割默认态"
+          description="负面提示词关闭时完全无分割线，开启后才出现分区。"
+          tag="Clean Default"
+        />
+
+        <div className="rounded-2xl border border-border/60 bg-background/70 p-4 shadow-[0_12px_40px_-32px_rgba(15,23,42,0.2)]">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>描述提示词</span>
+            <button
+              type="button"
+              className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] text-foreground/80 hover:text-foreground"
+            >
+              添加图片
+            </button>
+          </div>
+
+          <div className="mt-3 flex flex-col lg:flex-row gap-4">
+            <div
+              className="relative shrink-0 rounded-2xl border border-border/60 bg-gradient-to-br from-muted/40 via-muted/10 to-transparent"
+              style={{ aspectRatio: previewAspect, width: '160px', maxWidth: '200px' }}
+            >
+              <button
+                type="button"
+                className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:text-foreground"
+                aria-label="清除图片"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+              <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+                已上传参考图
+              </div>
+            </div>
+
+            <div className="flex-1 rounded-2xl border border-border/60 bg-background/60">
+              <Textarea
+                value={params.prompt}
+                onChange={(e) => params.setPrompt(e.target.value)}
+                placeholder="What do you want to see?"
+                className="min-h-[140px] resize-none border-0 bg-transparent px-3 py-2 text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+              {params.showNegative && (
+                <div className="border-t border-border/60 px-3 py-2">
+                  <div className="text-[11px] text-muted-foreground">Remove (negative prompt)</div>
+                  <Textarea
+                    value={params.negativePrompt}
+                    onChange={(e) => params.setNegativePrompt(e.target.value)}
+                    placeholder="What do you want to avoid?"
+                    className="mt-2 min-h-[70px] resize-none border-0 bg-transparent px-0 py-0 text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={pillClass(false)}>
+                1:1
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Style
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Color
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMenu((current) => (current === 'lighting' ? null : 'lighting'))}
+                className={pillClass(activeMenu === 'lighting')}
+              >
+                {lightingLabel}
+                <ChevronDown className="h-3 w-3 opacity-70" />
+              </button>
+              <button type="button" className={pillClass(false)}>
+                No Composition
+              </button>
+            </div>
+
+            {activeMenu === 'lighting' && (
+              <div className="rounded-xl border border-border/60 bg-background/80 p-3 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)]">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {lightingOptions.map((option) => {
+                    const selected = lighting === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setLighting(option.value)}
+                        className={pillClass(selected)}
+                      >
+                        {selected && <Check className="h-3 w-3" />}
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 text-xs text-foreground/80">
+                <span>负面提示词</span>
+                <Switch checked={params.showNegative} onCheckedChange={params.setShowNegative} />
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className={bottomActionClass}>
+                    模型：{getLabel(modelOptions, model, '')}
+                    <ChevronDown className="h-3 w-3 opacity-70" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuRadioGroup value={model} onValueChange={setModel}>
+                    {modelOptions.map((option) => (
+                      <DropdownMenuRadioItem key={option.value} value={option.value}>
+                        {option.label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={params.handleClear}
+                className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 shadow-sm hover:bg-muted/40 hover:text-foreground"
+              >
+                清除
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={params.handleRandomPrompt}
+                className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 shadow-sm hover:bg-muted/40 hover:text-foreground"
+              >
+                随机
+              </Button>
+              <Button className="h-9 rounded-full px-5 text-xs font-medium text-background shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)] bg-foreground hover:opacity-90">
+                在画布中生成
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </FeatureCard>
+  )
+}
+
 export default function PlaygroundPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -1418,6 +1990,9 @@ export default function PlaygroundPage() {
           <VariantD />
           <VariantE />
           <VariantF />
+          <VariantG />
+          <VariantH />
+          <VariantI />
         </div>
       </FeaturePageShell>
     </div>
