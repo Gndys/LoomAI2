@@ -58,31 +58,15 @@
    }
    ```
 
-**Nuxt.js 应用：**
-
-1. **部署命令**
-   ```bash
-   vercel --cwd apps/nuxt-app
-   ```
-
-2. **构建配置**
-   ```json
-   {
-     "buildCommand": "pnpm build:nuxt",
-     "outputDirectory": "apps/nuxt-app/.output/public",
-     "installCommand": "pnpm install"
-   }
-   ```
-
 ### Netlify 部署
 
 **配置文件 `netlify.toml`：**
 
 ```toml
 [build]
-  base = "apps/next-app"  # 或 "apps/nuxt-app"
-  publish = ".next"       # 或 ".output/public"
-  command = "pnpm build:next"  # 或 "pnpm build:nuxt"
+  base = "apps/next-app"
+  publish = ".next"
+  command = "pnpm build:next"
 
 [build.environment]
   NODE_VERSION = "22"
@@ -103,7 +87,7 @@
   builder = "nixpacks"
 
 [deploy]
-  startCommand = "pnpm start:next"  # 或 "pnpm start:nuxt"
+  startCommand = "pnpm start:next"
   restartPolicyType = "never"
 
 [env]
@@ -251,7 +235,6 @@ client_max_body_size 10M;
 **健康检查端点：**
 
 - **Next.js**: `https://yourdomain.com/api/health`
-- **Nuxt.js**: `https://yourdomain.com/api/health`
 
 **Nginx 健康检查配置：**
 

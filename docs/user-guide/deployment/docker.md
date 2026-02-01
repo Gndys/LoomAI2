@@ -1,17 +1,15 @@
 # Docker 部署指南
 
-本指南介绍如何使用 Docker 容器化部署 TinyShip 项目的 Next.js 和 Nuxt.js 应用。
+本指南介绍如何使用 Docker 容器化部署 TinyShip 项目的 Next.js 应用。
 
 ## 📑 目录
 
 - [🚀 推荐方式：Docker Compose](#-推荐方式docker-compose)
 - [🔧 手动 Docker 部署](#-手动-docker-部署)
   - [Next.js 部署](#nextjs-部署)
-  - [Nuxt.js 部署](#nuxtjs-部署)
 - [⚠️ 重要提醒](#️-重要提醒)
   - [构建路径](#构建路径)
   - [构建依赖](#构建依赖)
-  - [跨框架兼容性](#跨框架兼容性)
   - [构建时环境变量](#构建时环境变量)
 - [🗃️ 数据库连接配置](#️-数据库连接配置)
 - [🐳 Docker Compose 详细说明](#-docker-compose-详细说明)
@@ -32,9 +30,6 @@
 ```bash
 # 启动 Next.js 应用
 docker compose --profile next up -d
-
-# 启动 Nuxt.js 应用  
-docker compose --profile nuxt up -d
 
 # 查看日志
 docker compose logs -f
@@ -60,20 +55,6 @@ docker run -d \
   tinyship-next
 ```
 
-### Nuxt.js 部署
-
-```bash
-# 1. 确保项目根目录有 .env 文件，然后构建镜像
-docker build -t tinyship-nuxt -f apps/nuxt-app/Dockerfile .
-
-# 2. 运行容器
-docker run -d \
-  --name tinyship-nuxt \
-  -p 7001:7001 \
-  --env-file .env \
-  --restart unless-stopped \
-  tinyship-nuxt
-```
 
 ## ⚠️ 重要提醒
 
@@ -88,12 +69,6 @@ Dockerfile 会自动复制这些必要的配置文件：
 - `config.ts` - 应用配置文件
 - `tsconfig.json` - TypeScript 路径别名
 - `libs/` - 共享库目录
-
-### 跨框架兼容性
-项目中的 `libs/auth/authClient.ts` 同时支持 React 和 Vue：
-- Next.js 项目需要 Vue 作为 devDependency (已配置)
-- 这是因为 better-auth 库会尝试导入 Vue 模块
-- 在 Nuxt.js 中通过 `build.rollupOptions.external` 配置忽略 Next.js 模块
 
 ### 构建时环境变量
 
@@ -114,7 +89,7 @@ Dockerfile 会自动复制这些必要的配置文件：
 #### **环境变量优先级**
 1. Docker build args (CI/CD 环境)
 2. .env 文件内容 (本地开发)  
-3. nuxt.config.ts 中的默认值 (fallback)
+3. next.config.ts 中的默认值 (fallback)
 
 ## 🗃️ 数据库连接配置
 
@@ -143,11 +118,11 @@ DATABASE_URL=postgresql://user:pass@your-db-server.com:5432/db
 ```bash
 # 使用主机网络运行容器
 docker run -d \
-  --name tinyship-nuxt \
+  --name tinyship-next \
   --network host \
   --env-file .env \
   --restart unless-stopped \
-  tinyship-nuxt
+  tinyship-next
 ```
 
 **重要提示：**
@@ -163,9 +138,6 @@ docker run -d \
 ```bash
 # 启动 Next.js 应用
 docker compose --profile next up -d
-
-# 启动 Nuxt.js 应用
-docker compose --profile nuxt up -d
 
 # 重新构建并启动
 docker compose --profile next up -d --build
@@ -232,7 +204,6 @@ docker ps
 
 # 查看日志
 docker logs tinyship-next
-docker logs tinyship-nuxt
 
 # 停止容器
 docker stop tinyship-next

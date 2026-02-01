@@ -86,7 +86,7 @@ export const config = {
 
 2. **放置文件**：
    - 将 Logo 文件放入 `apps/next-app/public/` 目录
-   - 同时也需要放入 `apps/nuxt-app/public/` 和 `apps/docs-app/public/` 目录
+   - 同时也需要放入 `apps/docs-app/public/` 目录
 
 3. **更新配置**：
    ```typescript

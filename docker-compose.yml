@@ -20,28 +20,8 @@ services:
     profiles:
       - next
 
-  # Nuxt.js 应用
-  tinyship-nuxt:
-    build:
-      context: .
-      dockerfile: apps/nuxt-app/Dockerfile
-      args:
-        # Optional: Pass build args if needed (for CI/CD)
-        - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
-        - NEXT_PUBLIC_WECHAT_APP_ID=${NEXT_PUBLIC_WECHAT_APP_ID:-}
-    image: tinyship-nuxt
-    container_name: tinyship-nuxt
-    ports:
-      - "7001:7001"
-    env_file:
-      - .env
-    restart: unless-stopped
-    profiles:
-      - nuxt
-
 # 使用示例:
 # 启动 Next.js 应用: docker-compose --profile next up -d
-# 启动 Nuxt.js 应用: docker-compose --profile nuxt up -d
 # 停止应用: docker-compose down
 # 查看日志: docker-compose logs -f
 # 重新构建: docker-compose --profile next up -d --build 

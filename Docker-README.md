@@ -8,9 +8,6 @@
 # 启动 Next.js 应用
 docker compose --profile next up -d
 
-# 启动 Nuxt.js 应用  
-docker compose --profile nuxt up -d
-
 # 查看日志
 docker compose logs -f
 
@@ -35,20 +32,6 @@ docker run -d \
   tinyship-next
 ```
 
-### Nuxt.js 部署
-
-```bash
-# 1. 在项目根目录构建镜像
-docker build -t tinyship-nuxt -f apps/nuxt-app/Dockerfile .
-
-# 2. 运行容器
-docker run -d \
-  --name tinyship-nuxt \
-  -p 7001:7001 \
-  --env-file .env \
-  --restart unless-stopped \
-  tinyship-nuxt
-```
 
 ## ⚠️ 重要提醒
 
@@ -63,12 +46,6 @@ Dockerfile 会自动复制这些必要的配置文件：
 - `config.ts` - 应用配置文件
 - `tsconfig.json` - TypeScript 路径别名
 - `libs/` - 共享库目录
-
-### 跨框架兼容性
-项目中的 `libs/auth/authClient.ts` 同时支持 React 和 Vue：
-- Next.js 项目需要 Vue 作为 devDependency (已配置)
-- 这是因为 better-auth 库会尝试导入 Vue 模块
-- 在本地环境中，Vue 通过 Nuxt.js 间接提供
 
 ### 构建时环境变量
 - Dockerfile 中设置 `BUILD_TIME=true` 避免构建失败
@@ -100,11 +77,11 @@ DATABASE_URL=postgresql://user:pass@your-db-server.com:5432/db
 ```bash
 # 使用主机网络运行 (推荐)
 docker run -d \
-  --name tinyship-nuxt \
+  --name tinyship-next \
   --network host \
   --env-file .env \
   --restart unless-stopped \
-  tinyship-nuxt
+  tinyship-next
 ```
 
 **重要提示**：
@@ -121,7 +98,6 @@ docker ps
 
 # 查看日志
 docker logs tinyship-next
-docker logs tinyship-nuxt
 
 # 停止容器
 docker stop tinyship-next

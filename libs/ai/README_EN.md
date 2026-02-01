@@ -90,12 +90,10 @@ const response = streamResponse({
 ### Server-side Usage
 
 - **Next.js**: See `apps/next-app/app/api/chat/route.ts`
-- **Nuxt.js**: See `apps/nuxt-app/server/api/chat.post.ts`
 
 ### Frontend Usage
 
 - **Next.js (React)**: See `apps/next-app/app/[lang]/(root)/ai/page.tsx`
-- **Nuxt.js (Vue)**: See `apps/nuxt-app/pages/ai.vue`
 
 ## 🔧 Adding New AI Providers
 

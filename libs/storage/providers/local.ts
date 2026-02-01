@@ -9,7 +9,7 @@ function resolveBaseDir(): string {
   }
 
   const candidates = [
-    path.join(process.cwd(), 'apps/nuxt-app/public'),
+    path.join(process.cwd(), 'apps/next-app/public'),
     path.join(process.cwd(), 'public'),
   ];
 

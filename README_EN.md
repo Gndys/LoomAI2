@@ -31,7 +31,6 @@ For detailed setup instructions and configuration guides, please refer to our [S
 - **Flexible Monorepo Structure**: Simplified architecture using `libs` for shared code instead of complex packages
 - **Dual Framework Support**: 
   - Next.js for React enthusiasts
-  - Nuxt.js for Vue lovers
   - Choose your preferred framework while maintaining the same powerful backend
 - **Documentation Site (docs-app)**:
   - Static documentation site built with [Fumadocs](https://fumadocs.dev)
@@ -89,7 +88,6 @@ For detailed setup instructions and configuration guides, please refer to our [S
 ### 🎨 Modern UI/UX
 - **Rich Component Libraries**:
   - [shadcn/ui](https://ui.shadcn.com/) for Next.js
-  - [Magic UI](https://www.magicui.design/) for Nuxt.js
 - **Styling**:
   - Tailwind CSS for utility-first styling
   - Consistent design system
@@ -136,7 +134,7 @@ For detailed setup instructions and configuration guides, please refer to our [S
 ## 📦 Tech Stack
 
 ### Frontend
-- Next.js/Nuxt.js
+- Next.js
 - TypeScript
 - Tailwind CSS
 - shadcn/ui & Magic UI
@@ -169,4 +167,3 @@ For detailed setup instructions and configuration guides, please refer to our [S
 4. **Framework Freedom**: Choose between React and Vue while keeping all the powerful features
 5. **Production Ready**: Enterprise-grade security and scalability built-in
 6. **AI-Powered Development**: Enhanced development experience with Cursor and AI tools
-

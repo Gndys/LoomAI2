@@ -111,7 +111,7 @@ export const config = {
       locales: ['en', 'zh-CN'] as const,
       /**
        * Cookie key for locale persistence
-       * Used by both Next.js middleware and Nuxt.js i18n module
+       * Used by Next.js middleware
        */
       cookieKey: 'NEXT_LOCALE',
 

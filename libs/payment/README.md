@@ -216,26 +216,22 @@ const result = await provider.handleWebhook(
 
 #### 定价页面
 - **Next.js**: 参考 `apps/next-app/app/[lang]/(root)/pricing/page.tsx`
-- **Nuxt.js**: 参考 `apps/nuxt-app/pages/pricing.vue`
 - 显示 `config.payment.plans` 中配置的所有计划
 - 用户选择计划后调用支付发起 API
 
 #### 微信支付二维码组件
 - **Next.js**: 参考 `apps/next-app/components/` 中的支付组件  
-- **Nuxt.js**: 参考 `apps/nuxt-app/components/` 中的支付组件
 - 显示二维码，轮询支付状态（每3秒检查一次）
 - 支付成功后跳转到成功页面
 
 ### 支付发起 API
 
 - **Next.js**: 参考 `apps/next-app/app/api/payment/initiate/route.ts`
-- **Nuxt.js**: 参考 `apps/nuxt-app/server/api/payment/initiate.post.ts`
 - 创建订单记录，生成支付 URL（Stripe/Creem）或二维码（微信）
 
 ### Webhook 处理 API
 
 - **Next.js**: 参考 `apps/next-app/app/api/payment/webhook/[provider]/route.ts`
-- **Nuxt.js**: 参考 `apps/nuxt-app/server/api/payment/webhook/[provider].post.ts`
 - 处理支付回调，更新订单状态，创建订阅记录
 
 ### 支付成功页面

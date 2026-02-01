@@ -216,26 +216,22 @@ const result = await provider.handleWebhook(
 
 #### Pricing Page
 - **Next.js**: See `apps/next-app/app/[lang]/(root)/pricing/page.tsx`
-- **Nuxt.js**: See `apps/nuxt-app/pages/pricing.vue`
 - Display all plans configured in `config.payment.plans`
 - User selects plan and calls payment initiation API
 
 #### WeChat Pay QR Code Component
 - **Next.js**: See payment components in `apps/next-app/components/`
-- **Nuxt.js**: See payment components in `apps/nuxt-app/components/`
 - Display QR code, poll payment status (every 3 seconds)
 - Redirect to success page after payment completion
 
 ### Payment Initiation API
 
 - **Next.js**: See `apps/next-app/app/api/payment/initiate/route.ts`
-- **Nuxt.js**: See `apps/nuxt-app/server/api/payment/initiate.post.ts`
 - Create order record, generate payment URL (Stripe/Creem) or QR code (WeChat)
 
 ### Webhook Handling API
 
 - **Next.js**: See `apps/next-app/app/api/payment/webhook/[provider]/route.ts`
-- **Nuxt.js**: See `apps/nuxt-app/server/api/payment/webhook/[provider].post.ts`
 - Handle payment callbacks, update order status, create subscription records
 
 ### Payment Success Page

@@ -1824,6 +1824,9 @@ export const zhCN: Locale = {
       scenePlaceholder: "选择场景",
       seasonLabel: "季节",
       seasonPlaceholder: "选择季节",
+      advancedLabel: "高级设置",
+      advancedToggleShow: "高级设置",
+      advancedToggleHide: "收起高级设置",
       modelLabel: "AI 模型",
       modelPlaceholder: "选择模型",
       options: {
@@ -1835,6 +1838,7 @@ export const zhCN: Locale = {
           custom: "自定义"
         },
         style: {
+          none: "无风格",
           casual: "休闲装",
           formal: "正装",
           sports: "运动装",
@@ -1845,6 +1849,7 @@ export const zhCN: Locale = {
           couture: "高定"
         },
         color: {
+          none: "无配色",
           morandi: "莫兰迪色系",
           earth: "大地色系",
           mono: "黑白灰",
@@ -1854,6 +1859,7 @@ export const zhCN: Locale = {
           custom: "自定义色板"
         },
         fabric: {
+          none: "无材质",
           cotton: "棉质",
           silk: "丝绸",
           denim: "牛仔",
@@ -1864,6 +1870,7 @@ export const zhCN: Locale = {
           tech: "功能面料"
         },
         view: {
+          none: "无视角",
           flat_lay: "平铺图",
           front: "正面视图",
           back: "背面视图",
@@ -1874,6 +1881,7 @@ export const zhCN: Locale = {
           turntable: "360°旋转视图"
         },
         fit: {
+          none: "无版型",
           slim: "修身",
           loose: "宽松",
           regular: "直筒",
@@ -1883,6 +1891,7 @@ export const zhCN: Locale = {
           x_line: "X字型"
         },
         element: {
+          none: "无元素",
           pattern: "印花图案",
           embroidery: "刺绣",
           patchwork: "拼接",
@@ -1892,22 +1901,26 @@ export const zhCN: Locale = {
           sleeve: "袖型"
         },
         gender: {
+          none: "无人群",
           male: "男装",
           female: "女装",
           kids: "童装"
         },
         age: {
+          none: "无年龄",
           "18-25": "18-25",
           "26-35": "26-35",
           "36-45": "36-45"
         },
         scene: {
+          none: "无场景",
           commute: "通勤",
           date: "约会",
           sport: "运动",
           home: "居家"
         },
         season: {
+          none: "无季节",
           spring_summer: "春夏",
           autumn_winter: "秋冬"
         },

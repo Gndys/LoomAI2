@@ -45,18 +45,19 @@ export default function AIGeneratePage() {
   const [negativePrompt, setNegativePrompt] = useState('')
   const [showNegative, setShowNegative] = useState(false)
   const [size, setSize] = useState('Auto')
-  const [style, setStyle] = useState('')
-  const [colorScheme, setColorScheme] = useState('')
-  const [fabric, setFabric] = useState('')
-  const [view, setView] = useState('')
-  const [fit, setFit] = useState('')
-  const [element, setElement] = useState('')
-  const [targetGender, setTargetGender] = useState('')
-  const [targetAge, setTargetAge] = useState('')
-  const [targetScene, setTargetScene] = useState('')
-  const [targetSeason, setTargetSeason] = useState('')
+  const [style, setStyle] = useState('none')
+  const [colorScheme, setColorScheme] = useState('none')
+  const [fabric, setFabric] = useState('none')
+  const [view, setView] = useState('none')
+  const [fit, setFit] = useState('none')
+  const [element, setElement] = useState('none')
+  const [targetGender, setTargetGender] = useState('none')
+  const [targetAge, setTargetAge] = useState('none')
+  const [targetScene, setTargetScene] = useState('none')
+  const [targetSeason, setTargetSeason] = useState('none')
   const [model, setModel] = useState('loom-pro')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const hintItems = t.aiGenerate.hints
   const sizeLabels = t.aiGenerate.params.options?.size as Record<string, string> | undefined
@@ -109,16 +110,16 @@ export default function AIGeneratePage() {
     setNegativePrompt('')
     setShowNegative(false)
     setSize('Auto')
-    setStyle('')
-    setColorScheme('')
-    setFabric('')
-    setView('')
-    setFit('')
-    setElement('')
-    setTargetGender('')
-    setTargetAge('')
-    setTargetScene('')
-    setTargetSeason('')
+    setStyle('none')
+    setColorScheme('none')
+    setFabric('none')
+    setView('none')
+    setFit('none')
+    setElement('none')
+    setTargetGender('none')
+    setTargetAge('none')
+    setTargetScene('none')
+    setTargetSeason('none')
     toast.info(t.aiGenerate.toasts.clearedAll)
   }
 
@@ -376,90 +377,99 @@ export default function AIGeneratePage() {
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
 
-                  <div className="mt-4 space-y-2">
-                    <div className="text-xs text-muted-foreground">{t.aiGenerate.params.title}</div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Select value={fit} onValueChange={setFit}>
-                        <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
-                          <SelectValue placeholder={t.aiGenerate.params.fitPlaceholder} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border-border/60 text-foreground">
-                          {fitOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                              {fitLabels?.[option.value] ?? option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={element} onValueChange={setElement}>
-                        <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
-                          <SelectValue placeholder={t.aiGenerate.params.elementPlaceholder} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border-border/60 text-foreground">
-                          {elementOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                              {elementLabels?.[option.value] ?? option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={targetGender} onValueChange={setTargetGender}>
-                        <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
-                          <SelectValue placeholder={t.aiGenerate.params.genderPlaceholder} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border-border/60 text-foreground">
-                          {genderOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                              {genderLabels?.[option.value] ?? option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={targetAge} onValueChange={setTargetAge}>
-                        <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
-                          <SelectValue placeholder={t.aiGenerate.params.agePlaceholder} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border-border/60 text-foreground">
-                          {ageOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                              {ageLabels?.[option.value] ?? option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={targetScene} onValueChange={setTargetScene}>
-                        <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
-                          <SelectValue placeholder={t.aiGenerate.params.scenePlaceholder} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border-border/60 text-foreground">
-                          {sceneOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                              {sceneLabels?.[option.value] ?? option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={targetSeason} onValueChange={setTargetSeason}>
-                        <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
-                          <SelectValue placeholder={t.aiGenerate.params.seasonPlaceholder} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border-border/60 text-foreground">
-                          {seasonOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                              {seasonLabels?.[option.value] ?? option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="ml-2 flex items-center gap-2 text-xs text-foreground/70">
+                      <span>{t.aiGenerate.params.advancedLabel}</span>
+                      <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} />
                     </div>
                   </div>
+
+                  {showAdvanced && (
+                    <div className="mt-3 space-y-2">
+                      <div className="text-xs text-muted-foreground">
+                        {t.aiGenerate.params.advancedLabel}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Select value={fit} onValueChange={setFit}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.fitPlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {fitOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {fitLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={element} onValueChange={setElement}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.elementPlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {elementOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {elementLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={targetGender} onValueChange={setTargetGender}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.genderPlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {genderOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {genderLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={targetAge} onValueChange={setTargetAge}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.agePlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {ageOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {ageLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={targetScene} onValueChange={setTargetScene}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.scenePlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {sceneOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {sceneLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={targetSeason} onValueChange={setTargetSeason}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.seasonPlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {seasonOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {seasonLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap items-center gap-3">

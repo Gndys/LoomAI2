@@ -22,7 +22,7 @@
 
 ## 🌟 核心特性
 
-- **双框架支持**：同时支持 Next.js (React) 和 Nuxt.js (Vue)，开发者可根据偏好选择
+- **前端框架支持**：基于 Next.js (React)，面向现代 Web 应用开发
 - **完整的身份认证**：支持邮箱密码、OAuth（Google、GitHub、微信）、手机短信登录
 - **多种支付集成**：支持 Stripe、微信支付、CREEM 等主流支付平台
 - **国际化支持**：内置多语言系统，轻松支持全球市场
@@ -40,7 +40,6 @@ TinyShip 采用简化的 monorepo 结构，使用 `libs` 目录共享核心代�
 tinyship/
 ├── apps/                  # 应用实现
 │   ├── next-app/         # Next.js 应用
-│   ├── nuxt-app/         # Nuxt.js 应用
 │   └── docs-app/         # 文档站点 (Fumadocs)
 ├── libs/                  # 核心库
 │   ├── database/         # 数据库操作和架构
@@ -61,7 +60,6 @@ tinyship/
 
 **前端框架**
 - Next.js 15 (App Router)
-- Nuxt.js 3
 - TypeScript
 - Tailwind CSS
 

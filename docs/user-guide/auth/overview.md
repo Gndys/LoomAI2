@@ -75,16 +75,4 @@ DATABASE_URL="postgresql://username:password@localhost:5432/tinyship"
 const defaultProviders: SocialProvider[] = ['google', 'github', 'wechat', 'phone'];
 ```
 
-### Nuxt.js 应用
-编辑 `apps/nuxt-app/components/SocialAuth.vue`：
-
-```typescript
-const props = withDefaults(defineProps<Props>(), {
-  className: '',
-  providers: () => ['google', 'github', 'wechat', 'phone']
-})
-```
-
----
-
 更多认证配置和 API 使用请参考 [Better Auth 官方文档](https://www.better-auth.com/docs) 和 `libs/auth/README.md` 文件。

@@ -15,7 +15,7 @@ This project uses a **build-first approach** for code verification:
 - On pull requests to `main` or `develop` branches
 
 **Jobs**:
-1. **Build**: Builds both Next.js and Nuxt.js apps (build includes TypeScript checking)
+1. **Build**: Builds the Next.js app (build includes TypeScript checking)
 2. **Test**: Runs all test suites
 
 **Why this approach?**
@@ -46,7 +46,6 @@ pnpm build
 
 # Build specific app
 pnpm build:next
-pnpm build:nuxt
 
 # Run tests
 pnpm test
@@ -75,5 +74,4 @@ Type-check scripts are still available for manual use:
 - `pnpm type-check` - Run type checking manually
 - Useful for IDE/editor integration
 - Not used in CI/CD (build is used instead)
-
 

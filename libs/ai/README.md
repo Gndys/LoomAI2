@@ -90,12 +90,10 @@ const response = streamResponse({
 ### 服务器端用法
 
 - **Next.js**: 参考 `apps/next-app/app/api/chat/route.ts`
-- **Nuxt.js**: 参考 `apps/nuxt-app/server/api/chat.post.ts`
 
 ### 前端用法
 
 - **Next.js (React)**: 参考 `apps/next-app/app/[lang]/(root)/ai/page.tsx`
-- **Nuxt.js (Vue)**: 参考 `apps/nuxt-app/pages/ai.vue`
 
 ## 🎯 功能特性
 

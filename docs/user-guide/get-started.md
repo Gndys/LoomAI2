@@ -24,8 +24,7 @@
 在开始之前，请确保你的开发环境满足以下要求：
 
 ### 必需软件
-- **Node.js**: >= 22.20.0 （**必须使用 22.20.0 或更高的 LTS 版本**）
-  > ⚠️ **重要提示**：由于 Nuxt 4 使用的 [oxc-parser 原生绑定问题](https://github.com/nuxt/nuxt/issues/33480)，Node.js 版本必须 >= 22.20.0。低于此版本可能导致安装失败。
+- **Node.js**: >= 22.20.0 （**建议使用 22.20.0 或更高的 LTS 版本**）
 - **PNPM**: >= 9.0.0 （推荐的包管理器）
 - **PostgreSQL**: >= 13.0 （数据库）
 
@@ -190,8 +189,6 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ```bash
 # 启动 next.js 应用
 pnpm run dev:next
-# 或者启动 nuxt.js 应用
-pnpm run dev:nuxt
 # 访问 http://localhost:7001
 ```
 

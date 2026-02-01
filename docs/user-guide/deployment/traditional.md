@@ -1,6 +1,6 @@
 # 传统部署指南
 
-本指南介绍如何在传统服务器环境中部署 TinyShip 项目的 Next.js 和 Nuxt.js 应用。
+本指南介绍如何在传统服务器环境中部署 TinyShip 项目的 Next.js 应用。
 
 ## 📑 目录
 
@@ -11,9 +11,6 @@
 - [🚀 Next.js 部署](#-nextjs-部署)
   - [完整部署流程](#完整部署流程)
   - [快速启动（适用于已部署项目）](#快速启动适用于已部署项目)
-- [🎯 Nuxt.js 部署](#-nuxtjs-部署)
-  - [完整部署流程](#完整部署流程-1)
-  - [快速启动（适用于已部署项目）](#快速启动适用于已部署项目-1)
 - [🔧 进程管理](#-进程管理)
   - [PM2 常用命令](#pm2-常用命令)
   - [端口配置说明](#端口配置说明)
@@ -72,7 +69,6 @@ EMAIL_DEFAULT_FROM="noreply@yourdomain.com"
 
 **环境变量加载机制：**
 - **Next.js**: `next.config.ts` 自动加载根目录 `.env` 文件
-- **Nuxt.js**: 启动脚本使用 `--env-file=../../.env` 参数
 
 ### 数据库准备
 
@@ -140,62 +136,6 @@ pm2 start "pnpm start:next" --name "tinyship-next"
 - `pnpm start:next` - 使用 Turbo 启动（推荐）
 - `cd apps/next-app && pnpm start` - 直接启动
 
-## 🎯 Nuxt.js 部署
-
-### 完整部署流程
-
-```bash
-# 1. 克隆代码
-git clone <your-repo-url> tinyship
-cd tinyship
-
-# 2. 配置环境变量
-cp .env.example .env
-# 编辑 .env 文件配置生产环境变量
-
-# 3. 安装依赖
-pnpm install
-
-# 4. 数据库迁移
-pnpm db:generate
-pnpm db:migrate
-
-# 5. 构建应用（如果 VPS 内存不足，添加内存限制）
-pnpm build:nuxt
-# 或者使用内存限制：NODE_OPTIONS="--max-old-space-size=4096" pnpm build:nuxt
-
-# 6. 启动服务器（自动加载环境变量）
-NODE_ENV=production pnpm start:nuxt
-
-# 7. 或者直接启动构建输出
-NODE_ENV=production node --env-file=.env apps/nuxt-app/.output/server/index.mjs
-
-# 8. 使用 PM2 管理（推荐）
-pm2 start "pnpm start:nuxt" --name "tinyship-nuxt"
-pm2 save
-pm2 startup
-```
-
-### 快速启动（适用于已部署项目）
-
-如果你已经完成了上述完整部署流程，后续重启应用时可以使用以下快速命令：
-
-```bash
-# 1. 构建应用
-pnpm build:nuxt
-# 如果内存不足：NODE_OPTIONS="--max-old-space-size=4096" pnpm build:nuxt
-
-# 2. 启动生产服务器（端口 7001）
-pnpm start:nuxt
-
-# 3. 使用 PM2 管理（推荐）
-pm2 start "pnpm start:nuxt" --name "tinyship-nuxt"
-```
-
-**可用的启动命令：**
-- `pnpm start:nuxt` - 使用 Turbo 启动（推荐）
-- `cd apps/nuxt-app && pnpm start` - 直接启动
-
 ## 🔧 进程管理
 
 ### PM2 常用命令
@@ -207,11 +147,9 @@ pm2 status
 # 查看日志
 pm2 logs
 pm2 logs tinyship-next
-pm2 logs tinyship-nuxt
 
 # 重启应用
 pm2 restart tinyship-next
-pm2 restart tinyship-nuxt
 
 # 停止应用
 pm2 stop tinyship-next
@@ -228,7 +166,7 @@ pm2 startup
 
 - **开发环境端口**: 7001
 - **生产环境端口**: 7001
-- **注意**: Next.js 和 Nuxt.js 都使用 7001 端口，不能同时启动
+- **注意**: Next.js 使用 7001 端口
 
 ## 🔍 健康检查
 
@@ -237,7 +175,6 @@ pm2 startup
 项目已内置健康检查端点：
 
 - **Next.js**: `http://localhost:7001/api/health`
-- **Nuxt.js**: `http://localhost:7001/api/health`
 
 **服务检查命令：**
 
@@ -277,7 +214,6 @@ FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memor
    ```bash
    # 增加内存限制到 4GB
    NODE_OPTIONS="--max-old-space-size=4096" pnpm build:next
-   NODE_OPTIONS="--max-old-space-size=4096" pnpm build:nuxt
    ```
 
 2. **永久配置**（推荐）：
@@ -332,7 +268,6 @@ pm2 logs
 
 # 查看特定应用日志
 pm2 logs tinyship-next
-pm2 logs tinyship-nuxt
 
 # Turbo 日志
 turbo run build --verbosity=2

@@ -1816,6 +1816,9 @@ export const en: Locale = {
       scenePlaceholder: "Select scene",
       seasonLabel: "Season",
       seasonPlaceholder: "Select season",
+      advancedLabel: "Advanced Settings",
+      advancedToggleShow: "Advanced Settings",
+      advancedToggleHide: "Hide Advanced",
       modelLabel: "AI Model",
       modelPlaceholder: "Select model",
       options: {
@@ -1827,6 +1830,7 @@ export const en: Locale = {
           custom: "Custom"
         },
         style: {
+          none: "No Style",
           casual: "Casual Wear",
           formal: "Formal Wear",
           sports: "Sportswear",
@@ -1837,6 +1841,7 @@ export const en: Locale = {
           couture: "Haute Couture"
         },
         color: {
+          none: "No Color",
           morandi: "Morandi",
           earth: "Earth Tones",
           mono: "Black/White/Gray",
@@ -1846,6 +1851,7 @@ export const en: Locale = {
           custom: "Custom Palette"
         },
         fabric: {
+          none: "No Fabric",
           cotton: "Cotton",
           silk: "Silk",
           denim: "Denim",
@@ -1856,6 +1862,7 @@ export const en: Locale = {
           tech: "Tech Fabric"
         },
         view: {
+          none: "No View",
           flat_lay: "Flat Lay",
           front: "Front View",
           back: "Back View",
@@ -1866,6 +1873,7 @@ export const en: Locale = {
           turntable: "360° Turntable"
         },
         fit: {
+          none: "No Fit",
           slim: "Slim Fit",
           loose: "Loose Fit",
           regular: "Regular Fit",
@@ -1875,6 +1883,7 @@ export const en: Locale = {
           x_line: "X-line"
         },
         element: {
+          none: "No Element",
           pattern: "Pattern",
           embroidery: "Embroidery",
           patchwork: "Patchwork",
@@ -1884,22 +1893,26 @@ export const en: Locale = {
           sleeve: "Sleeve Style"
         },
         gender: {
+          none: "No Target",
           male: "Menswear",
           female: "Womenswear",
           kids: "Kidswear"
         },
         age: {
+          none: "No Age",
           "18-25": "18-25",
           "26-35": "26-35",
           "36-45": "36-45"
         },
         scene: {
+          none: "No Scene",
           commute: "Commute",
           date: "Date",
           sport: "Sport",
           home: "Home"
         },
         season: {
+          none: "No Season",
           spring_summer: "Spring/Summer",
           autumn_winter: "Autumn/Winter"
         },

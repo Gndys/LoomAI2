@@ -107,6 +107,7 @@ export const sizeOptions = [
 // 风格选项
 // 风格/服装类型选项
 export const styleOptions = [
+  { value: 'none', label: '无风格' },
   { value: 'casual', label: '休闲装' },
   { value: 'formal', label: '正装' },
   { value: 'sports', label: '运动装' },
@@ -119,6 +120,7 @@ export const styleOptions = [
 
 // 配色方案
 export const colorOptions = [
+  { value: 'none', label: '无配色' },
   { value: 'morandi', label: '莫兰迪色系' },
   { value: 'earth', label: '大地色系' },
   { value: 'mono', label: '黑白灰' },
@@ -130,6 +132,7 @@ export const colorOptions = [
 
 // 面料材质
 export const fabricOptions = [
+  { value: 'none', label: '无材质' },
   { value: 'cotton', label: '棉质' },
   { value: 'silk', label: '丝绸' },
   { value: 'denim', label: '牛仔' },
@@ -142,6 +145,7 @@ export const fabricOptions = [
 
 // 展示方式
 export const viewOptions = [
+  { value: 'none', label: '无视角' },
   { value: 'flat_lay', label: '平铺图' },
   { value: 'front', label: '正面视图' },
   { value: 'back', label: '背面视图' },
@@ -154,6 +158,7 @@ export const viewOptions = [
 
 // 版型设计
 export const fitOptions = [
+  { value: 'none', label: '无版型' },
   { value: 'slim', label: '修身' },
   { value: 'loose', label: '宽松' },
   { value: 'regular', label: '直筒' },
@@ -165,6 +170,7 @@ export const fitOptions = [
 
 // 设计元素
 export const elementOptions = [
+  { value: 'none', label: '无元素' },
   { value: 'pattern', label: '印花图案' },
   { value: 'embroidery', label: '刺绣' },
   { value: 'patchwork', label: '拼接' },
@@ -176,18 +182,21 @@ export const elementOptions = [
 
 // 目标人群
 export const genderOptions = [
+  { value: 'none', label: '无人群' },
   { value: 'male', label: '男装' },
   { value: 'female', label: '女装' },
   { value: 'kids', label: '童装' },
 ]
 
 export const ageOptions = [
+  { value: 'none', label: '无年龄' },
   { value: '18-25', label: '18-25' },
   { value: '26-35', label: '26-35' },
   { value: '36-45', label: '36-45' },
 ]
 
 export const sceneOptions = [
+  { value: 'none', label: '无场景' },
   { value: 'commute', label: '通勤' },
   { value: 'date', label: '约会' },
   { value: 'sport', label: '运动' },
@@ -195,6 +204,7 @@ export const sceneOptions = [
 ]
 
 export const seasonOptions = [
+  { value: 'none', label: '无季节' },
   { value: 'spring_summer', label: '春夏' },
   { value: 'autumn_winter', label: '秋冬' },
 ]

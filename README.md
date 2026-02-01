@@ -32,7 +32,6 @@
 - **灵活的 Monorepo 结构**：使用 `libs` 共享代码的简化架构，而非复杂的 packages 结构
 - **双框架支持**： 
   - Next.js 适合 React 爱好者
-  - Nuxt.js 适合 Vue 爱好者
   - 选择你喜欢的框架，同时保持强大的后端功能
 - **文档站点 (docs-app)**：
   - 基于 [Fumadocs](https://fumadocs.dev) 构建的静态文档站点
@@ -90,7 +89,6 @@
 ### 🎨 现代化 UI/UX
 - **丰富的组件库**：
   - [shadcn/ui](https://ui.shadcn.com/) 用于 Next.js
-  - [Magic UI](https://www.magicui.design/) 用于 Nuxt.js
 - **样式系统**：
   - Tailwind CSS 实用优先的样式
   - 一致的设计系统
@@ -137,7 +135,7 @@
 ## 📦 技术栈
 
 ### 前端
-- Next.js/Nuxt.js
+- Next.js
 - TypeScript
 - Tailwind CSS
 - shadcn/ui & Magic UI

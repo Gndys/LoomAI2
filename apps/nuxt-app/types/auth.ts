@@ -1,1 +1,0 @@
-export type SocialProvider = 'google' | 'github' | 'apple' | 'wechat' | 'phone' 
