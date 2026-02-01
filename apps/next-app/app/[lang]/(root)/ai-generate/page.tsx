@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { Sparkles, X } from 'lucide-react'
+import { Sparkles, X, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { useTranslation } from '@/hooks/use-translation'
@@ -378,8 +378,11 @@ export default function AIGeneratePage() {
                       </SelectContent>
                     </Select>
 
-                    <div className="ml-2 flex items-center gap-2 text-xs text-foreground/70">
-                      <span>{t.aiGenerate.params.advancedLabel}</span>
+                    <div
+                      className="ml-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-2 py-1 text-xs text-foreground/80"
+                      aria-label={t.aiGenerate.params.advancedLabel}
+                    >
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
                       <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} />
                     </div>
                   </div>
