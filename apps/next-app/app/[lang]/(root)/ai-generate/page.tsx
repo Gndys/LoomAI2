@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { Sparkles, X, Check, ChevronDown } from 'lucide-react'
+import { Sparkles, X } from 'lucide-react'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { useTranslation } from '@/hooks/use-translation'
@@ -34,14 +34,11 @@ export default function AIGeneratePage() {
   const [style, setStyle] = useState('无风格')
   const [model, setModel] = useState('loom-pro')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [activeMenu, setActiveMenu] = useState<'size' | 'style' | null>(null)
 
   const hintItems = t.aiGenerate.hints
   const sizeLabels = t.aiGenerate.params.options?.size as Record<string, string> | undefined
   const styleLabels = t.aiGenerate.params.options?.style as Record<string, string> | undefined
   const modelLabels = t.aiGenerate.params.options?.model as Record<string, string> | undefined
-  const sizeLabel = sizeLabels?.[size] ?? size
-  const styleLabel = styleLabels?.[style] ?? style
 
   // 上传图片
   const handleImageUpload = (imageData: string) => {
@@ -140,14 +137,6 @@ export default function AIGeneratePage() {
 
   const panelClass =
     'border-border/60 bg-card/40 shadow-[0_30px_80px_-60px_hsl(var(--primary)/0.25)] backdrop-blur-xl'
-  const pillClass = (active: boolean) =>
-    `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
-      active
-        ? 'border-transparent bg-foreground text-background'
-        : 'border-border/60 bg-background/70 text-foreground/90 hover:bg-muted/40'
-    }`
-  const panelClassName =
-    'rounded-xl border border-border/60 bg-background/80 p-3 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)]'
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -272,73 +261,32 @@ export default function AIGeneratePage() {
                     />
                   </div>
 
-                  <div className="mt-3 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setActiveMenu((current) => (current === 'size' ? null : 'size'))}
-                        className={pillClass(activeMenu === 'size')}
-                      >
-                        {sizeLabel}
-                        <ChevronDown className="h-3 w-3 opacity-70" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveMenu((current) => (current === 'style' ? null : 'style'))}
-                        className={pillClass(activeMenu === 'style')}
-                      >
-                        {styleLabel}
-                        <ChevronDown className="h-3 w-3 opacity-70" />
-                      </button>
-                    </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Select value={size} onValueChange={setSize}>
+                      <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                        <SelectValue placeholder={t.aiGenerate.params.sizePlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border/60 text-foreground">
+                        {sizeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                            {sizeLabels?.[option.value] ?? option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                    {activeMenu === 'size' && (
-                      <div className={panelClassName}>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                          {sizeOptions.map((option) => {
-                            const selected = size === option.value
-                            return (
-                              <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => {
-                                  setSize(option.value)
-                                  setActiveMenu(null)
-                                }}
-                                className={pillClass(selected)}
-                              >
-                                {selected && <Check className="h-3 w-3" />}
-                                {sizeLabels?.[option.value] ?? option.label}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {activeMenu === 'style' && (
-                      <div className={panelClassName}>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                          {styleOptions.map((option) => {
-                            const selected = style === option.value
-                            return (
-                              <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => {
-                                  setStyle(option.value)
-                                  setActiveMenu(null)
-                                }}
-                                className={pillClass(selected)}
-                              >
-                                {selected && <Check className="h-3 w-3" />}
-                                {styleLabels?.[option.value] ?? option.label}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
+                    <Select value={style} onValueChange={setStyle}>
+                      <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                        <SelectValue placeholder={t.aiGenerate.params.stylePlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border/60 text-foreground">
+                        {styleOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                            {styleLabels?.[option.value] ?? option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -412,9 +360,14 @@ export default function AIGeneratePage() {
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="space-y-3">
-                      <p className="text-xs text-muted-foreground">
-                        {t.aiGenerate.comparison.reference}
-                      </p>
+                      <div>
+                        <h3 className="text-sm font-semibold mb-1 text-foreground">
+                          {t.aiGenerate.comparison.reference}
+                        </h3>
+                        <p className="text-xs text-muted-foreground opacity-0" aria-hidden="true">
+                          .
+                        </p>
+                      </div>
                       <div className="relative aspect-square rounded-2xl overflow-hidden border border-border/60 bg-muted/20">
                         {uploadedImage ? (
                           <Image
