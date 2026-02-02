@@ -6,11 +6,17 @@ import { DefaultChatTransport } from 'ai'
 import { nanoid } from 'nanoid'
 import {
   ArrowUpRight,
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Bold,
   ChevronDown,
   Download,
   DraftingCompass,
   Hand,
   ImagePlus,
+  Italic,
   MessageSquare,
   MoreHorizontal,
   MousePointer2,
@@ -23,6 +29,7 @@ import {
   Trash2,
   Type,
   Upload,
+  Underline,
   Wand2,
   Square,
   Scissors,
@@ -44,9 +51,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 import { Message, MessageContent } from '@/components/ai-elements/message'
+import { Response } from '@/components/ai-elements/response'
 import type { FileUIPart, UIMessage } from 'ai'
 import { authClientReact } from '@libs/auth/authClient'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -79,6 +88,15 @@ type CanvasTextItem = CanvasBaseItem & {
   data: {
     text: string
     fontSize: number
+    color: string
+    backgroundColor: string
+    strokeColor: string
+    strokeWidth: number
+    fontFamily: string
+    fontWeight: number
+    fontStyle: 'normal' | 'italic'
+    textDecoration: 'none' | 'underline'
+    align: 'left' | 'center' | 'right' | 'justify'
   }
 }
 
@@ -111,7 +129,7 @@ type DragState =
   | {
       kind: 'resize'
       id: string
-      corner: 'tl' | 'tr' | 'bl' | 'br'
+      corner: 'tl' | 'tr' | 'bl' | 'br' | 'tm' | 'bm' | 'ml' | 'mr'
       startWorldX: number
       startWorldY: number
       startWidth: number
@@ -146,9 +164,67 @@ const MIN_TEXT_FONT_SIZE = 12
 const MAX_TEXT_FONT_SIZE = 160
 const MIN_TEXT_WIDTH = 40
 const MIN_TEXT_HEIGHT = 24
+const TEXT_PADDING_X = 16
+const TEXT_PADDING_Y = 10
+const DEFAULT_TEXT_COLOR = 'hsl(var(--foreground))'
+const DEFAULT_TEXT_BACKGROUND = 'transparent'
+const DEFAULT_TEXT_STROKE = 'transparent'
+const DEFAULT_TEXT_STROKE_WIDTH = 0
+const DEFAULT_TEXT_FONT_FAMILY = 'inherit'
+const DEFAULT_TEXT_FONT_WEIGHT = 500
 const EXPORT_PADDING = 48
 const MAX_EXPORT_SIZE = 8192
 const DEBUG_CANVAS = false
+
+const TEXT_STROKE_COLORS = [
+  { value: 'transparent', label: '无' },
+  { value: '#0f172a', label: '黑' },
+  { value: '#ef4444', label: '红' },
+  { value: '#22c55e', label: '绿' },
+  { value: '#3b82f6', label: '蓝' },
+  { value: '#f97316', label: '橙' },
+  { value: '#ffffff', label: '白' },
+]
+
+const TEXT_BACKGROUND_COLORS = [
+  { value: 'transparent', label: '无' },
+  { value: '#fff7ed', label: '米' },
+  { value: '#fee2e2', label: '粉' },
+  { value: '#dbeafe', label: '蓝' },
+  { value: '#dcfce7', label: '绿' },
+  { value: '#fef9c3', label: '黄' },
+  { value: '#ede9fe', label: '紫' },
+]
+
+const TEXT_FONT_OPTIONS = [
+  { value: 'inherit', label: '读取系统字体' },
+  { value: '"Inter", "PingFang SC", "Microsoft YaHei", sans-serif', label: 'Inter' },
+  { value: '"PingFang SC", "Microsoft YaHei", sans-serif', label: '苹方' },
+  { value: '"Noto Sans SC", "Microsoft YaHei", sans-serif', label: 'Noto Sans' },
+  { value: '"Source Han Sans SC", "Microsoft YaHei", sans-serif', label: '思源黑体' },
+  { value: '"Times New Roman", serif', label: 'Times' },
+  { value: '"Georgia", serif', label: 'Georgia' },
+  { value: '"Courier New", monospace', label: 'Courier' },
+]
+
+const TEXT_SIZE_PRESETS = [
+  { id: 'xs', label: 'XS', size: 14 },
+  { id: 's', label: 'S', size: 18 },
+  { id: 'm', label: 'M', size: 28 },
+  { id: 'l', label: 'L', size: 36 },
+  { id: 'xl', label: 'XL', size: 48 },
+]
+
+const RESIZE_HANDLES = [
+  { id: 'tl', className: '-left-1.5 -top-1.5', cursor: 'nwse-resize' },
+  { id: 'tm', className: 'left-1/2 -top-1.5 -translate-x-1/2', cursor: 'ns-resize' },
+  { id: 'tr', className: '-right-1.5 -top-1.5', cursor: 'nesw-resize' },
+  { id: 'ml', className: '-left-1.5 top-1/2 -translate-y-1/2', cursor: 'ew-resize' },
+  { id: 'mr', className: '-right-1.5 top-1/2 -translate-y-1/2', cursor: 'ew-resize' },
+  { id: 'bl', className: '-left-1.5 -bottom-1.5', cursor: 'nesw-resize' },
+  { id: 'bm', className: 'left-1/2 -bottom-1.5 -translate-x-1/2', cursor: 'ns-resize' },
+  { id: 'br', className: '-right-1.5 -bottom-1.5', cursor: 'nwse-resize' },
+] as const
 
 type ToolId = 'select' | 'hand' | 'text' | 'image' | 'shape'
 
@@ -169,6 +245,44 @@ const CANVAS_PRESET_ACTIONS = getAllFunctions().map((preset) => ({
 }))
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+const buildTextStrokeShadow = (color: string, width: number) => {
+  if (!color || color === 'transparent' || width <= 0) return 'none'
+  const w = Math.max(1, Math.round(width))
+  const offsets = [-w, 0, w]
+  const shadows: string[] = []
+  offsets.forEach((x) => {
+    offsets.forEach((y) => {
+      if (x === 0 && y === 0) return
+      shadows.push(`${x}px ${y}px 0 ${color}`)
+    })
+  })
+  return shadows.join(', ')
+}
+
+const wrapCanvasText = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number) => {
+  if (maxWidth <= 0) return text.split('\n')
+  const lines: string[] = []
+  const paragraphs = text.split('\n')
+  paragraphs.forEach((paragraph, paragraphIndex) => {
+    if (paragraph.length === 0) {
+      lines.push('')
+      return
+    }
+    let line = ''
+    for (const char of paragraph) {
+      const testLine = line + char
+      if (ctx.measureText(testLine).width > maxWidth && line) {
+        lines.push(line)
+        line = char
+      } else {
+        line = testLine
+      }
+    }
+    if (line) lines.push(line)
+  })
+  return lines
+}
 
 const isEditableTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false
@@ -226,6 +340,8 @@ export function InfiniteCanvas() {
   const [isChatOpen, setIsChatOpen] = useState(true)
   const [isChatMinimized, setIsChatMinimized] = useState(true)
   const [chatInput, setChatInput] = useState('')
+  const [isChatPinnedToBottom, setIsChatPinnedToBottom] = useState(true)
+  const [showChatJumpToLatest, setShowChatJumpToLatest] = useState(false)
   const chatProvider = 'devdove'
   const chatModel = 'gemini-2.5-flash'
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
@@ -236,6 +352,8 @@ export function InfiniteCanvas() {
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const canvasInputRef = useRef<HTMLInputElement | null>(null)
+  const chatInputRef = useRef<HTMLTextAreaElement | null>(null)
+  const chatScrollRef = useRef<HTMLDivElement | null>(null)
 
   const { data: session } = authClientReact.useSession()
   const user = session?.user
@@ -283,7 +401,18 @@ export function InfiniteCanvas() {
     [camera]
   )
 
-  const measureTextBox = useCallback((text: string, fontSize: number, maxWidth?: number, minHeight = MIN_TEXT_HEIGHT) => {
+  const measureTextBox = useCallback(
+    (
+      text: string,
+      fontSize: number,
+      maxWidth?: number,
+      minHeight = MIN_TEXT_HEIGHT,
+      fontFamily = DEFAULT_TEXT_FONT_FAMILY,
+      fontWeight = DEFAULT_TEXT_FONT_WEIGHT,
+      fontStyle: 'normal' | 'italic' = 'normal',
+      paddingX = TEXT_PADDING_X,
+      paddingY = TEXT_PADDING_Y
+    ) => {
     if (typeof document === 'undefined') {
       return { width: maxWidth ?? MIN_TEXT_WIDTH, height: minHeight }
     }
@@ -294,23 +423,31 @@ export function InfiniteCanvas() {
     measurer.style.wordBreak = 'break-word'
     measurer.style.fontSize = `${fontSize}px`
     measurer.style.lineHeight = '1.3'
-    measurer.style.fontWeight = '500'
-    measurer.style.fontFamily = 'inherit'
+    measurer.style.fontWeight = `${fontWeight}`
+    measurer.style.fontFamily = fontFamily
+    measurer.style.fontStyle = fontStyle
     measurer.style.padding = '0'
     measurer.style.border = '0'
     measurer.style.margin = '0'
     if (maxWidth) {
-      measurer.style.width = `${maxWidth}px`
+      const innerWidth = Math.max(maxWidth - paddingX * 2, MIN_TEXT_WIDTH)
+      measurer.style.width = `${innerWidth}px`
     }
     measurer.textContent = text && text.length > 0 ? text : ' '
     document.body.appendChild(measurer)
     const rect = measurer.getBoundingClientRect()
     document.body.removeChild(measurer)
+    const contentWidth = Math.ceil(rect.width)
+    const contentHeight = Math.ceil(rect.height)
     return {
-      width: maxWidth ? Math.max(Math.ceil(maxWidth), MIN_TEXT_WIDTH) : Math.max(Math.ceil(rect.width), MIN_TEXT_WIDTH),
-      height: Math.max(Math.ceil(rect.height), minHeight),
+      width: maxWidth
+        ? Math.max(Math.ceil(maxWidth), MIN_TEXT_WIDTH)
+        : Math.max(contentWidth + paddingX * 2, MIN_TEXT_WIDTH),
+      height: Math.max(contentHeight + paddingY * 2, minHeight),
     }
-  }, [])
+  },
+    []
+  )
 
   const syncSelection = useCallback(
     (nextIds: string[], primaryId?: string | null) => {
@@ -354,7 +491,10 @@ export function InfiniteCanvas() {
         value,
         DEFAULT_TEXT_SIZE,
         DEFAULT_TEXT_BOX_WIDTH,
-        shouldEdit ? DEFAULT_TEXT_BOX_HEIGHT : MIN_TEXT_HEIGHT
+        shouldEdit ? DEFAULT_TEXT_BOX_HEIGHT : MIN_TEXT_HEIGHT,
+        DEFAULT_TEXT_FONT_FAMILY,
+        DEFAULT_TEXT_FONT_WEIGHT,
+        'normal'
       )
       const nextItem: CanvasTextItem = {
         id: nanoid(),
@@ -366,6 +506,15 @@ export function InfiniteCanvas() {
         data: {
           text: value,
           fontSize: DEFAULT_TEXT_SIZE,
+          color: DEFAULT_TEXT_COLOR,
+          backgroundColor: DEFAULT_TEXT_BACKGROUND,
+          strokeColor: DEFAULT_TEXT_STROKE,
+          strokeWidth: DEFAULT_TEXT_STROKE_WIDTH,
+          fontFamily: DEFAULT_TEXT_FONT_FAMILY,
+          fontWeight: DEFAULT_TEXT_FONT_WEIGHT,
+          fontStyle: 'normal',
+          textDecoration: 'none',
+          align: 'left',
         },
       }
       setItems((prev) => [...prev, nextItem])
@@ -549,12 +698,30 @@ export function InfiniteCanvas() {
             if (item.type !== 'text') return item
             const textValue = item.data?.text ?? DEFAULT_TEXT
             const fontSize = item.data?.fontSize ?? DEFAULT_TEXT_SIZE
+            const color = item.data?.color ?? DEFAULT_TEXT_COLOR
+            const backgroundColor = item.data?.backgroundColor ?? DEFAULT_TEXT_BACKGROUND
+            const strokeColor = item.data?.strokeColor ?? DEFAULT_TEXT_STROKE
+            const strokeWidth = item.data?.strokeWidth ?? DEFAULT_TEXT_STROKE_WIDTH
+            const fontFamily = item.data?.fontFamily ?? DEFAULT_TEXT_FONT_FAMILY
+            const fontWeight = item.data?.fontWeight ?? DEFAULT_TEXT_FONT_WEIGHT
+            const fontStyle = item.data?.fontStyle ?? 'normal'
+            const textDecoration = item.data?.textDecoration ?? 'none'
+            const align = item.data?.align ?? 'left'
             return {
               ...item,
               data: {
                 ...item.data,
                 text: textValue,
                 fontSize,
+                color,
+                backgroundColor,
+                strokeColor,
+                strokeWidth,
+                fontFamily,
+                fontWeight,
+                fontStyle,
+                textDecoration,
+                align,
               },
             }
           })
@@ -877,39 +1044,63 @@ export function InfiniteCanvas() {
       const screenY = event.clientY - rect.top
       const worldPoint = screenToWorld(screenX, screenY)
       const minSize = 40
+      const isCorner = ['tl', 'tr', 'bl', 'br'].includes(dragState.corner)
+      const isHorizontalEdge = dragState.corner === 'ml' || dragState.corner === 'mr'
+      const isVerticalEdge = dragState.corner === 'tm' || dragState.corner === 'bm'
 
       const startWidth = dragState.startWidth
       const startHeight = dragState.startHeight
-      const anchor = (() => {
-        switch (dragState.corner) {
-          case 'tl':
-            return { x: dragState.itemX + startWidth, y: dragState.itemY + startHeight }
-          case 'tr':
-            return { x: dragState.itemX, y: dragState.itemY + startHeight }
-          case 'bl':
-            return { x: dragState.itemX + startWidth, y: dragState.itemY }
-          case 'br':
-            return { x: dragState.itemX, y: dragState.itemY }
-        }
-      })()
+      let nextWidth = startWidth
+      let nextHeight = startHeight
+      let nextX = dragState.itemX
+      let nextY = dragState.itemY
+      let scale = 1
 
-      const rawWidth =
-        dragState.corner === 'tl' || dragState.corner === 'bl'
-          ? anchor.x - worldPoint.x
-          : worldPoint.x - anchor.x
-      const rawHeight =
-        dragState.corner === 'tl' || dragState.corner === 'tr'
-          ? anchor.y - worldPoint.y
-          : worldPoint.y - anchor.y
+      if (isCorner) {
+        const anchor = (() => {
+          switch (dragState.corner) {
+            case 'tl':
+              return { x: dragState.itemX + startWidth, y: dragState.itemY + startHeight }
+            case 'tr':
+              return { x: dragState.itemX, y: dragState.itemY + startHeight }
+            case 'bl':
+              return { x: dragState.itemX + startWidth, y: dragState.itemY }
+            case 'br':
+              return { x: dragState.itemX, y: dragState.itemY }
+          }
+        })()
 
-      const scale = Math.max(rawWidth / startWidth, rawHeight / startHeight, minSize / startWidth, minSize / startHeight)
-      const nextWidth = Math.max(startWidth * scale, minSize)
-      const nextHeight = Math.max(startHeight * scale, minSize)
+        const rawWidth =
+          dragState.corner === 'tl' || dragState.corner === 'bl'
+            ? anchor.x - worldPoint.x
+            : worldPoint.x - anchor.x
+        const rawHeight =
+          dragState.corner === 'tl' || dragState.corner === 'tr'
+            ? anchor.y - worldPoint.y
+            : worldPoint.y - anchor.y
 
-      const nextX =
-        dragState.corner === 'tl' || dragState.corner === 'bl' ? anchor.x - nextWidth : anchor.x
-      const nextY =
-        dragState.corner === 'tl' || dragState.corner === 'tr' ? anchor.y - nextHeight : anchor.y
+        scale = Math.max(
+          rawWidth / startWidth,
+          rawHeight / startHeight,
+          minSize / startWidth,
+          minSize / startHeight
+        )
+        nextWidth = Math.max(startWidth * scale, minSize)
+        nextHeight = Math.max(startHeight * scale, minSize)
+
+        nextX = dragState.corner === 'tl' || dragState.corner === 'bl' ? anchor.x - nextWidth : anchor.x
+        nextY = dragState.corner === 'tl' || dragState.corner === 'tr' ? anchor.y - nextHeight : anchor.y
+      } else if (isHorizontalEdge) {
+        const anchorX = dragState.corner === 'ml' ? dragState.itemX + startWidth : dragState.itemX
+        const rawWidth = dragState.corner === 'ml' ? anchorX - worldPoint.x : worldPoint.x - anchorX
+        nextWidth = Math.max(rawWidth, minSize)
+        nextX = dragState.corner === 'ml' ? anchorX - nextWidth : anchorX
+      } else if (isVerticalEdge) {
+        const anchorY = dragState.corner === 'tm' ? dragState.itemY + startHeight : dragState.itemY
+        const rawHeight = dragState.corner === 'tm' ? anchorY - worldPoint.y : worldPoint.y - anchorY
+        nextHeight = Math.max(rawHeight, minSize)
+        nextY = dragState.corner === 'tm' ? anchorY - nextHeight : anchorY
+      }
 
       setItems((prev) =>
         prev.map((item) =>
@@ -919,16 +1110,37 @@ export function InfiniteCanvas() {
                 x: Math.round(nextX * 100) / 100,
                 y: Math.round(nextY * 100) / 100,
                 width: Math.round(nextWidth * 100) / 100,
-                height: Math.round(nextHeight * 100) / 100,
+                height: (() => {
+                  if (item.type !== 'text') return Math.round(nextHeight * 100) / 100
+                  const nextFontSize = isCorner
+                    ? clamp(
+                        Math.round(((dragState.startFontSize ?? item.data.fontSize) * scale) * 10) / 10,
+                        MIN_TEXT_FONT_SIZE,
+                        MAX_TEXT_FONT_SIZE
+                      )
+                    : item.data.fontSize
+                  const { height } = measureTextBox(
+                    item.data.text,
+                    nextFontSize,
+                    nextWidth,
+                    MIN_TEXT_HEIGHT,
+                    item.data.fontFamily,
+                    item.data.fontWeight,
+                    item.data.fontStyle
+                  )
+                  return Math.round(Math.max(nextHeight, height) * 100) / 100
+                })(),
                 data:
                   item.type === 'text'
                     ? {
                         ...item.data,
-                        fontSize: clamp(
-                          Math.round(((dragState.startFontSize ?? item.data.fontSize) * scale) * 10) / 10,
-                          MIN_TEXT_FONT_SIZE,
-                          MAX_TEXT_FONT_SIZE
-                        ),
+                        fontSize: isCorner
+                          ? clamp(
+                              Math.round(((dragState.startFontSize ?? item.data.fontSize) * scale) * 10) / 10,
+                              MIN_TEXT_FONT_SIZE,
+                              MAX_TEXT_FONT_SIZE
+                            )
+                          : item.data.fontSize,
                       }
                     : item.data,
               }
@@ -1067,7 +1279,7 @@ export function InfiniteCanvas() {
   const handleResizePointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
     item: CanvasItem,
-    corner: 'tl' | 'tr' | 'bl' | 'br'
+    corner: 'tl' | 'tr' | 'bl' | 'br' | 'tm' | 'bm' | 'ml' | 'mr'
   ) => {
     if (event.button !== 0) return
     event.preventDefault()
@@ -1155,11 +1367,20 @@ export function InfiniteCanvas() {
         item.id === id && item.type === 'text'
           ? (() => {
               const targetWidth = Math.max(item.width, MIN_TEXT_WIDTH)
-              const { height } = measureTextBox(text, fontSize, targetWidth)
+              const { height } = measureTextBox(
+                text,
+                fontSize,
+                targetWidth,
+                MIN_TEXT_HEIGHT,
+                item.data.fontFamily,
+                item.data.fontWeight,
+                item.data.fontStyle
+              )
+              const nextHeight = Math.max(height, item.height)
               return {
                 ...item,
                 width: targetWidth,
-                height,
+                height: nextHeight,
                 data: {
                   ...item.data,
                   text,
@@ -1169,6 +1390,44 @@ export function InfiniteCanvas() {
             })()
           : item
       )
+    )
+  }
+
+  const updateTextStyle = (id: string, updates: Partial<CanvasTextItem['data']>) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id || item.type !== 'text') return item
+        const nextData = {
+          ...item.data,
+          ...updates,
+          fontSize:
+            typeof updates.fontSize === 'number'
+              ? clamp(updates.fontSize, MIN_TEXT_FONT_SIZE, MAX_TEXT_FONT_SIZE)
+              : item.data.fontSize,
+        }
+        const shouldMeasure =
+          'fontSize' in updates || 'fontFamily' in updates || 'fontWeight' in updates || 'fontStyle' in updates
+        if (!shouldMeasure) {
+          return {
+            ...item,
+            data: nextData,
+          }
+        }
+        const { height } = measureTextBox(
+          nextData.text,
+          nextData.fontSize,
+          item.width,
+          MIN_TEXT_HEIGHT,
+          nextData.fontFamily,
+          nextData.fontWeight,
+          nextData.fontStyle
+        )
+        return {
+          ...item,
+          height: Math.max(height, item.height),
+          data: nextData,
+        }
+      })
     )
   }
 
@@ -1377,7 +1636,7 @@ export function InfiniteCanvas() {
 
       const bodyStyle = window.getComputedStyle(document.body)
       const textColor = bodyStyle.color || '#111111'
-      const fontFamily = bodyStyle.fontFamily || 'sans-serif'
+      const defaultFontFamily = bodyStyle.fontFamily || 'sans-serif'
       const failedImages: string[] = []
       const imageMap = new Map<string, HTMLImageElement>()
 
@@ -1413,12 +1672,61 @@ export function InfiniteCanvas() {
         const text = item.data.text ?? ''
         if (!text.trim()) continue
         const fontSize = item.data.fontSize * exportScale
-        ctx.fillStyle = textColor
+        const fontFamily = item.data.fontFamily || defaultFontFamily
+        const fontWeight = item.data.fontWeight ?? DEFAULT_TEXT_FONT_WEIGHT
+        const fontStyle = item.data.fontStyle ?? 'normal'
+        const strokeWidth = item.data.strokeWidth ?? 0
+        const strokeColor = item.data.strokeColor ?? 'transparent'
+        const backgroundColor = item.data.backgroundColor ?? 'transparent'
+        const align = item.data.align ?? 'left'
+        const paddingX = TEXT_PADDING_X * exportScale
+        const paddingY = TEXT_PADDING_Y * exportScale
+
+        if (backgroundColor !== 'transparent') {
+          ctx.fillStyle = backgroundColor
+          ctx.fillRect(x, y, itemWidth, itemHeight)
+        }
+
+        const resolvedTextColor =
+          item.data.color && item.data.color !== DEFAULT_TEXT_COLOR ? item.data.color : textColor
+        ctx.fillStyle = resolvedTextColor
         ctx.textBaseline = 'top'
-        ctx.font = `500 ${fontSize}px ${fontFamily}`
+        ctx.textAlign = align === 'justify' ? 'left' : align
+        ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`
         const lineHeight = fontSize * 1.3
-        text.split('\n').forEach((line, index) => {
-          ctx.fillText(line, x, y + index * lineHeight)
+        const maxTextWidth = Math.max(itemWidth - paddingX * 2, 1)
+        const lines = wrapCanvasText(ctx, text, maxTextWidth)
+        const textX =
+          align === 'center'
+            ? x + itemWidth / 2
+            : align === 'right'
+            ? x + itemWidth - paddingX
+            : x + paddingX
+        lines.forEach((line, index) => {
+          const lineY = y + paddingY + index * lineHeight
+          if (strokeWidth > 0 && strokeColor !== 'transparent') {
+            ctx.lineWidth = strokeWidth * exportScale
+            ctx.strokeStyle = strokeColor
+            ctx.strokeText(line, textX, lineY)
+          }
+          ctx.fillText(line, textX, lineY)
+          if (item.data.textDecoration === 'underline') {
+            const metrics = ctx.measureText(line)
+            const underlineY = lineY + lineHeight - fontSize * 0.15
+            const underlineWidth = metrics.width
+            const underlineX =
+              align === 'center'
+                ? textX - underlineWidth / 2
+                : align === 'right'
+                ? textX - underlineWidth
+                : textX
+            ctx.strokeStyle = resolvedTextColor
+            ctx.lineWidth = Math.max(1, fontSize * 0.08)
+            ctx.beginPath()
+            ctx.moveTo(underlineX, underlineY)
+            ctx.lineTo(underlineX + underlineWidth, underlineY)
+            ctx.stroke()
+          }
         })
       }
 
@@ -1612,6 +1920,7 @@ export function InfiniteCanvas() {
   const selectionCountLabel = selectedItems.length > 0 ? `1/${selectedItems.length}` : ''
   const userDisplayName = user?.name?.trim() || user?.email?.split('@')[0] || '访客'
   const userInitials = userDisplayName.slice(0, 2)
+  const hasUserMessage = useMemo(() => messages.some((message) => message.role === 'user'), [messages])
   const creditsDisplay = isCreditsLoading
     ? '…'
     : creditBalance !== null
@@ -1623,6 +1932,11 @@ export function InfiniteCanvas() {
     () => CANVAS_PRESET_ACTIONS.find((item) => item.id === selectedPresetId) ?? null,
     [selectedPresetId]
   )
+  const editingTextItem = useMemo(
+    () => items.find((item) => item.id === editingId && item.type === 'text') ?? null,
+    [items, editingId]
+  )
+  const isTextEditing = Boolean(editingTextItem)
   const resolvedCanvasPrompt = useMemo(() => {
     const userText = canvasInput.trim()
     const presetPrompt = selectedPreset?.prompt?.trim()
@@ -1631,6 +1945,16 @@ export function InfiniteCanvas() {
     return userText
   }, [canvasInput, selectedPreset])
   const canvasPlaceholder = selectedPreset ? `补充${selectedPreset.name}的需求…` : '你想要创作什么？'
+  const chatQuickPrompts = useMemo(() => {
+    const basePrompts = [
+      '给我 3 个构图方案',
+      '给我配色建议',
+      '生成服装平铺图',
+      '把当前思路整理成步骤',
+    ]
+    const focusPrompt = selectedItem ? '总结当前选中对象' : '总结当前画布'
+    return [focusPrompt, ...basePrompts].slice(0, 5)
+  }, [selectedItem])
   const tools: { id: ToolId; label: string; Icon: LucideIcon; shortcut?: string }[] = [
     { id: 'select', label: '选择', Icon: MousePointer2, shortcut: 'V' },
     { id: 'hand', label: '拖拽', Icon: Hand, shortcut: 'H' },
@@ -1640,6 +1964,78 @@ export function InfiniteCanvas() {
   ]
   const toolOrder: Array<ToolId | 'upload'> = ['select', 'hand', 'text', 'upload', 'shape']
   const imageTool = tools.find((tool) => tool.id === 'image')
+
+  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const container = chatScrollRef.current
+    if (!container) return
+    container.scrollTo({ top: container.scrollHeight, behavior })
+  }, [])
+
+  const copyChatText = useCallback(async (text: string) => {
+    const value = text.trim()
+    if (!value) return
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = value
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+      }
+      toast.success('已复制')
+    } catch (copyError) {
+      console.error('Failed to copy chat text', copyError)
+      toast.error('复制失败，请重试')
+    }
+  }, [])
+
+  const insertChatTextToCanvas = useCallback(
+    (text: string, asNote = false) => {
+      const value = text.trim()
+      if (!value) return
+      const { width, height } = measureTextBox(value, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_BOX_WIDTH)
+      const center = getViewportCenterWorld()
+      const id = createTextItem(center.x - width / 2, center.y - height / 2, value, false)
+      if (asNote) {
+        updateTextStyle(id, {
+          backgroundColor: 'hsl(var(--primary) / 0.12)',
+          strokeColor: 'hsl(var(--primary) / 0.35)',
+          strokeWidth: 1,
+        })
+        toast.success('已保存为便签')
+        return
+      }
+      toast.success('已插入到画布')
+    },
+    [createTextItem, getViewportCenterWorld, measureTextBox, updateTextStyle]
+  )
+
+  const handleChatScroll = useCallback(() => {
+    const container = chatScrollRef.current
+    if (!container) return
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    const isAtBottom = distanceToBottom < 24
+    setIsChatPinnedToBottom((prev) => (prev === isAtBottom ? prev : isAtBottom))
+    setShowChatJumpToLatest((prev) => (prev === !isAtBottom ? prev : !isAtBottom))
+  }, [])
+
+  useEffect(() => {
+    if (!isChatOpen || isChatMinimized) return
+    if (!isChatPinnedToBottom) return
+    scrollChatToBottom('smooth')
+  }, [messages, isChatBusy, isChatOpen, isChatMinimized, isChatPinnedToBottom, scrollChatToBottom])
+
+  useEffect(() => {
+    if (!isChatOpen || isChatMinimized) return
+    setIsChatPinnedToBottom(true)
+    setShowChatJumpToLatest(false)
+    requestAnimationFrame(() => scrollChatToBottom('auto'))
+  }, [isChatOpen, isChatMinimized, scrollChatToBottom])
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
@@ -1923,6 +2319,192 @@ export function InfiniteCanvas() {
         </div>
       </div>
 
+      {isTextEditing && editingTextItem && (
+        <div className="pointer-events-none absolute left-20 top-32 z-30">
+          <div className="pointer-events-auto w-64 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
+            <div className="space-y-3 text-xs text-muted-foreground">
+              <div>
+                <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">STROKE</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {TEXT_STROKE_COLORS.map((color) => (
+                    <button
+                      key={color.value}
+                      type="button"
+                      onClick={() =>
+                        updateTextStyle(editingTextItem.id, {
+                          strokeColor: color.value,
+                          strokeWidth: color.value === 'transparent' ? 0 : 1,
+                        })
+                      }
+                      className={cn(
+                        'relative h-6 w-6 rounded-full border',
+                        editingTextItem.data.strokeColor === color.value ? 'border-primary' : 'border-border'
+                      )}
+                    >
+                      <span
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          backgroundColor: color.value === 'transparent' ? 'transparent' : color.value,
+                        }}
+                      />
+                      {color.value === 'transparent' && (
+                        <span className="absolute left-1/2 top-1/2 h-6 w-px -translate-x-1/2 -translate-y-1/2 rotate-45 bg-muted-foreground" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">BACKGROUND</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {TEXT_BACKGROUND_COLORS.map((color) => (
+                    <button
+                      key={color.value}
+                      type="button"
+                      onClick={() => updateTextStyle(editingTextItem.id, { backgroundColor: color.value })}
+                      className={cn(
+                        'relative h-6 w-6 rounded-full border',
+                        editingTextItem.data.backgroundColor === color.value ? 'border-primary' : 'border-border'
+                      )}
+                    >
+                      <span
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          backgroundColor: color.value === 'transparent' ? 'transparent' : color.value,
+                        }}
+                      />
+                      {color.value === 'transparent' && (
+                        <span className="absolute left-1/2 top-1/2 h-6 w-px -translate-x-1/2 -translate-y-1/2 rotate-45 bg-muted-foreground" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">FONT</div>
+                <div className="mt-2">
+                  <Select
+                    value={editingTextItem.data.fontFamily}
+                    onValueChange={(value) => updateTextStyle(editingTextItem.id, { fontFamily: value })}
+                  >
+                    <SelectTrigger className="h-9 w-full rounded-lg text-xs">
+                      <SelectValue placeholder="选择字体" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TEXT_FONT_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">SIZE</div>
+                <div className="mt-2 grid grid-cols-5 gap-2">
+                  {TEXT_SIZE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => updateTextStyle(editingTextItem.id, { fontSize: preset.size })}
+                      className={cn(
+                        'rounded-lg border px-2 py-1 text-[11px] font-semibold',
+                        editingTextItem.data.fontSize === preset.size
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                      )}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">ALIGN</div>
+                  <div className="mt-2 flex gap-2">
+                    {[
+                      { value: 'left', Icon: AlignLeft },
+                      { value: 'center', Icon: AlignCenter },
+                      { value: 'right', Icon: AlignRight },
+                      { value: 'justify', Icon: AlignJustify },
+                    ].map(({ value, Icon }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => updateTextStyle(editingTextItem.id, { align: value as CanvasTextItem['data']['align'] })}
+                        className={cn(
+                          'flex h-8 w-8 items-center justify-center rounded-lg border',
+                          editingTextItem.data.align === value
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">STYLE</div>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateTextStyle(editingTextItem.id, {
+                          fontWeight: editingTextItem.data.fontWeight >= 600 ? DEFAULT_TEXT_FONT_WEIGHT : 700,
+                        })
+                      }
+                      className={cn(
+                        'flex h-8 w-8 items-center justify-center rounded-lg border',
+                        editingTextItem.data.fontWeight >= 600
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                      )}
+                    >
+                      <Bold className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateTextStyle(editingTextItem.id, {
+                          fontStyle: editingTextItem.data.fontStyle === 'italic' ? 'normal' : 'italic',
+                        })
+                      }
+                      className={cn(
+                        'flex h-8 w-8 items-center justify-center rounded-lg border',
+                        editingTextItem.data.fontStyle === 'italic'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                      )}
+                    >
+                      <Italic className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateTextStyle(editingTextItem.id, {
+                          textDecoration: editingTextItem.data.textDecoration === 'underline' ? 'none' : 'underline',
+                        })
+                      }
+                      className={cn(
+                        'flex h-8 w-8 items-center justify-center rounded-lg border',
+                        editingTextItem.data.textDecoration === 'underline'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                      )}
+                    >
+                      <Underline className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isChatOpen && !isChatMinimized && (
         <div className="pointer-events-none absolute bottom-6 right-5 top-32 z-20">
           <div className="pointer-events-auto flex h-full w-[360px] flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur">
@@ -1937,21 +2519,81 @@ export function InfiniteCanvas() {
                 </div>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 py-4">
-              {messages.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground">
-                  <MessageSquare className="h-5 w-5" />
-                  暂无对话，开始提问吧
+            <div
+              ref={chatScrollRef}
+              onScroll={handleChatScroll}
+              className="relative flex-1 overflow-y-auto px-4 py-4"
+            >
+              {!hasUserMessage ? (
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-xs text-muted-foreground">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-muted/40 text-muted-foreground">
+                    <MessageSquare className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">欢迎来到 AI 对话</p>
+                    <p>从一个问题开始，我们会给你建议或可执行的步骤。</p>
+                  </div>
+                  <div className="mt-2 flex flex-wrap justify-center gap-2">
+                    {chatQuickPrompts.map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => {
+                          if (isChatBusy) return
+                          setChatInput(prompt)
+                          requestAnimationFrame(() => chatInputRef.current?.focus())
+                        }}
+                        className="rounded-full border border-border bg-background/80 px-3 py-1 text-[11px] text-foreground transition hover:border-primary/40 hover:text-primary"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {messages.map((message) => {
                     const text = resolveMessageText(message)
                     if (!text) return null
+                    const showActions = message.role === 'assistant'
                     return (
                       <Message key={message.id} from={message.role}>
-                        <MessageContent variant="contained">
-                          <div className="whitespace-pre-wrap leading-relaxed">{text}</div>
+                        <MessageContent
+                          variant="contained"
+                          className={cn(showActions && 'relative overflow-visible pr-14 pt-6')}
+                        >
+                          {message.role === 'assistant' ? (
+                            <Response className="text-sm leading-relaxed text-foreground">
+                              {text}
+                            </Response>
+                          ) : (
+                            <div className="whitespace-pre-wrap leading-relaxed">{text}</div>
+                          )}
+                          {showActions && (
+                            <div className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
+                              <button
+                                type="button"
+                                onClick={() => copyChatText(text)}
+                                className="rounded-full border border-border/70 bg-background/90 px-2 py-0.5 text-[10px] text-muted-foreground shadow-sm transition hover:border-primary/50 hover:text-foreground"
+                              >
+                                复制
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => insertChatTextToCanvas(text, false)}
+                                className="rounded-full border border-border/70 bg-background/90 px-2 py-0.5 text-[10px] text-muted-foreground shadow-sm transition hover:border-primary/50 hover:text-foreground"
+                              >
+                                插入到画布
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => insertChatTextToCanvas(text, true)}
+                                className="rounded-full border border-border/70 bg-background/90 px-2 py-0.5 text-[10px] text-muted-foreground shadow-sm transition hover:border-primary/50 hover:text-foreground"
+                              >
+                                保存为便签
+                              </button>
+                            </div>
+                          )}
                         </MessageContent>
                       </Message>
                     )
@@ -1979,6 +2621,21 @@ export function InfiniteCanvas() {
                       </Message>
                     )
                   })()}
+                </div>
+              )}
+              {showChatJumpToLatest && (
+                <div className="pointer-events-none sticky bottom-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChatPinnedToBottom(true)
+                      setShowChatJumpToLatest(false)
+                      scrollChatToBottom('smooth')
+                    }}
+                    className="pointer-events-auto flex items-center gap-2 rounded-full border border-border bg-background/90 px-3 py-1 text-[11px] text-foreground shadow-sm transition hover:border-primary/50 hover:text-primary"
+                  >
+                    跳到最新
+                  </button>
                 </div>
               )}
             </div>
@@ -2013,6 +2670,7 @@ export function InfiniteCanvas() {
               )}
               <div className="flex items-end gap-2 rounded-2xl border border-border bg-background px-3 py-2 shadow-sm">
                 <textarea
+                  ref={chatInputRef}
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
                   onKeyDown={(event) => {
@@ -2389,6 +3047,10 @@ export function InfiniteCanvas() {
             const isPrimary = item.id === selectedId
             const isText = item.type === 'text'
             const isEditing = isText && editingId === item.id
+            const textShadow =
+              item.type === 'text'
+                ? buildTextStrokeShadow(item.data.strokeColor, item.data.strokeWidth)
+                : 'none'
             return (
               <div
                 key={item.id}
@@ -2446,25 +3108,21 @@ export function InfiniteCanvas() {
                         <div className="pointer-events-none absolute -inset-1 rounded-[20px] border border-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.2)]" />
                         {isPrimary && !hasMultiSelection && (
                           <>
+                            {RESIZE_HANDLES.map((handle) => (
+                              <div
+                                key={handle.id}
+                                className={cn(
+                                  'absolute h-3 w-3 rounded-full border border-primary bg-background shadow-sm',
+                                  handle.className
+                                )}
+                                onPointerDown={(event) => handleResizePointerDown(event, item, handle.id)}
+                                style={{ cursor: handle.cursor }}
+                              />
+                            ))}
                             <div
-                              className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                              onPointerDown={(event) => handleResizePointerDown(event, item, 'tl')}
-                              style={{ cursor: 'nwse-resize' }}
-                            />
-                            <div
-                              className="absolute -right-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                              onPointerDown={(event) => handleResizePointerDown(event, item, 'tr')}
-                              style={{ cursor: 'nesw-resize' }}
-                            />
-                            <div
-                              className="absolute -left-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                              onPointerDown={(event) => handleResizePointerDown(event, item, 'bl')}
-                              style={{ cursor: 'nesw-resize' }}
-                            />
-                            <div
-                              className="absolute -right-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                              onPointerDown={(event) => handleResizePointerDown(event, item, 'br')}
-                              style={{ cursor: 'nwse-resize' }}
+                              className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary bg-background shadow-sm"
+                              onPointerDown={(event) => handleItemPointerDown(event, item)}
+                              style={{ cursor: 'move' }}
                             />
                           </>
                         )}
@@ -2478,25 +3136,21 @@ export function InfiniteCanvas() {
                     )}
                     {selected && isPrimary && !hasMultiSelection && !isEditing && (
                       <>
+                        {RESIZE_HANDLES.map((handle) => (
+                          <div
+                            key={handle.id}
+                            className={cn(
+                              'absolute h-3 w-3 rounded-full border border-primary bg-background shadow-sm',
+                              handle.className
+                            )}
+                            onPointerDown={(event) => handleResizePointerDown(event, item, handle.id)}
+                            style={{ cursor: handle.cursor }}
+                          />
+                        ))}
                         <div
-                          className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                          onPointerDown={(event) => handleResizePointerDown(event, item, 'tl')}
-                          style={{ cursor: 'nwse-resize' }}
-                        />
-                        <div
-                          className="absolute -right-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                          onPointerDown={(event) => handleResizePointerDown(event, item, 'tr')}
-                          style={{ cursor: 'nesw-resize' }}
-                        />
-                        <div
-                          className="absolute -left-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                          onPointerDown={(event) => handleResizePointerDown(event, item, 'bl')}
-                          style={{ cursor: 'nesw-resize' }}
-                        />
-                        <div
-                          className="absolute -right-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                          onPointerDown={(event) => handleResizePointerDown(event, item, 'br')}
-                          style={{ cursor: 'nwse-resize' }}
+                          className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary bg-background shadow-sm"
+                          onPointerDown={(event) => handleItemPointerDown(event, item)}
+                          style={{ cursor: 'move' }}
                         />
                       </>
                     )}
@@ -2513,13 +3167,42 @@ export function InfiniteCanvas() {
                         }}
                         onPointerDown={(event) => event.stopPropagation()}
                         onDoubleClick={(event) => event.stopPropagation()}
-                        className="h-full w-full resize-none break-words bg-transparent text-foreground outline-none font-medium"
-                        style={{ fontSize: `${item.data.fontSize}px`, lineHeight: 1.3 }}
+                        className="h-full w-full resize-none break-words bg-transparent text-foreground outline-none"
+                        style={{
+                          fontSize: `${item.data.fontSize}px`,
+                          lineHeight: 1.3,
+                          color: item.data.color,
+                          backgroundColor: item.data.backgroundColor,
+                          fontFamily: item.data.fontFamily,
+                          fontWeight: item.data.fontWeight,
+                          fontStyle: item.data.fontStyle,
+                          textDecoration: item.data.textDecoration,
+                          textAlign: item.data.align,
+                          textShadow,
+                          padding: `${TEXT_PADDING_Y}px ${TEXT_PADDING_X}px`,
+                          boxSizing: 'border-box',
+                          borderRadius: 12,
+                        }}
                       />
                     ) : (
                       <div
-                        className="whitespace-pre-wrap break-words text-foreground font-medium"
-                        style={{ fontSize: `${item.data.fontSize}px`, lineHeight: 1.3 }}
+                        className="whitespace-pre-wrap break-words text-foreground"
+                        style={{
+                          fontSize: `${item.data.fontSize}px`,
+                          lineHeight: 1.3,
+                          color: item.data.color,
+                          backgroundColor: item.data.backgroundColor,
+                          fontFamily: item.data.fontFamily,
+                          fontWeight: item.data.fontWeight,
+                          fontStyle: item.data.fontStyle,
+                          textDecoration: item.data.textDecoration,
+                          textAlign: item.data.align,
+                          textShadow,
+                          padding: `${TEXT_PADDING_Y}px ${TEXT_PADDING_X}px`,
+                          boxSizing: 'border-box',
+                          borderRadius: 12,
+                          height: '100%',
+                        }}
                         onDoubleClick={(event) => {
                           event.preventDefault()
                           event.stopPropagation()
