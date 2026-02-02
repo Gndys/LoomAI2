@@ -12,6 +12,7 @@ import {
   RefreshCcw,
   Share2,
   Sparkles,
+  SlidersHorizontal,
   Trash2,
   Type,
   Upload,
@@ -20,6 +21,7 @@ import {
   Scissors,
   Copy,
   Layers,
+  Grid2X2,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -117,6 +119,8 @@ export function InfiniteCanvas() {
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({})
   const [activeTool, setActiveTool] = useState<ToolId>('select')
+  const [backgroundMode, setBackgroundMode] = useState<'solid' | 'transparent'>('solid')
+  const [backgroundIntensity, setBackgroundIntensity] = useState<'low' | 'medium' | 'high'>('medium')
 
   const getViewportRect = () => viewportRef.current?.getBoundingClientRect()
 
@@ -250,18 +254,33 @@ export function InfiniteCanvas() {
   }, [camera, items, hasHydrated])
 
   const gridStyle = useMemo(() => {
+    if (backgroundMode === 'solid') {
+      return {
+        backgroundColor: 'hsl(var(--background))',
+      }
+    }
     const gridSize = 24 * camera.scale
     const positionX = camera.x % gridSize
     const positionY = camera.y % gridSize
+    const intensityConfig = {
+      low: { dark: 0.07, light: 0.08, size: 1 },
+      medium: { dark: 0.12, light: 0.14, size: 1.2 },
+      high: { dark: 0.2, light: 0.22, size: 1.4 },
+    }[backgroundIntensity]
+    const darkDot = `rgba(0, 0, 0, ${intensityConfig.dark})`
+    const lightDot = `rgba(255, 255, 255, ${intensityConfig.light})`
+    const dotSize = `${intensityConfig.size}px`
 
     return {
       backgroundColor: 'hsl(var(--background))',
       backgroundImage:
-        'radial-gradient(circle, hsl(var(--foreground) / 0.16) 1.6px, transparent 1.6px), radial-gradient(circle, hsl(var(--primary) / 0.08) 0.9px, transparent 0.9px)',
-      backgroundSize: `${gridSize}px ${gridSize}px, ${gridSize * 2}px ${gridSize * 2}px`,
-      backgroundPosition: `${positionX}px ${positionY}px, ${positionX / 2}px ${positionY / 2}px`,
+        `radial-gradient(circle, ${darkDot} ${dotSize}, transparent ${dotSize}),
+         radial-gradient(circle, ${lightDot} ${dotSize}, transparent ${dotSize})`,
+      backgroundSize: `${gridSize}px ${gridSize}px, ${gridSize}px ${gridSize}px`,
+      backgroundPosition: `${positionX}px ${positionY}px, ${positionX + gridSize / 2}px ${positionY +
+        gridSize / 2}px`,
     }
-  }, [camera])
+  }, [backgroundMode, backgroundIntensity, camera])
 
   const updateCamera = (next: CameraState) => {
     setCamera({
@@ -671,6 +690,20 @@ export function InfiniteCanvas() {
     }
   }
 
+  const toggleBackgroundMode = () => {
+    setBackgroundMode((prev) => (prev === 'solid' ? 'transparent' : 'solid'))
+  }
+
+  const toggleBackgroundIntensity = () => {
+    setBackgroundIntensity((prev) => {
+      if (prev === 'low') return 'medium'
+      if (prev === 'medium') return 'high'
+      return 'low'
+    })
+  }
+
+  const intensityLabel = backgroundIntensity === 'low' ? '弱' : backgroundIntensity === 'medium' ? '中' : '强'
+
   const handleCopyItem = (item: CanvasItem | null) => {
     if (!item) return
     const nextId = nanoid()
@@ -717,6 +750,26 @@ export function InfiniteCanvas() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <ColorSchemeToggle />
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={toggleBackgroundMode}
+              className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Grid2X2 className="h-3.5 w-3.5" />
+              {backgroundMode === 'solid' ? '透明' : '纯色'}
+            </Button>
+            {backgroundMode === 'transparent' && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={toggleBackgroundIntensity}
+                className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                强度 {intensityLabel}
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
