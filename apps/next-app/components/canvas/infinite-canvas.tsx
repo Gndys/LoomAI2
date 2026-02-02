@@ -34,6 +34,8 @@ import { ColorSchemeToggle, ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 import { Message, MessageContent } from '@/components/ai-elements/message'
 import type { UIMessage } from 'ai'
+import { authClientReact } from '@libs/auth/authClient'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 type CanvasBaseItem = {
   id: string
@@ -86,6 +88,8 @@ type DragState =
       startWorldY: number
       itemX: number
       itemY: number
+      groupIds?: string[]
+      groupPositions?: Array<{ id: string; x: number; y: number }>
     }
   | {
       kind: 'resize'
@@ -97,6 +101,14 @@ type DragState =
       startHeight: number
       itemX: number
       itemY: number
+    }
+  | {
+      kind: 'select'
+      startWorldX: number
+      startWorldY: number
+      currentWorldX: number
+      currentWorldY: number
+      additive: boolean
     }
 
 const STORAGE_KEY = 'loomai:canvas:phase0'
@@ -126,6 +138,29 @@ const isEditableTarget = (target: EventTarget | null) => {
   return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable
 }
 
+const isMultiSelectModifier = (event: Pick<KeyboardEvent, 'shiftKey' | 'metaKey' | 'ctrlKey'>) =>
+  event.shiftKey || event.metaKey || event.ctrlKey
+
+const normalizeRect = (startX: number, startY: number, endX: number, endY: number) => {
+  const left = Math.min(startX, endX)
+  const top = Math.min(startY, endY)
+  return {
+    x: left,
+    y: top,
+    width: Math.abs(endX - startX),
+    height: Math.abs(endY - startY),
+  }
+}
+
+const rectsIntersect = (
+  rectA: { x: number; y: number; width: number; height: number },
+  rectB: { x: number; y: number; width: number; height: number }
+) =>
+  rectA.x <= rectB.x + rectB.width &&
+  rectA.x + rectA.width >= rectB.x &&
+  rectA.y <= rectB.y + rectB.height &&
+  rectA.y + rectA.height >= rectB.y
+
 export function InfiniteCanvas() {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -140,9 +175,10 @@ export function InfiniteCanvas() {
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, scale: 1 })
   const [items, setItems] = useState<CanvasItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isSpaceDown, setIsSpaceDown] = useState(false)
-  const [dragMode, setDragMode] = useState<'pan' | 'item' | 'resize' | null>(null)
+  const [dragMode, setDragMode] = useState<'pan' | 'item' | 'resize' | 'select' | null>(null)
   const [hasHydrated, setHasHydrated] = useState(false)
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({})
@@ -153,8 +189,16 @@ export function InfiniteCanvas() {
   const [chatInput, setChatInput] = useState('')
   const chatProvider = 'devdove'
   const chatModel = 'gemini-2.5-flash'
+  const [creditBalance, setCreditBalance] = useState<number | null>(null)
+  const [isCreditsLoading, setIsCreditsLoading] = useState(false)
   const [canvasInput, setCanvasInput] = useState('')
   const [isExporting, setIsExporting] = useState(false)
+
+  const { data: session } = authClientReact.useSession()
+  const user = session?.user
+  const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; width: number; height: number } | null>(
+    null
+  )
 
   const { messages, sendMessage, status, error } = useChat({
     messages: [
@@ -219,6 +263,32 @@ export function InfiniteCanvas() {
     }
   }, [])
 
+  const syncSelection = useCallback(
+    (nextIds: string[], primaryId?: string | null) => {
+      const uniqueIds = Array.from(new Set(nextIds))
+      setSelectedIds(uniqueIds)
+      if (primaryId !== undefined) {
+        setSelectedId(primaryId)
+        return
+      }
+      if (uniqueIds.length === 0) {
+        setSelectedId(null)
+        return
+      }
+      if (selectedId && uniqueIds.includes(selectedId)) {
+        setSelectedId(selectedId)
+        return
+      }
+      setSelectedId(uniqueIds[uniqueIds.length - 1])
+    },
+    [selectedId]
+  )
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds([])
+    setSelectedId(null)
+  }, [])
+
   const getViewportCenterWorld = useCallback(() => {
     const rect = getViewportRect()
     const centerX = rect ? rect.width / 2 : 0
@@ -243,33 +313,59 @@ export function InfiniteCanvas() {
         },
       }
       setItems((prev) => [...prev, nextItem])
-      setSelectedId(nextItem.id)
+      syncSelection([nextItem.id], nextItem.id)
       if (shouldEdit) {
         setEditingId(nextItem.id)
       }
       return nextItem.id
     },
-    [measureTextBox]
+    [measureTextBox, syncSelection]
   )
 
-  const handleDeleteItem = useCallback((itemId: string | null) => {
-    if (!itemId) return
-    setItems((prev) => prev.filter((item) => item.id !== itemId))
-    setSelectedId((prev) => (prev === itemId ? null : prev))
-    setEditingId((prev) => (prev === itemId ? null : prev))
-    setLoadedImages((prev) => {
-      if (!prev[itemId]) return prev
-      const next = { ...prev }
-      delete next[itemId]
-      return next
-    })
-    setBrokenImages((prev) => {
-      if (!prev[itemId]) return prev
-      const next = { ...prev }
-      delete next[itemId]
-      return next
-    })
-  }, [])
+  const handleDeleteItems = useCallback(
+    (itemIds: string[]) => {
+      if (itemIds.length === 0) return
+      const idSet = new Set(itemIds)
+      setItems((prev) => prev.filter((item) => !idSet.has(item.id)))
+      setEditingId((prev) => (prev && idSet.has(prev) ? null : prev))
+      setSelectedIds((prev) => {
+        const next = prev.filter((id) => !idSet.has(id))
+        setSelectedId((current) => {
+          if (current && !next.includes(current)) {
+            return next[0] ?? null
+          }
+          if (!current) {
+            return next[0] ?? null
+          }
+          return current
+        })
+        return next
+      })
+      setLoadedImages((prev) => {
+        let changed = false
+        const next = { ...prev }
+        idSet.forEach((id) => {
+          if (next[id]) {
+            delete next[id]
+            changed = true
+          }
+        })
+        return changed ? next : prev
+      })
+      setBrokenImages((prev) => {
+        let changed = false
+        const next = { ...prev }
+        idSet.forEach((id) => {
+          if (next[id]) {
+            delete next[id]
+            changed = true
+          }
+        })
+        return changed ? next : prev
+      })
+    },
+    [setSelectedId]
+  )
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -303,16 +399,36 @@ export function InfiniteCanvas() {
         event.code === 'Backspace'
       if (!isDeleteKey) return
       if (isEditableTarget(event.target)) return
-      if (!selectedId) return
+      if (selectedIds.length === 0 && !selectedId) return
       event.preventDefault()
-      handleDeleteItem(selectedId)
+      handleDeleteItems(selectedIds.length > 0 ? selectedIds : selectedId ? [selectedId] : [])
     }
 
     window.addEventListener('keydown', handleDeleteKey, { capture: true })
     return () => {
       window.removeEventListener('keydown', handleDeleteKey, { capture: true })
     }
-  }, [handleDeleteItem, selectedId])
+  }, [handleDeleteItems, selectedId, selectedIds])
+
+  useEffect(() => {
+    const handleSelectionKeys = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a') {
+        event.preventDefault()
+        const allIds = items.map((item) => item.id)
+        syncSelection(allIds, allIds[allIds.length - 1] ?? null)
+        return
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        clearSelection()
+        setEditingId(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleSelectionKeys)
+    return () => window.removeEventListener('keydown', handleSelectionKeys)
+  }, [clearSelection, items, syncSelection])
 
   useEffect(() => {
     const viewport = viewportRef.current
@@ -424,6 +540,36 @@ export function InfiniteCanvas() {
   }, [error])
 
   useEffect(() => {
+    if (!user?.id) {
+      setCreditBalance(null)
+      return
+    }
+
+    let cancelled = false
+    const fetchCredits = async () => {
+      setIsCreditsLoading(true)
+      try {
+        const response = await fetch('/api/credits/status')
+        if (!response.ok) return
+        const data = await response.json()
+        if (!cancelled) {
+          const balance = typeof data?.credits?.balance === 'number' ? data.credits.balance : Number(data?.credits?.balance)
+          setCreditBalance(Number.isFinite(balance) ? balance : 0)
+        }
+      } catch (fetchError) {
+        console.error('Failed to fetch credits status', fetchError)
+      } finally {
+        if (!cancelled) setIsCreditsLoading(false)
+      }
+    }
+
+    fetchCredits()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
+
+  useEffect(() => {
     if (!editingId) return
     const handle = window.requestAnimationFrame(() => {
       textEditRef.current?.focus()
@@ -520,7 +666,35 @@ export function InfiniteCanvas() {
       return
     }
 
-    setSelectedId(null)
+    if (event.button === 0 && activeTool === 'select' && !isSpaceDown) {
+      event.preventDefault()
+      const rect = getViewportRect()
+      if (!rect) return
+      const screenX = event.clientX - rect.left
+      const screenY = event.clientY - rect.top
+      const worldPoint = screenToWorld(screenX, screenY)
+      const additive = isMultiSelectModifier(event)
+
+      if (!additive) {
+        clearSelection()
+        setEditingId(null)
+      }
+
+      dragStateRef.current = {
+        kind: 'select',
+        startWorldX: worldPoint.x,
+        startWorldY: worldPoint.y,
+        currentWorldX: worldPoint.x,
+        currentWorldY: worldPoint.y,
+        additive,
+      }
+      setDragMode('select')
+      setSelectionBox({ x: worldPoint.x, y: worldPoint.y, width: 0, height: 0 })
+      viewportRef.current?.setPointerCapture(event.pointerId)
+      return
+    }
+
+    clearSelection()
     setEditingId(null)
     setDragMode(null)
 
@@ -573,8 +747,27 @@ export function InfiniteCanvas() {
       const screenX = event.clientX - rect.left
       const screenY = event.clientY - rect.top
       const worldPoint = screenToWorld(screenX, screenY)
-      const nextX = dragState.itemX + (worldPoint.x - dragState.startWorldX)
-      const nextY = dragState.itemY + (worldPoint.y - dragState.startWorldY)
+      const deltaX = worldPoint.x - dragState.startWorldX
+      const deltaY = worldPoint.y - dragState.startWorldY
+
+      if (dragState.groupPositions && dragState.groupPositions.length > 0) {
+        setItems((prev) => {
+          const positionMap = new Map(dragState.groupPositions?.map((entry) => [entry.id, entry]))
+          return prev.map((item) => {
+            const origin = positionMap.get(item.id)
+            if (!origin) return item
+            return {
+              ...item,
+              x: Math.round((origin.x + deltaX) * 100) / 100,
+              y: Math.round((origin.y + deltaY) * 100) / 100,
+            }
+          })
+        })
+        return
+      }
+
+      const nextX = dragState.itemX + deltaX
+      const nextY = dragState.itemY + deltaY
 
       setItems((prev) =>
         prev.map((item) =>
@@ -645,6 +838,21 @@ export function InfiniteCanvas() {
         )
       )
     }
+
+    if (dragState.kind === 'select') {
+      event.preventDefault()
+      const rect = getViewportRect()
+      if (!rect) return
+      const screenX = event.clientX - rect.left
+      const screenY = event.clientY - rect.top
+      const worldPoint = screenToWorld(screenX, screenY)
+      dragStateRef.current = {
+        ...dragState,
+        currentWorldX: worldPoint.x,
+        currentWorldY: worldPoint.y,
+      }
+      setSelectionBox(normalizeRect(dragState.startWorldX, dragState.startWorldY, worldPoint.x, worldPoint.y))
+    }
   }
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -654,6 +862,28 @@ export function InfiniteCanvas() {
       pendingPanStartRef.current = null
     }
     if (!dragStateRef.current) return
+    const dragState = dragStateRef.current
+
+    if (dragState.kind === 'select') {
+      const selection = normalizeRect(
+        dragState.startWorldX,
+        dragState.startWorldY,
+        dragState.currentWorldX,
+        dragState.currentWorldY
+      )
+      setSelectionBox(null)
+      const selectionThreshold = 4 / camera.scale
+      if (selection.width >= selectionThreshold || selection.height >= selectionThreshold) {
+        const boxedIds = items
+          .filter((item) =>
+            rectsIntersect(selection, { x: item.x, y: item.y, width: item.width, height: item.height })
+          )
+          .map((item) => item.id)
+        const nextIds = dragState.additive ? Array.from(new Set([...selectedIds, ...boxedIds])) : boxedIds
+        syncSelection(nextIds, boxedIds[boxedIds.length - 1] ?? null)
+      }
+    }
+
     dragStateRef.current = null
     setDragMode(null)
     viewportRef.current?.releasePointerCapture(event.pointerId)
@@ -676,6 +906,7 @@ export function InfiniteCanvas() {
         lastTextClickRef.current = { id: null, time: 0 }
         event.preventDefault()
         event.stopPropagation()
+        syncSelection([item.id], item.id)
         setEditingId(item.id)
         setActiveTool('select')
         return
@@ -685,12 +916,33 @@ export function InfiniteCanvas() {
 
     event.preventDefault()
     event.stopPropagation()
+
+    if (isMultiSelectModifier(event)) {
+      if (selectedIds.includes(item.id)) {
+        const nextIds = selectedIds.filter((id) => id !== item.id)
+        syncSelection(nextIds, selectedId === item.id ? nextIds[nextIds.length - 1] ?? null : selectedId ?? null)
+      } else {
+        syncSelection([...selectedIds, item.id], item.id)
+      }
+      return
+    }
+
+    if (!selectedIds.includes(item.id)) {
+      syncSelection([item.id], item.id)
+    } else {
+      syncSelection(selectedIds, item.id)
+    }
+
     const rect = getViewportRect()
     if (!rect) return
 
     const screenX = event.clientX - rect.left
     const screenY = event.clientY - rect.top
     const worldPoint = screenToWorld(screenX, screenY)
+    const groupIds = selectedIds.includes(item.id) && selectedIds.length > 1 ? selectedIds : undefined
+    const groupPositions = groupIds
+      ? items.filter((entry) => groupIds.includes(entry.id)).map((entry) => ({ id: entry.id, x: entry.x, y: entry.y }))
+      : undefined
 
     dragStateRef.current = {
       kind: 'item',
@@ -699,9 +951,10 @@ export function InfiniteCanvas() {
       startWorldY: worldPoint.y,
       itemX: item.x,
       itemY: item.y,
+      groupIds,
+      groupPositions,
     }
 
-    setSelectedId(item.id)
     if (editingId && editingId !== item.id) {
       setEditingId(null)
     }
@@ -735,7 +988,7 @@ export function InfiniteCanvas() {
       itemY: item.y,
     }
 
-    setSelectedId(item.id)
+    syncSelection([item.id], item.id)
     setDragMode('resize')
     viewportRef.current?.setPointerCapture(event.pointerId)
   }
@@ -776,7 +1029,7 @@ export function InfiniteCanvas() {
       }
 
       setItems((prev) => [...prev, nextItem])
-      setSelectedId(nextItem.id)
+      syncSelection([nextItem.id], nextItem.id)
       setBrokenImages((prev) => {
         if (!prev[nextItem.id]) return prev
         const next = { ...prev }
@@ -816,7 +1069,7 @@ export function InfiniteCanvas() {
   const commitTextItem = (id: string) => {
     const current = items.find((item) => item.id === id)
     if (current?.type === 'text' && !current.data.text.trim()) {
-      handleDeleteItem(id)
+      handleDeleteItems([id])
       return
     }
     setEditingId(null)
@@ -904,7 +1157,7 @@ export function InfiniteCanvas() {
 
   const handleClear = () => {
     setItems([])
-    setSelectedId(null)
+    clearSelection()
     setEditingId(null)
   }
 
@@ -1137,7 +1390,7 @@ export function InfiniteCanvas() {
     }
 
     setItems((prev) => [...prev, nextItem])
-    setSelectedId(nextId)
+    syncSelection([nextId], nextId)
     setLoadedImages((prev) => (prev[item.id] ? { ...prev, [nextId]: true } : prev))
     setBrokenImages((prev) => (prev[item.id] ? { ...prev, [nextId]: true } : prev))
   }
@@ -1185,13 +1438,28 @@ export function InfiniteCanvas() {
 
   const zoomPercent = Math.round(camera.scale * 100)
   const isChatBusy = status === 'streaming' || status === 'submitted'
-  const selectedItem = items.find((item) => item.id === selectedId) ?? null
-  const selectedItemLabel = selectedItem
+  const selectedItems = useMemo(
+    () => items.filter((item) => selectedIds.includes(item.id)),
+    [items, selectedIds]
+  )
+  const selectedItem = selectedItems.find((item) => item.id === selectedId) ?? selectedItems[0] ?? null
+  const hasMultiSelection = selectedItems.length > 1
+  const selectedItemLabel = hasMultiSelection
+    ? `已选 ${selectedItems.length} 项`
+    : selectedItem
     ? selectedItem.type === 'text'
       ? selectedItem.data.text.trim().split('\n')[0].slice(0, 16) || '未命名文本'
       : selectedItem.data?.name?.trim() || '未命名图片'
     : ''
-  const isTextSelected = selectedItem?.type === 'text'
+  const userDisplayName = user?.name?.trim() || user?.email?.split('@')[0] || '访客'
+  const userInitials = userDisplayName.slice(0, 2)
+  const creditsDisplay = isCreditsLoading
+    ? '…'
+    : creditBalance !== null
+      ? Math.round(creditBalance).toString()
+      : '--'
+  const isTextSelected = selectedItem?.type === 'text' && !hasMultiSelection
+  const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds])
   const tools: { id: ToolId; label: string; Icon: LucideIcon }[] = [
     { id: 'select', label: '选择', Icon: MousePointer2 },
     { id: 'hand', label: '拖拽', Icon: Hand },
@@ -1217,6 +1485,13 @@ export function InfiniteCanvas() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full border border-border bg-background/70 px-2 py-1 text-xs font-medium text-muted-foreground">
+              <Avatar className="h-6 w-6">
+                <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
+                <AvatarFallback className="text-[10px]">{userInitials}</AvatarFallback>
+              </Avatar>
+              <span className="max-w-[120px] truncate text-foreground">{userDisplayName}</span>
+            </div>
             <ThemeToggle />
             <ColorSchemeToggle />
             <Button
@@ -1272,7 +1547,7 @@ export function InfiniteCanvas() {
             </Button>
             <div className="flex items-center gap-1 rounded-full border border-border bg-background/70 px-2 py-1 text-xs font-medium text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5" />
-              8
+              {creditsDisplay}
             </div>
             <Button
               size="sm"
@@ -1390,7 +1665,7 @@ export function InfiniteCanvas() {
                 <div className="mb-2 flex items-center justify-between gap-2 rounded-2xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-primary/70" />
-                    <span className="shrink-0">当前对象</span>
+                    <span className="shrink-0">{hasMultiSelection ? '已选对象' : '当前对象'}</span>
                     <span className="truncate text-foreground">{selectedItemLabel}</span>
                   </div>
                   <Button
@@ -1398,7 +1673,7 @@ export function InfiniteCanvas() {
                     variant="ghost"
                     type="button"
                     onClick={() => {
-                      setSelectedId(null)
+                      clearSelection()
                       setEditingId(null)
                     }}
                     className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -1473,10 +1748,10 @@ export function InfiniteCanvas() {
       </div>
 
       <div className="pointer-events-none absolute left-5 bottom-5 z-20 hidden items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-1 text-xs text-muted-foreground shadow-sm md:flex">
-        滚轮缩放 · 空格+拖拽平移 · 双击复位
+        滚轮缩放 · 空格+拖拽平移 · Shift/⌘/Ctrl 点击多选 · 拖动选框
       </div>
 
-      {selectedItem && (
+      {selectedItem && !hasMultiSelection && (
         <>
           <div
             className="pointer-events-none absolute z-20"
@@ -1548,7 +1823,7 @@ export function InfiniteCanvas() {
                 size="sm"
                 variant="ghost"
                 className="h-7 gap-1 rounded-full px-2 text-xs text-destructive hover:text-destructive"
-                onClick={() => handleDeleteItem(selectedItem.id)}
+                onClick={() => handleDeleteItems(selectedIds.length > 0 ? selectedIds : [selectedItem.id])}
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 删除
@@ -1587,6 +1862,8 @@ export function InfiniteCanvas() {
           'absolute inset-0 z-0 overflow-hidden',
           dragMode === 'pan'
             ? 'cursor-grabbing'
+            : dragMode === 'select'
+            ? 'cursor-crosshair'
             : isSpaceDown
             ? 'cursor-grab'
             : activeTool === 'text'
@@ -1607,8 +1884,20 @@ export function InfiniteCanvas() {
           className="absolute left-0 top-0 h-full w-full origin-top-left"
           style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})` }}
         >
+          {selectionBox && (
+            <div
+              className="pointer-events-none absolute rounded-lg border border-primary/70 bg-primary/10"
+              style={{
+                left: selectionBox.x,
+                top: selectionBox.y,
+                width: selectionBox.width,
+                height: selectionBox.height,
+              }}
+            />
+          )}
           {items.map((item) => {
-            const selected = item.id === selectedId
+            const selected = selectedIdsSet.has(item.id)
+            const isPrimary = item.id === selectedId
             const isText = item.type === 'text'
             const isEditing = isText && editingId === item.id
             return (
@@ -1666,26 +1955,30 @@ export function InfiniteCanvas() {
                     {selected && (
                       <>
                         <div className="pointer-events-none absolute -inset-1 rounded-[20px] border border-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.2)]" />
-                        <div
-                          className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                          onPointerDown={(event) => handleResizePointerDown(event, item, 'tl')}
-                          style={{ cursor: 'nwse-resize' }}
-                        />
-                        <div
-                          className="absolute -right-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                          onPointerDown={(event) => handleResizePointerDown(event, item, 'tr')}
-                          style={{ cursor: 'nesw-resize' }}
-                        />
-                        <div
-                          className="absolute -left-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                          onPointerDown={(event) => handleResizePointerDown(event, item, 'bl')}
-                          style={{ cursor: 'nesw-resize' }}
-                        />
-                        <div
-                          className="absolute -right-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
-                          onPointerDown={(event) => handleResizePointerDown(event, item, 'br')}
-                          style={{ cursor: 'nwse-resize' }}
-                        />
+                        {isPrimary && !hasMultiSelection && (
+                          <>
+                            <div
+                              className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                              onPointerDown={(event) => handleResizePointerDown(event, item, 'tl')}
+                              style={{ cursor: 'nwse-resize' }}
+                            />
+                            <div
+                              className="absolute -right-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                              onPointerDown={(event) => handleResizePointerDown(event, item, 'tr')}
+                              style={{ cursor: 'nesw-resize' }}
+                            />
+                            <div
+                              className="absolute -left-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                              onPointerDown={(event) => handleResizePointerDown(event, item, 'bl')}
+                              style={{ cursor: 'nesw-resize' }}
+                            />
+                            <div
+                              className="absolute -right-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                              onPointerDown={(event) => handleResizePointerDown(event, item, 'br')}
+                              style={{ cursor: 'nwse-resize' }}
+                            />
+                          </>
+                        )}
                       </>
                     )}
                   </>

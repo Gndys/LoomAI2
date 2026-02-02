@@ -34,10 +34,17 @@ export function createChatProvider(
     }
     case 'devdove': {
       const devdoveConfig = config as ProviderConfig['devdove'] | undefined;
+      const normalizeBaseUrl = (value: string | undefined, fallback: string) => {
+        const base = (value || fallback).replace(/\/+$/, '');
+        return base.endsWith('/v1') ? base : `${base}/v1`;
+      };
       return createOpenAICompatible({
         name: 'devdove',
         apiKey: devdoveConfig?.apiKey || process.env.DEVDOVE_API_KEY || '',
-        baseURL: devdoveConfig?.baseURL || process.env.DEVDOVE_BASE_URL || 'https://api.devdove.site',
+        baseURL: normalizeBaseUrl(
+          devdoveConfig?.baseURL || process.env.DEVDOVE_BASE_URL,
+          'https://api.devdove.site/v1'
+        ),
       });
     }
     default:
