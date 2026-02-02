@@ -11,6 +11,7 @@ import type { ChatProviderName, ImageProviderName, ProviderConfig } from './type
  * - qwen: Chat + Image (via OpenAI-compatible API)
  * - openai: Chat + Image (DALL-E)
  * - deepseek: Chat only
+ * - devdove: Chat only (OpenAI-compatible)
  */
 export function createChatProvider(
   providerName: ChatProviderName,
@@ -30,6 +31,14 @@ export function createChatProvider(
     }
     case 'deepseek': {
       return createDeepSeek(config as ProviderConfig['deepseek']);
+    }
+    case 'devdove': {
+      const devdoveConfig = config as ProviderConfig['devdove'] | undefined;
+      return createOpenAICompatible({
+        name: 'devdove',
+        apiKey: devdoveConfig?.apiKey || process.env.DEVDOVE_API_KEY || '',
+        baseURL: devdoveConfig?.baseURL || process.env.DEVDOVE_BASE_URL || 'https://api.devdove.site',
+      });
     }
     default:
       throw new Error(`Unsupported chat provider: ${providerName}`);

@@ -5,7 +5,7 @@
 export const aiConfig = {
   /**
    * Default AI Provider
-   * @type {'qwen' | 'deepseek' | 'openai'}
+   * @type {'qwen' | 'deepseek' | 'openai' | 'devdove'}
    */
   defaultProvider: 'qwen' as const,
 
@@ -15,7 +15,8 @@ export const aiConfig = {
   defaultModels: {
     qwen: 'qwen-turbo',
     deepseek: 'deepseek-chat',
-    openai: 'gpt-5'
+    openai: 'gpt-5',
+    devdove: 'gemini-2.5-flash'
   },
 
   /**
@@ -25,7 +26,8 @@ export const aiConfig = {
   availableModels: {
     qwen: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
     deepseek: ['deepseek-chat', 'deepseek-coder'],
-    openai: ['gpt-5', 'gpt-5-codex', 'gpt-5-pro']
+    openai: ['gpt-5', 'gpt-5-codex', 'gpt-5-pro'],
+    devdove: ['gemini-2.5-flash']
   },
 
   /**

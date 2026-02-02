@@ -3,16 +3,20 @@ import type { OpenAIProviderSettings } from '@ai-sdk/openai';
 import type { UIMessage } from 'ai';
 
 // All supported providers
-export type AllProviderName = 'qwen' | 'openai' | 'deepseek' | 'fal';
+export type AllProviderName = 'qwen' | 'openai' | 'deepseek' | 'devdove' | 'fal';
 
 // Chat-capable providers (excludes fal which is image-only)
-export type ChatProviderName = 'qwen' | 'openai' | 'deepseek';
+export type ChatProviderName = 'qwen' | 'openai' | 'deepseek' | 'devdove';
 
 // Legacy alias for backwards compatibility
 export type ProviderName = ChatProviderName;
 
 // Provider configurations
 export type QwenConfig = {
+  apiKey: string;
+  baseURL?: string;
+};
+export type DevdoveConfig = {
   apiKey: string;
   baseURL?: string;
 };
@@ -26,6 +30,7 @@ export type ProviderConfig = {
   qwen: QwenConfig;
   openai: OpenAIConfig;
   deepseek: DeepSeekConfig;
+  devdove: DevdoveConfig;
   fal: FalConfig;
 };
 

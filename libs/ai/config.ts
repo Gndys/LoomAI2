@@ -25,6 +25,11 @@ const PROVIDER_ENV_KEYS: Record<AllProviderName, {
     apiKey: 'DEEPSEEK_API_KEY',
     capabilities: ['chat'],
   },
+  devdove: {
+    apiKey: 'DEVDOVE_API_KEY',
+    baseURL: 'DEVDOVE_BASE_URL',
+    capabilities: ['chat'],
+  },
   // Image only providers
   fal: {
     apiKey: 'FAL_API_KEY',

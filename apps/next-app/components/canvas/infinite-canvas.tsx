@@ -135,6 +135,7 @@ export function InfiniteCanvas() {
   const pendingPanTimeoutRef = useRef<number | null>(null)
   const pendingPanStartRef = useRef<{ x: number; y: number } | null>(null)
   const textEditRef = useRef<HTMLTextAreaElement | null>(null)
+  const lastTextClickRef = useRef<{ id: string | null; time: number }>({ id: null, time: 0 })
 
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, scale: 1 })
   const [items, setItems] = useState<CanvasItem[]>([])
@@ -150,7 +151,10 @@ export function InfiniteCanvas() {
   const [backgroundIntensity, setBackgroundIntensity] = useState<'low' | 'medium' | 'high'>('medium')
   const [isChatOpen, setIsChatOpen] = useState(true)
   const [chatInput, setChatInput] = useState('')
+  const chatProvider = 'devdove'
+  const chatModel = 'gemini-2.5-flash'
   const [canvasInput, setCanvasInput] = useState('')
+  const [isExporting, setIsExporting] = useState(false)
 
   const { messages, sendMessage, status, error } = useChat({
     messages: [
@@ -348,11 +352,22 @@ export function InfiniteCanvas() {
       const parsed = JSON.parse(raw) as { camera?: CameraState; items?: CanvasItem[] }
       if (parsed.camera) setCamera(parsed.camera)
       if (parsed.items) {
-        setItems(
-          parsed.items.filter((item) =>
-            item.type === 'text' ? Boolean(item.data?.text?.trim()) : Boolean(item.data?.src)
-          )
-        )
+        const nextItems = parsed.items
+          .map((item) => {
+            if (item.type !== 'text') return item
+            const textValue = item.data?.text ?? DEFAULT_TEXT
+            const fontSize = item.data?.fontSize ?? DEFAULT_TEXT_SIZE
+            return {
+              ...item,
+              data: {
+                ...item.data,
+                text: textValue,
+                fontSize,
+              },
+            }
+          })
+          .filter((item) => (item.type === 'text' ? Boolean(item.data?.text?.trim()) : Boolean(item.data?.src)))
+        setItems(nextItems)
       }
     } catch (error) {
       console.error('Failed to restore canvas state', error)
@@ -473,6 +488,12 @@ export function InfiniteCanvas() {
   }
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (editingId && !isEditableTarget(event.target) && event.button === 0 && !isSpaceDown && activeTool !== 'hand') {
+      commitTextItem(editingId)
+      setActiveTool('select')
+      return
+    }
+
     if (event.button === 1 || isSpaceDown || activeTool === 'hand') {
       event.preventDefault()
       dragStateRef.current = {
@@ -495,6 +516,7 @@ export function InfiniteCanvas() {
       const screenY = event.clientY - rect.top
       const worldPoint = screenToWorld(screenX, screenY)
       createTextItem(worldPoint.x, worldPoint.y, '', true)
+      setActiveTool('select')
       return
     }
 
@@ -637,7 +659,9 @@ export function InfiniteCanvas() {
     viewportRef.current?.releasePointerCapture(event.pointerId)
   }
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null
+    if (target?.closest('[data-canvas-item]')) return
     updateCamera({ x: 0, y: 0, scale: 1 })
   }
 
@@ -645,6 +669,19 @@ export function InfiniteCanvas() {
     if (event.button !== 0) return
     if (isSpaceDown) return
     if (item.type === 'text' && editingId === item.id) return
+    if (item.type === 'text') {
+      const now = performance.now()
+      const last = lastTextClickRef.current
+      if (last.id === item.id && now - last.time < 320) {
+        lastTextClickRef.current = { id: null, time: 0 }
+        event.preventDefault()
+        event.stopPropagation()
+        setEditingId(item.id)
+        setActiveTool('select')
+        return
+      }
+      lastTextClickRef.current = { id: item.id, time: now }
+    }
 
     event.preventDefault()
     event.stopPropagation()
@@ -777,14 +814,11 @@ export function InfiniteCanvas() {
   }
 
   const commitTextItem = (id: string) => {
-    setItems((prev) => {
-      const current = prev.find((item) => item.id === id)
-      if (!current || current.type !== 'text') return prev
-      if (!current.data.text.trim()) {
-        return prev.filter((item) => item.id !== id)
-      }
-      return prev
-    })
+    const current = items.find((item) => item.id === id)
+    if (current?.type === 'text' && !current.data.text.trim()) {
+      handleDeleteItem(id)
+      return
+    }
     setEditingId(null)
   }
 
@@ -871,6 +905,7 @@ export function InfiniteCanvas() {
   const handleClear = () => {
     setItems([])
     setSelectedId(null)
+    setEditingId(null)
   }
 
   const getDownloadName = (name?: string, mimeType?: string) => {
@@ -879,6 +914,180 @@ export function InfiniteCanvas() {
     if (mimeType?.includes('jpeg')) return `${name ?? 'canvas-image'}.jpg`
     if (mimeType?.includes('webp')) return `${name ?? 'canvas-image'}.webp`
     return `${name ?? 'canvas-image'}.png`
+  }
+
+  const loadExportImage = async (src: string) => {
+    if (!src) return null
+    const loadImageElement = (url: string) =>
+      new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => resolve(img)
+        img.onerror = () => reject(new Error('图片加载失败'))
+        img.src = url
+      })
+
+    if (src.startsWith('data:') || src.startsWith('blob:')) {
+      try {
+        return await loadImageElement(src)
+      } catch (error) {
+        return null
+      }
+    }
+
+    try {
+      const response = await fetch(src, { mode: 'cors' })
+      if (!response.ok) {
+        throw new Error('图片请求失败')
+      }
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      try {
+        return await loadImageElement(objectUrl)
+      } finally {
+        URL.revokeObjectURL(objectUrl)
+      }
+    } catch (error) {
+      return null
+    }
+  }
+
+  const getExportBounds = (exportItems: CanvasItem[]) => {
+    let minX = Number.POSITIVE_INFINITY
+    let minY = Number.POSITIVE_INFINITY
+    let maxX = Number.NEGATIVE_INFINITY
+    let maxY = Number.NEGATIVE_INFINITY
+
+    for (const item of exportItems) {
+      minX = Math.min(minX, item.x)
+      minY = Math.min(minY, item.y)
+      maxX = Math.max(maxX, item.x + item.width)
+      maxY = Math.max(maxY, item.y + item.height)
+    }
+
+    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+      return null
+    }
+
+    return { minX, minY, maxX, maxY }
+  }
+
+  const handleExportCanvas = async () => {
+    if (isExporting) return
+    const exportItems = items.filter((item) => {
+      if (item.type === 'image') return Boolean(item.data?.src)
+      return Boolean(item.data?.text?.trim())
+    })
+
+    if (exportItems.length === 0) {
+      toast.message('画布为空，暂无可导出的内容')
+      return
+    }
+
+    setIsExporting(true)
+    const toastId = toast.loading('正在导出画布...')
+    try {
+      const bounds = getExportBounds(exportItems)
+      if (!bounds) {
+        toast.message('没有可导出的内容', { id: toastId })
+        return
+      }
+
+      const width = Math.ceil(bounds.maxX - bounds.minX + EXPORT_PADDING * 2)
+      const height = Math.ceil(bounds.maxY - bounds.minY + EXPORT_PADDING * 2)
+      const maxSide = Math.max(width, height)
+      const exportScale = maxSide > MAX_EXPORT_SIZE ? MAX_EXPORT_SIZE / maxSide : 1
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const exportBackground = 'transparent'
+
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.floor(width * exportScale * dpr))
+      canvas.height = Math.max(1, Math.floor(height * exportScale * dpr))
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        throw new Error('无法创建导出画布')
+      }
+
+      ctx.scale(dpr, dpr)
+
+      if (exportBackground === 'solid') {
+        const backgroundColor = window.getComputedStyle(document.body).backgroundColor || '#ffffff'
+        ctx.fillStyle = backgroundColor
+        ctx.fillRect(0, 0, width * exportScale, height * exportScale)
+      }
+
+      const bodyStyle = window.getComputedStyle(document.body)
+      const textColor = bodyStyle.color || '#111111'
+      const fontFamily = bodyStyle.fontFamily || 'sans-serif'
+      const failedImages: string[] = []
+      const imageMap = new Map<string, HTMLImageElement>()
+
+      await Promise.all(
+        exportItems
+          .filter((item): item is CanvasImageItem => item.type === 'image')
+          .map(async (item) => {
+            const image = await loadExportImage(item.data.src)
+            if (!image) {
+              failedImages.push(item.data.name ?? item.id)
+              return
+            }
+            imageMap.set(item.id, image)
+          })
+      )
+
+      const offsetX = EXPORT_PADDING - bounds.minX
+      const offsetY = EXPORT_PADDING - bounds.minY
+
+      for (const item of exportItems) {
+        const x = (item.x + offsetX) * exportScale
+        const y = (item.y + offsetY) * exportScale
+        const itemWidth = item.width * exportScale
+        const itemHeight = item.height * exportScale
+
+        if (item.type === 'image') {
+          const image = imageMap.get(item.id)
+          if (!image) continue
+          ctx.drawImage(image, x, y, itemWidth, itemHeight)
+          continue
+        }
+
+        const text = item.data.text ?? ''
+        if (!text.trim()) continue
+        const fontSize = item.data.fontSize * exportScale
+        ctx.fillStyle = textColor
+        ctx.textBaseline = 'top'
+        ctx.font = `500 ${fontSize}px ${fontFamily}`
+        const lineHeight = fontSize * 1.3
+        text.split('\n').forEach((line, index) => {
+          ctx.fillText(line, x, y + index * lineHeight)
+        })
+      }
+
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1))
+      if (!blob) {
+        throw new Error('导出失败，请稍后再试')
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `loomai-canvas-${timestamp}.png`
+      link.click()
+      URL.revokeObjectURL(link.href)
+
+      if (failedImages.length > 0) {
+        toast.message(`已导出，但有 ${failedImages.length} 张图片无法导出`, { id: toastId })
+      } else if (exportScale < 1) {
+        toast.success(`导出完成（已按最大边 ${MAX_EXPORT_SIZE}px 缩放）`, { id: toastId })
+      } else {
+        toast.success('导出完成', { id: toastId })
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '导出失败'
+      toast.error(message, { id: toastId })
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleDownloadItem = async (item: CanvasImageItem) => {
@@ -938,7 +1147,15 @@ export function InfiniteCanvas() {
     if (!text) return
     if (status === 'streaming' || status === 'submitted') return
     setChatInput('')
-    await sendMessage({ text })
+    await sendMessage(
+      { text },
+      {
+        body: {
+          provider: chatProvider,
+          model: chatModel,
+        },
+      }
+    )
   }
 
   const sendCanvasText = () => {
@@ -974,7 +1191,6 @@ export function InfiniteCanvas() {
       ? selectedItem.data.text.trim().split('\n')[0].slice(0, 16) || '未命名文本'
       : selectedItem.data?.name?.trim() || '未命名图片'
     : ''
-  const isImageSelected = selectedItem?.type === 'image'
   const isTextSelected = selectedItem?.type === 'text'
   const tools: { id: ToolId; label: string; Icon: LucideIcon }[] = [
     { id: 'select', label: '选择', Icon: MousePointer2 },
@@ -1047,10 +1263,12 @@ export function InfiniteCanvas() {
             <Button
               size="sm"
               variant="ghost"
+              onClick={handleExportCanvas}
+              disabled={isExporting}
               className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <Download className="h-3.5 w-3.5" />
-              导出
+              {isExporting ? '导出中...' : '导出'}
             </Button>
             <div className="flex items-center gap-1 rounded-full border border-border bg-background/70 px-2 py-1 text-xs font-medium text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5" />
@@ -1179,7 +1397,10 @@ export function InfiniteCanvas() {
                     size="icon"
                     variant="ghost"
                     type="button"
-                    onClick={() => setSelectedId(null)}
+                    onClick={() => {
+                      setSelectedId(null)
+                      setEditingId(null)
+                    }}
                     className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -1364,7 +1585,13 @@ export function InfiniteCanvas() {
         ref={viewportRef}
         className={cn(
           'absolute inset-0 z-0 overflow-hidden',
-          dragMode === 'pan' ? 'cursor-grabbing' : isSpaceDown ? 'cursor-grab' : 'cursor-default'
+          dragMode === 'pan'
+            ? 'cursor-grabbing'
+            : isSpaceDown
+            ? 'cursor-grab'
+            : activeTool === 'text'
+            ? 'cursor-text'
+            : 'cursor-default'
         )}
         style={gridStyle}
         onWheel={handleWheel}
@@ -1392,6 +1619,8 @@ export function InfiniteCanvas() {
                   !isEditing && 'select-none',
                   dragMode === 'item' && selected ? 'cursor-grabbing' : isText ? 'cursor-text' : 'cursor-move'
                 )}
+                data-canvas-item
+                data-canvas-type={item.type}
                 style={{
                   left: item.x,
                   top: item.y,
@@ -1402,10 +1631,11 @@ export function InfiniteCanvas() {
                 }}
                 onPointerDown={(event) => handleItemPointerDown(event, item)}
                 onDoubleClick={(event) => {
-                  if (item.type !== 'text') return
+                  if (item.type !== 'text' || isEditing) return
                   event.preventDefault()
                   event.stopPropagation()
                   setEditingId(item.id)
+                  setActiveTool('select')
                 }}
               >
                 {DEBUG_CANVAS && (
@@ -1476,13 +1706,20 @@ export function InfiniteCanvas() {
                           commitTextItem(item.id)
                         }}
                         onPointerDown={(event) => event.stopPropagation()}
-                        className="h-full w-full resize-none bg-transparent text-foreground outline-none"
+                        onDoubleClick={(event) => event.stopPropagation()}
+                        className="h-full w-full resize-none bg-transparent text-foreground outline-none font-medium"
                         style={{ fontSize: `${item.data.fontSize}px`, lineHeight: 1.3 }}
                       />
                     ) : (
                       <div
-                        className="whitespace-pre-wrap text-foreground"
+                        className="whitespace-pre-wrap text-foreground font-medium"
                         style={{ fontSize: `${item.data.fontSize}px`, lineHeight: 1.3 }}
+                        onDoubleClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          setEditingId(item.id)
+                          setActiveTool('select')
+                        }}
                       >
                         {item.data.text}
                       </div>
@@ -1495,7 +1732,7 @@ export function InfiniteCanvas() {
 
           {items.length === 0 && (
             <div className="absolute left-1/2 top-1/2 w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-dashed border-border bg-background/80 p-6 text-center text-sm text-muted-foreground shadow-[0_12px_35px_-25px_hsl(var(--foreground)/0.25)]">
-              拖拽图片到画布，或点击左侧工具栏上传
+              拖拽图片到画布，或点击左侧工具栏上传 / 添加文本
             </div>
           )}
         </div>

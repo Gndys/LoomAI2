@@ -1403,7 +1403,8 @@ export const en: Locale = {
         title: "AI Provider",
         openai: "OpenAI",
         qwen: "Qwen",
-        deepseek: "DeepSeek"
+        deepseek: "DeepSeek",
+        devdove: "Kailang Douligu"
       },
       models: {
         "gpt-5": "GPT-5",
@@ -1413,7 +1414,8 @@ export const en: Locale = {
         "qwen-plus": "Qwen Plus", 
         "qwen-turbo": "Qwen Turbo",
         "deepseek-chat": "DeepSeek Chat",
-        "deepseek-coder": "DeepSeek Coder"
+        "deepseek-coder": "DeepSeek Coder",
+        "gemini-2.5-flash": "Kailang Douligu"
       },
       actions: {
         send: "Send",

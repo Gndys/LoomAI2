@@ -1221,7 +1221,8 @@ export const zhCN: Locale = {
         title: "AI 提供商",
         openai: "OpenAI",
         qwen: "通义千问",
-        deepseek: "DeepSeek"
+        deepseek: "DeepSeek",
+        devdove: "开朗斗笠菇"
       },
       models: {
         "gpt-5": "GPT-5",
@@ -1231,7 +1232,8 @@ export const zhCN: Locale = {
         "qwen-plus": "通义千问-Plus", 
         "qwen-turbo": "通义千问-Turbo",
         "deepseek-chat": "DeepSeek 对话",
-        "deepseek-coder": "DeepSeek 编程"
+        "deepseek-coder": "DeepSeek 编程",
+        "gemini-2.5-flash": "开朗斗笠菇"
       },
       actions: {
         send: "发送",
