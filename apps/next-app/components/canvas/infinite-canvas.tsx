@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
 import { nanoid } from 'nanoid'
 import {
   ArrowUpRight,
@@ -8,6 +10,7 @@ import {
   Download,
   Hand,
   ImagePlus,
+  MessageSquare,
   MousePointer2,
   RefreshCcw,
   Share2,
@@ -21,6 +24,7 @@ import {
   Scissors,
   Copy,
   Layers,
+  X,
   Grid2X2,
   type LucideIcon,
 } from 'lucide-react'
@@ -28,6 +32,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ColorSchemeToggle, ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
+import { Message, MessageContent } from '@/components/ai-elements/message'
+import type { UIMessage } from 'ai'
 
 type CanvasItem = {
   id: string
@@ -121,6 +127,24 @@ export function InfiniteCanvas() {
   const [activeTool, setActiveTool] = useState<ToolId>('select')
   const [backgroundMode, setBackgroundMode] = useState<'solid' | 'transparent'>('solid')
   const [backgroundIntensity, setBackgroundIntensity] = useState<'low' | 'medium' | 'high'>('medium')
+  const [isChatOpen, setIsChatOpen] = useState(true)
+  const [chatInput, setChatInput] = useState('')
+
+  const { messages, sendMessage, status, error } = useChat({
+    messages: [
+      {
+        id: 'canvas-assistant-welcome',
+        role: 'assistant',
+        content: '你好！把需求告诉我，我可以帮你生成设计建议或总结。',
+      },
+    ],
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
+    onError: (chatError) => {
+      console.error('Canvas chat error:', chatError)
+    },
+  })
 
   const getViewportRect = () => viewportRef.current?.getBoundingClientRect()
 
@@ -252,6 +276,12 @@ export function InfiniteCanvas() {
     }, 300)
     return () => window.clearTimeout(handle)
   }, [camera, items, hasHydrated])
+
+  useEffect(() => {
+    if (!error) return
+    const message = error instanceof Error ? error.message : 'AI 请求失败，请稍后再试'
+    toast.error(message)
+  }, [error])
 
   const gridStyle = useMemo(() => {
     if (backgroundMode === 'solid') {
@@ -721,8 +751,34 @@ export function InfiniteCanvas() {
     setBrokenImages((prev) => (prev[item.id] ? { ...prev, [nextId]: true } : prev))
   }
 
+  const sendChat = async () => {
+    const text = chatInput.trim()
+    if (!text) return
+    if (status === 'streaming' || status === 'submitted') return
+    setChatInput('')
+    await sendMessage({ text })
+  }
+
+  const handleChatSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    await sendChat()
+  }
+
+  const resolveMessageText = (message: UIMessage) => {
+    const parts = (message as UIMessage & { parts?: { type: string; text?: string }[] }).parts
+    if (Array.isArray(parts) && parts.length > 0) {
+      return parts
+        .map((part) => (part.type === 'text' ? part.text ?? '' : ''))
+        .join('')
+        .trim()
+    }
+    return (message as UIMessage & { content?: string }).content ?? ''
+  }
+
   const zoomPercent = Math.round(camera.scale * 100)
+  const isChatBusy = status === 'streaming' || status === 'submitted'
   const selectedItem = items.find((item) => item.id === selectedId) ?? null
+  const selectedItemLabel = selectedItem?.data?.name?.trim() || '未命名图片'
   const tools: { id: ToolId; label: string; Icon: LucideIcon }[] = [
     { id: 'select', label: '选择', Icon: MousePointer2 },
     { id: 'hand', label: '拖拽', Icon: Hand },
@@ -770,6 +826,19 @@ export function InfiniteCanvas() {
                 强度 {intensityLabel}
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsChatOpen((prev) => !prev)}
+              className={cn(
+                'h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground',
+                isChatOpen &&
+                  'bg-primary/10 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.25)]'
+              )}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              AI 对话
+            </Button>
             <Button
               size="sm"
               variant="ghost"
@@ -854,6 +923,99 @@ export function InfiniteCanvas() {
           缩放 {zoomPercent}%
         </div>
       </div>
+
+      {isChatOpen && (
+        <div className="pointer-events-none absolute bottom-6 right-5 top-32 z-20 w-[360px]">
+          <div className="pointer-events-auto flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-xs font-semibold text-primary">
+                  AI
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-foreground">AI 对话</span>
+                  <span className="text-xs text-muted-foreground">
+                    {isChatBusy ? '正在生成中…' : '随时提问，获得建议'}
+                  </span>
+                </div>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setIsChatOpen(false)}
+                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              {messages.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground">
+                  <MessageSquare className="h-5 w-5" />
+                  暂无对话，开始提问吧
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {messages.map((message) => {
+                    const text = resolveMessageText(message)
+                    if (!text) return null
+                    return (
+                      <Message key={message.id} from={message.role}>
+                        <MessageContent variant="contained">
+                          <div className="whitespace-pre-wrap leading-relaxed">{text}</div>
+                        </MessageContent>
+                      </Message>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            <form onSubmit={handleChatSubmit} className="border-t border-border p-3">
+              {selectedItem && (
+                <div className="mb-2 flex items-center justify-between gap-2 rounded-2xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-primary/70" />
+                    <span className="shrink-0">当前对象</span>
+                    <span className="truncate text-foreground">{selectedItemLabel}</span>
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    type="button"
+                    onClick={() => setSelectedId(null)}
+                    className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+              <div className="flex items-end gap-2 rounded-2xl border border-border bg-background px-3 py-2 shadow-sm">
+                <textarea
+                  value={chatInput}
+                  onChange={(event) => setChatInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' || event.shiftKey) return
+                    event.preventDefault()
+                    void sendChat()
+                  }}
+                  rows={1}
+                  placeholder="描述你的需求，例如：生成服装平铺图"
+                  className="max-h-32 flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                />
+                <Button
+                  size="icon"
+                  type="submit"
+                  disabled={isChatBusy || chatInput.trim().length === 0}
+                  className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <ArrowUpRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="mt-2 text-[11px] text-muted-foreground">Enter 发送，Shift+Enter 换行</div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 w-[min(720px,calc(100%-3rem))] -translate-x-1/2">
         <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-border bg-background/85 px-4 py-3 shadow-lg backdrop-blur">
