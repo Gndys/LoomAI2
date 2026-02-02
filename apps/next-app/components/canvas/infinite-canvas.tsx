@@ -11,6 +11,7 @@ import {
   Hand,
   ImagePlus,
   MessageSquare,
+  MoreHorizontal,
   MousePointer2,
   RefreshCcw,
   Share2,
@@ -31,6 +32,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -194,7 +196,9 @@ export function InfiniteCanvas() {
   const [activeTool, setActiveTool] = useState<ToolId>('select')
   const [backgroundMode, setBackgroundMode] = useState<'solid' | 'transparent'>('solid')
   const [backgroundIntensity, setBackgroundIntensity] = useState<'low' | 'medium' | 'high'>('medium')
+  const [backgroundSpacing, setBackgroundSpacing] = useState<'tight' | 'medium' | 'loose'>('medium')
   const [isChatOpen, setIsChatOpen] = useState(true)
+  const [isChatMinimized, setIsChatMinimized] = useState(true)
   const [chatInput, setChatInput] = useState('')
   const chatProvider = 'devdove'
   const chatModel = 'gemini-2.5-flash'
@@ -382,12 +386,28 @@ export function InfiniteCanvas() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code !== 'Space') return
       if (isEditableTarget(event.target)) return
-      if (isPointerInViewport) {
-        event.preventDefault()
+      if (event.code === 'Space') {
+        if (isPointerInViewport) {
+          event.preventDefault()
+        }
+        setIsSpaceDown(true)
+        return
       }
-      setIsSpaceDown(true)
+
+      const key = event.key.toLowerCase()
+      const toolMap: Record<string, ToolId> = {
+        v: 'select',
+        h: 'hand',
+        t: 'text',
+        i: 'image',
+        s: 'shape',
+      }
+      const nextTool = toolMap[key]
+      if (nextTool) {
+        event.preventDefault()
+        setActiveTool(nextTool)
+      }
     }
     const handleKeyUp = (event: KeyboardEvent) => {
       if (event.code !== 'Space') return
@@ -609,7 +629,12 @@ export function InfiniteCanvas() {
         backgroundColor: 'hsl(var(--background))',
       }
     }
-    const gridSize = 24 * camera.scale
+    const baseSpacing = {
+      tight: 30,
+      medium: 60,
+      loose: 90,
+    }[backgroundSpacing]
+    const gridSize = baseSpacing * camera.scale
     const positionX = camera.x % gridSize
     const positionY = camera.y % gridSize
     const intensityConfig = {
@@ -630,7 +655,7 @@ export function InfiniteCanvas() {
       backgroundPosition: `${positionX}px ${positionY}px, ${positionX + gridSize / 2}px ${positionY +
         gridSize / 2}px`,
     }
-  }, [backgroundMode, backgroundIntensity, camera])
+  }, [backgroundMode, backgroundIntensity, backgroundSpacing, camera])
 
   const updateCamera = (next: CameraState) => {
     setCamera({
@@ -1407,6 +1432,11 @@ export function InfiniteCanvas() {
     setActiveTool(toolId)
     if (toolId === 'image') {
       setIsCanvasPromptOpen((prev) => !prev)
+      return
+    }
+    if (toolId === 'text') {
+      setIsChatOpen(true)
+      setIsChatMinimized(false)
     }
   }
 
@@ -1508,6 +1538,9 @@ export function InfiniteCanvas() {
       ? selectedItem.data.text.trim().split('\n')[0].slice(0, 16) || '未命名文本'
       : selectedItem.data?.name?.trim() || '未命名图片'
     : ''
+  const primaryImageLabel =
+    selectedItem?.type === 'image' ? selectedItem.data?.name?.trim() || '未命名图片' : ''
+  const selectionCountLabel = selectedItems.length > 0 ? `1/${selectedItems.length}` : ''
   const userDisplayName = user?.name?.trim() || user?.email?.split('@')[0] || '访客'
   const userInitials = userDisplayName.slice(0, 2)
   const creditsDisplay = isCreditsLoading
@@ -1517,13 +1550,15 @@ export function InfiniteCanvas() {
       : '--'
   const isTextSelected = selectedItem?.type === 'text' && !hasMultiSelection
   const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds])
-  const tools: { id: ToolId; label: string; Icon: LucideIcon }[] = [
-    { id: 'select', label: '选择', Icon: MousePointer2 },
-    { id: 'hand', label: '拖拽', Icon: Hand },
-    { id: 'text', label: '文本', Icon: Type },
-    { id: 'image', label: '图片', Icon: ImagePlus },
-    { id: 'shape', label: '形状', Icon: Square },
+  const tools: { id: ToolId; label: string; Icon: LucideIcon; shortcut?: string }[] = [
+    { id: 'select', label: '选择', Icon: MousePointer2, shortcut: 'V' },
+    { id: 'hand', label: '拖拽', Icon: Hand, shortcut: 'H' },
+    { id: 'text', label: '文本', Icon: Type, shortcut: 'T' },
+    { id: 'image', label: '图像生成器', Icon: ImagePlus, shortcut: 'I' },
+    { id: 'shape', label: '形状', Icon: Square, shortcut: 'S' },
   ]
+  const toolOrder: Array<ToolId | 'upload'> = ['select', 'hand', 'text', 'upload', 'shape']
+  const imageTool = tools.find((tool) => tool.id === 'image')
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
@@ -1548,9 +1583,9 @@ export function InfiniteCanvas() {
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64">
-                <DropdownMenuLabel>画布设置</DropdownMenuLabel>
-              <DropdownMenuSeparator />
+              <DropdownMenuContent align="start" className="w-72 p-2">
+                <DropdownMenuLabel className="px-2 text-sm font-semibold">画布设置</DropdownMenuLabel>
+                <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs text-muted-foreground">主题色</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={colorScheme}
@@ -1567,18 +1602,28 @@ export function InfiniteCanvas() {
                   ))}
                 </DropdownMenuRadioGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-muted-foreground">背景</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">背景样式</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={backgroundMode}
                   onValueChange={(value) => setBackgroundMode(value as 'solid' | 'transparent')}
                 >
                   <DropdownMenuRadioItem value="solid">纯色</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="transparent">透明</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="transparent">点阵</DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
                 {backgroundMode === 'transparent' && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">透明强度</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">点阵间距</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup
+                      value={backgroundSpacing}
+                      onValueChange={(value) => setBackgroundSpacing(value as 'tight' | 'medium' | 'loose')}
+                    >
+                      <DropdownMenuRadioItem value="tight">紧密</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="medium">标准</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="loose">稀疏</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">点阵强度</DropdownMenuLabel>
                     <DropdownMenuRadioGroup
                       value={backgroundIntensity}
                       onValueChange={(value) => setBackgroundIntensity(value as 'low' | 'medium' | 'high')}
@@ -1604,27 +1649,6 @@ export function InfiniteCanvas() {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => setIsChatOpen((prev) => !prev)}
-              className={cn(
-                'h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground',
-                isChatOpen &&
-                  'bg-primary/10 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.25)]'
-              )}
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              AI 对话
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              分享
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
               onClick={handleExportCanvas}
               disabled={isExporting}
               className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -1632,10 +1656,33 @@ export function InfiniteCanvas() {
               <Download className="h-3.5 w-3.5" />
               {isExporting ? '导出中...' : '导出'}
             </Button>
-            <div className="flex items-center gap-1 rounded-full border border-border bg-background/70 px-2 py-1 text-xs font-medium text-muted-foreground">
-              <Sparkles className="h-3.5 w-3.5" />
-              {creditsDisplay}
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                  更多
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem className="gap-2">
+                  <Share2 className="h-4 w-4" />
+                  分享
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-muted-foreground">积分</DropdownMenuLabel>
+                <DropdownMenuItem disabled className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    余额
+                  </span>
+                  <span>{creditsDisplay}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               size="sm"
               className="h-8 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
@@ -1648,45 +1695,92 @@ export function InfiniteCanvas() {
 
       <div className="pointer-events-none absolute left-5 top-24 z-20">
         <div className="pointer-events-auto flex flex-col items-center gap-2 rounded-2xl border border-border bg-background/85 p-2 shadow-md backdrop-blur">
-          {tools.map(({ id, label, Icon }) => (
-            <Tooltip key={id}>
+          {toolOrder.map((item) => {
+            if (item === 'upload') {
+              return (
+                <Tooltip key="upload">
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleUploadClick}
+                      aria-label="上传图片"
+                      className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <Upload className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    上传图片
+                  </TooltipContent>
+                </Tooltip>
+              )
+            }
+
+            const tool = tools.find((entry) => entry.id === item)
+            if (!tool) return null
+            const Icon = tool.Icon
+
+            return (
+              <Tooltip key={tool.id}>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleToolClick(tool.id)}
+                    aria-label={tool.label}
+                    className={cn(
+                      'h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground',
+                      activeTool === tool.id &&
+                        'bg-primary/10 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.25)]'
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  <div className="flex items-center gap-2">
+                    <span>{tool.label}</span>
+                    {tool.shortcut && (
+                      <span className="rounded border border-border bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        {tool.shortcut}
+                      </span>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            )
+          })}
+          <div className="my-1 h-px w-6 bg-border" />
+          {imageTool && (
+            <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
                   variant="ghost"
-                  onClick={() => handleToolClick(id)}
-                  aria-label={label}
+                  onClick={() => handleToolClick(imageTool.id)}
+                  aria-label={imageTool.label}
                   className={cn(
                     'h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground',
-                    activeTool === id &&
+                    activeTool === imageTool.id &&
                       'bg-primary/10 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.25)]'
                   )}
                 >
-                  <Icon className="h-5 w-5" />
+                  <imageTool.Icon className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" className="text-xs">
-                {label}
+                <div className="flex items-center gap-2">
+                  <span>{imageTool.label}</span>
+                  {imageTool.shortcut && (
+                    <span className="rounded border border-border bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {imageTool.shortcut}
+                    </span>
+                  )}
+                </div>
               </TooltipContent>
             </Tooltip>
-          ))}
-          <div className="my-1 h-px w-6 bg-border" />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={handleUploadClick}
-                aria-label="上传图片"
-                className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <Upload className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
-              上传图片
-            </TooltipContent>
-          </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -1723,14 +1817,34 @@ export function InfiniteCanvas() {
       </div>
 
       <div className="pointer-events-none absolute right-5 top-24 z-20">
-        <div className="pointer-events-auto rounded-full border border-border bg-background/85 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
-          缩放 {zoomPercent}%
+        <div className="pointer-events-auto flex items-center gap-2">
+          <div className="rounded-full border border-border bg-background/85 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+            缩放 {zoomPercent}%
+          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsChatOpen(true)
+                  setIsChatMinimized((prev) => !prev)
+                }}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground"
+                aria-label={isChatMinimized ? '展开 AI 对话' : '收起 AI 对话'}
+              >
+                <Sparkles className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="text-xs">
+              {isChatMinimized ? '智能设计师' : '收起对话'}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
-      {isChatOpen && (
-        <div className="pointer-events-none absolute bottom-6 right-5 top-32 z-20 w-[360px]">
-          <div className="pointer-events-auto flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur">
+      {isChatOpen && !isChatMinimized && (
+        <div className="pointer-events-none absolute bottom-6 right-5 top-32 z-20">
+          <div className="pointer-events-auto flex h-full w-[360px] flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-xs font-semibold text-primary">
@@ -1743,21 +1857,6 @@ export function InfiniteCanvas() {
                   </span>
                 </div>
               </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setIsChatOpen(false)}
-                    className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left" className="text-xs">
-                  关闭对话
-                </TooltipContent>
-              </Tooltip>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-4">
               {messages.length === 0 ? (
@@ -1850,18 +1949,35 @@ export function InfiniteCanvas() {
           <div className="pointer-events-auto rounded-3xl border border-border bg-background/85 px-4 py-3 shadow-lg backdrop-blur">
             <div className="flex flex-col gap-2">
               {selectedItem?.type === 'image' && (
-                <div className="flex items-center gap-2 rounded-2xl border border-border/80 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                  <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-background">
-                    <img
-                      src={selectedItem.data.src}
-                      alt={selectedItem.data.name ?? 'reference'}
-                      className="h-full w-full object-cover"
-                      draggable={false}
-                    />
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-muted/30 px-3 py-2">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-background">
+                      <img
+                        src={selectedItem.data.src}
+                        alt={primaryImageLabel || 'reference'}
+                        className="h-full w-full object-cover"
+                        draggable={false}
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="text-[11px] text-muted-foreground">原始参考</span>
+                      <span className="truncate text-sm text-foreground">{primaryImageLabel}</span>
+                    </div>
                   </div>
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className="shrink-0">参考图</span>
-                    <span className="truncate text-foreground">{selectedItemLabel}</span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="rounded-full border border-border bg-background/70 px-2 py-1 text-[11px]">
+                      {selectionCountLabel}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearSelection()
+                        setEditingId(null)
+                      }}
+                      className="rounded-full border border-border bg-background/70 px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      清空选择
+                    </button>
                   </div>
                 </div>
               )}
@@ -1935,9 +2051,7 @@ export function InfiniteCanvas() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute left-5 bottom-5 z-20 hidden items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-1 text-xs text-muted-foreground shadow-sm md:flex">
-        触控板/滚轮平移 · Ctrl/⌘+滚轮缩放 · 空格/中键拖拽平移 · Shift/⌘/Ctrl 点击多选 · 拖动选框
-      </div>
+
 
       {selectedItem && !hasMultiSelection && (
         <>
