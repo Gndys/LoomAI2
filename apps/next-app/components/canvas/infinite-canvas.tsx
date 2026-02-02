@@ -8,11 +8,15 @@ import {
   ArrowUpRight,
   ChevronDown,
   Download,
+  DraftingCompass,
   Hand,
   ImagePlus,
   MessageSquare,
   MoreHorizontal,
   MousePointer2,
+  Megaphone,
+  Palette,
+  PencilLine,
   RefreshCcw,
   Share2,
   Sparkles,
@@ -48,6 +52,7 @@ import { authClientReact } from '@libs/auth/authClient'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useTheme } from '@/hooks/use-theme'
 import { type ColorScheme, THEME_CONFIG } from '@libs/ui/themes'
+import { getAllFunctions } from '@libs/ai/prompt-engine'
 
 type CanvasBaseItem = {
   id: string
@@ -142,6 +147,22 @@ const DEBUG_CANVAS = false
 
 type ToolId = 'select' | 'hand' | 'text' | 'image' | 'shape'
 
+const CANVAS_PRESET_ICON_MAP: Record<string, LucideIcon> = {
+  'flat-lay': ImagePlus,
+  sketch: PencilLine,
+  promo: Megaphone,
+  pattern: DraftingCompass,
+  recolor: Palette,
+}
+
+const CANVAS_PRESET_ACTIONS = getAllFunctions().map((preset) => ({
+  id: preset.id,
+  name: preset.name,
+  description: preset.description,
+  Icon: CANVAS_PRESET_ICON_MAP[preset.id] ?? Sparkles,
+  prompt: preset.positive,
+}))
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 const isEditableTarget = (target: EventTarget | null) => {
@@ -206,6 +227,8 @@ export function InfiniteCanvas() {
   const [isCreditsLoading, setIsCreditsLoading] = useState(false)
   const [canvasInput, setCanvasInput] = useState('')
   const [isCanvasPromptOpen, setIsCanvasPromptOpen] = useState(false)
+  const [isCanvasPresetOpen, setIsCanvasPresetOpen] = useState(false)
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const canvasInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -582,6 +605,11 @@ export function InfiniteCanvas() {
       canvasInputRef.current?.focus()
     })
     return () => window.cancelAnimationFrame(handle)
+  }, [isCanvasPromptOpen])
+
+  useEffect(() => {
+    if (isCanvasPromptOpen) return
+    setIsCanvasPresetOpen(false)
   }, [isCanvasPromptOpen])
 
   useEffect(() => {
@@ -1499,12 +1527,22 @@ export function InfiniteCanvas() {
   }
 
   const sendCanvasText = () => {
-    const text = canvasInput.trim()
+    const text = resolvedCanvasPrompt.trim()
     if (!text) return
     const { width, height } = measureTextBox(text, DEFAULT_TEXT_SIZE)
     const center = getViewportCenterWorld()
     createTextItem(center.x - width / 2, center.y - height / 2, text, false)
     setCanvasInput('')
+  }
+
+  const handleCanvasPresetSelect = (presetId: string) => {
+    const preset = CANVAS_PRESET_ACTIONS.find((item) => item.id === presetId)
+    if (!preset) return
+    setSelectedPresetId(presetId)
+    setIsCanvasPresetOpen(false)
+    window.requestAnimationFrame(() => {
+      canvasInputRef.current?.focus()
+    })
   }
 
   const handleChatSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -1550,6 +1588,18 @@ export function InfiniteCanvas() {
       : '--'
   const isTextSelected = selectedItem?.type === 'text' && !hasMultiSelection
   const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds])
+  const selectedPreset = useMemo(
+    () => CANVAS_PRESET_ACTIONS.find((item) => item.id === selectedPresetId) ?? null,
+    [selectedPresetId]
+  )
+  const resolvedCanvasPrompt = useMemo(() => {
+    const userText = canvasInput.trim()
+    const presetPrompt = selectedPreset?.prompt?.trim()
+    if (presetPrompt && userText) return `${presetPrompt}\n${userText}`
+    if (presetPrompt) return presetPrompt
+    return userText
+  }, [canvasInput, selectedPreset])
+  const canvasPlaceholder = selectedPreset ? `补充${selectedPreset.name}的需求…` : '你想要创作什么？'
   const tools: { id: ToolId; label: string; Icon: LucideIcon; shortcut?: string }[] = [
     { id: 'select', label: '选择', Icon: MousePointer2, shortcut: 'V' },
     { id: 'hand', label: '拖拽', Icon: Hand, shortcut: 'H' },
@@ -1852,9 +1902,7 @@ export function InfiniteCanvas() {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-foreground">AI 对话</span>
-                  <span className="text-xs text-muted-foreground">
-                    {isChatBusy ? '正在生成中…' : '随时提问，获得建议'}
-                  </span>
+                  <span className="text-xs text-muted-foreground">随时提问，获得建议</span>
                 </div>
               </div>
             </div>
@@ -1877,6 +1925,29 @@ export function InfiniteCanvas() {
                       </Message>
                     )
                   })}
+                  {isChatBusy && (() => {
+                    const lastMessage = messages[messages.length - 1]
+                    const lastText = lastMessage ? resolveMessageText(lastMessage) : ''
+                    if (lastMessage?.role === 'assistant' && lastText) return null
+                    return (
+                      <Message from="assistant" className="py-2">
+                        <MessageContent
+                          variant="contained"
+                          className="gap-2 px-3 py-2 text-xs text-muted-foreground"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground">
+                              think
+                            </span>
+                            <span>正在思考…</span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
+                            <div className="canvas-think-bar h-full w-[38%] rounded-full bg-primary/70" />
+                          </div>
+                        </MessageContent>
+                      </Message>
+                    )
+                  })()}
                 </div>
               )}
             </div>
@@ -1940,6 +2011,23 @@ export function InfiniteCanvas() {
               </div>
               <div className="mt-2 text-[11px] text-muted-foreground">Enter 发送，Shift+Enter 换行</div>
             </form>
+            <style jsx>{`
+              @keyframes canvas-think {
+                0% {
+                  transform: translateX(-120%);
+                }
+                50% {
+                  transform: translateX(0%);
+                }
+                100% {
+                  transform: translateX(220%);
+                }
+              }
+
+              .canvas-think-bar {
+                animation: canvas-think 1.4s ease-in-out infinite;
+              }
+            `}</style>
           </div>
         </div>
       )}
@@ -1982,13 +2070,72 @@ export function InfiniteCanvas() {
                 </div>
               )}
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <Wand2 className="h-4 w-4" />
-                </div>
+                <DropdownMenu open={isCanvasPresetOpen} onOpenChange={setIsCanvasPresetOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="快速功能"
+                      aria-pressed={isCanvasPresetOpen}
+                      className={cn(
+                        'inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground',
+                        (isCanvasPresetOpen || selectedPresetId) && 'border-primary/40 text-primary'
+                      )}
+                    >
+                      <span className="text-muted-foreground">功能</span>
+                      <span className="max-w-[80px] truncate text-foreground">
+                        {selectedPreset ? selectedPreset.name : '无'}
+                      </span>
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    side="top"
+                    className="w-[320px] rounded-2xl border border-border/80 bg-popover/95 p-3 shadow-lg backdrop-blur"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                        <span>快速功能</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span>{selectedPreset ? `已选：${selectedPreset.name}` : '未选择'}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPresetId(null)}
+                          className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        >
+                          清空选择
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {CANVAS_PRESET_ACTIONS.map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => handleCanvasPresetSelect(preset.id)}
+                          className={cn(
+                            'flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition',
+                            selectedPresetId === preset.id
+                              ? 'border-primary/60 bg-primary/10 text-primary'
+                              : 'border-border bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground'
+                          )}
+                        >
+                          <preset.Icon className="h-3.5 w-3.5" />
+                          <span className="truncate">{preset.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {selectedPreset && (
+                      <div className="mt-2 text-[11px] text-muted-foreground">{selectedPreset.description}</div>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <input
                   ref={canvasInputRef}
                   className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                  placeholder="你想要创作什么？"
+                  placeholder={canvasPlaceholder}
                   value={canvasInput}
                   onChange={(event) => setCanvasInput(event.target.value)}
                   onKeyDown={(event) => {
@@ -2036,7 +2183,7 @@ export function InfiniteCanvas() {
                       className="h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
                       aria-label="发送"
                       onClick={sendCanvasText}
-                      disabled={canvasInput.trim().length === 0}
+                      disabled={resolvedCanvasPrompt.trim().length === 0}
                     >
                       <ArrowUpRight className="h-4 w-4" />
                     </Button>
