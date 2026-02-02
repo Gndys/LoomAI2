@@ -37,6 +37,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 import { Message, MessageContent } from '@/components/ai-elements/message'
@@ -176,8 +177,6 @@ export function InfiniteCanvas() {
   const dragStateRef = useRef<DragState | null>(null)
   const storageDisabledRef = useRef(false)
   const warnedLargeItemsRef = useRef(false)
-  const pendingPanTimeoutRef = useRef<number | null>(null)
-  const pendingPanStartRef = useRef<{ x: number; y: number } | null>(null)
   const textEditRef = useRef<HTMLTextAreaElement | null>(null)
   const lastTextClickRef = useRef<{ id: string | null; time: number }>({ id: null, time: 0 })
 
@@ -187,6 +186,7 @@ export function InfiniteCanvas() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isSpaceDown, setIsSpaceDown] = useState(false)
+  const [isPointerInViewport, setIsPointerInViewport] = useState(false)
   const [dragMode, setDragMode] = useState<'pan' | 'item' | 'resize' | 'select' | null>(null)
   const [hasHydrated, setHasHydrated] = useState(false)
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
@@ -211,6 +211,7 @@ export function InfiniteCanvas() {
   const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; width: number; height: number } | null>(
     null
   )
+  const isSpacePanningActive = isSpaceDown && isPointerInViewport
 
   const { messages, sendMessage, status, error } = useChat({
     messages: [
@@ -383,13 +384,17 @@ export function InfiniteCanvas() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code !== 'Space') return
       if (isEditableTarget(event.target)) return
-      event.preventDefault()
+      if (isPointerInViewport) {
+        event.preventDefault()
+      }
       setIsSpaceDown(true)
     }
     const handleKeyUp = (event: KeyboardEvent) => {
       if (event.code !== 'Space') return
       if (isEditableTarget(event.target)) return
-      event.preventDefault()
+      if (isPointerInViewport) {
+        event.preventDefault()
+      }
       setIsSpaceDown(false)
     }
 
@@ -400,7 +405,7 @@ export function InfiniteCanvas() {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [])
+  }, [isPointerInViewport])
 
   useEffect(() => {
     const handleDeleteKey = (event: KeyboardEvent) => {
@@ -552,6 +557,14 @@ export function InfiniteCanvas() {
   }, [error])
 
   useEffect(() => {
+    if (!isCanvasPromptOpen) return
+    const handle = window.requestAnimationFrame(() => {
+      canvasInputRef.current?.focus()
+    })
+    return () => window.cancelAnimationFrame(handle)
+  }, [isCanvasPromptOpen])
+
+  useEffect(() => {
     if (!user?.id) {
       setCreditBalance(null)
       return
@@ -632,27 +645,47 @@ export function InfiniteCanvas() {
     const rect = getViewportRect()
     if (!rect) return
 
-    const screenX = event.clientX - rect.left
-    const screenY = event.clientY - rect.top
-    const zoom = Math.exp(-event.deltaY * ZOOM_SPEED)
-    const nextScale = clamp(camera.scale * zoom, MIN_SCALE, MAX_SCALE)
-    const worldPoint = screenToWorld(screenX, screenY)
+    const isZoomGesture = event.ctrlKey || event.metaKey
+    if (isZoomGesture) {
+      const screenX = event.clientX - rect.left
+      const screenY = event.clientY - rect.top
+      const zoom = Math.exp(-event.deltaY * ZOOM_SPEED)
+      const nextScale = clamp(camera.scale * zoom, MIN_SCALE, MAX_SCALE)
+      const worldPoint = screenToWorld(screenX, screenY)
+
+      updateCamera({
+        x: screenX - worldPoint.x * nextScale,
+        y: screenY - worldPoint.y * nextScale,
+        scale: nextScale,
+      })
+      return
+    }
+
+    const deltaScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 120 : 1
+    const deltaX = event.deltaX * deltaScale
+    const deltaY = event.deltaY * deltaScale
 
     updateCamera({
-      x: screenX - worldPoint.x * nextScale,
-      y: screenY - worldPoint.y * nextScale,
-      scale: nextScale,
+      x: camera.x - deltaX,
+      y: camera.y - deltaY,
+      scale: camera.scale,
     })
   }
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (editingId && !isEditableTarget(event.target) && event.button === 0 && !isSpaceDown && activeTool !== 'hand') {
+    if (
+      editingId &&
+      !isEditableTarget(event.target) &&
+      event.button === 0 &&
+      !isSpacePanningActive &&
+      activeTool !== 'hand'
+    ) {
       commitTextItem(editingId)
       setActiveTool('select')
       return
     }
 
-    if (event.button === 1 || isSpaceDown || activeTool === 'hand') {
+    if (event.button === 1 || isSpacePanningActive || activeTool === 'hand') {
       event.preventDefault()
       dragStateRef.current = {
         kind: 'pan',
@@ -678,7 +711,7 @@ export function InfiniteCanvas() {
       return
     }
 
-    if (event.button === 0 && activeTool === 'select' && !isSpaceDown) {
+    if (event.button === 0 && activeTool === 'select' && !isSpacePanningActive) {
       event.preventDefault()
       const rect = getViewportRect()
       if (!rect) return
@@ -709,36 +742,9 @@ export function InfiniteCanvas() {
     clearSelection()
     setEditingId(null)
     setDragMode(null)
-
-    if (event.button === 0) {
-      pendingPanStartRef.current = { x: event.clientX, y: event.clientY }
-      pendingPanTimeoutRef.current = window.setTimeout(() => {
-        dragStateRef.current = {
-          kind: 'pan',
-          startX: event.clientX,
-          startY: event.clientY,
-          cameraX: camera.x,
-          cameraY: camera.y,
-        }
-        setDragMode('pan')
-        viewportRef.current?.setPointerCapture(event.pointerId)
-        pendingPanTimeoutRef.current = null
-        pendingPanStartRef.current = null
-      }, 180)
-    }
   }
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragStateRef.current && pendingPanTimeoutRef.current && pendingPanStartRef.current) {
-      const dx = Math.abs(event.clientX - pendingPanStartRef.current.x)
-      const dy = Math.abs(event.clientY - pendingPanStartRef.current.y)
-      if (dx > 3 || dy > 3) {
-        window.clearTimeout(pendingPanTimeoutRef.current)
-        pendingPanTimeoutRef.current = null
-        pendingPanStartRef.current = null
-      }
-    }
-
     const dragState = dragStateRef.current
     if (!dragState) return
 
@@ -868,11 +874,6 @@ export function InfiniteCanvas() {
   }
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (pendingPanTimeoutRef.current) {
-      window.clearTimeout(pendingPanTimeoutRef.current)
-      pendingPanTimeoutRef.current = null
-      pendingPanStartRef.current = null
-    }
     if (!dragStateRef.current) return
     const dragState = dragStateRef.current
 
@@ -901,6 +902,15 @@ export function InfiniteCanvas() {
     viewportRef.current?.releasePointerCapture(event.pointerId)
   }
 
+  const handleViewportPointerEnter = () => {
+    setIsPointerInViewport(true)
+  }
+
+  const handleViewportPointerLeave = (event: React.PointerEvent<HTMLDivElement>) => {
+    setIsPointerInViewport(false)
+    handlePointerUp(event)
+  }
+
   const handleDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement | null
     if (target?.closest('[data-canvas-item]')) return
@@ -909,7 +919,7 @@ export function InfiniteCanvas() {
 
   const handleItemPointerDown = (event: React.PointerEvent<HTMLDivElement>, item: CanvasItem) => {
     if (event.button !== 0) return
-    if (isSpaceDown) return
+    if (isSpacePanningActive) return
     if (item.type === 'text' && editingId === item.id) return
     if (item.type === 'text') {
       const now = performance.now()
@@ -1393,6 +1403,13 @@ export function InfiniteCanvas() {
     setBrokenImages((prev) => (prev[item.id] ? { ...prev, [nextId]: true } : prev))
   }
 
+  const handleToolClick = (toolId: ToolId) => {
+    setActiveTool(toolId)
+    if (toolId === 'image') {
+      setIsCanvasPromptOpen((prev) => !prev)
+    }
+  }
+
   const resolveImageMediaType = (src: string, name?: string) => {
     if (src.startsWith('data:')) {
       const match = src.match(/^data:([^;]+);/)
@@ -1632,49 +1649,76 @@ export function InfiniteCanvas() {
       <div className="pointer-events-none absolute left-5 top-24 z-20">
         <div className="pointer-events-auto flex flex-col items-center gap-2 rounded-2xl border border-border bg-background/85 p-2 shadow-md backdrop-blur">
           {tools.map(({ id, label, Icon }) => (
-            <Button
-              key={id}
-              size="icon"
-              variant="ghost"
-              onClick={() => setActiveTool(id)}
-              aria-label={label}
-              className={cn(
-                'h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground',
-                activeTool === id &&
-                  'bg-primary/10 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.25)]'
-              )}
-            >
-              <Icon className="h-5 w-5" />
-            </Button>
+            <Tooltip key={id}>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => handleToolClick(id)}
+                  aria-label={label}
+                  className={cn(
+                    'h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground',
+                    activeTool === id &&
+                      'bg-primary/10 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.25)]'
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">
+                {label}
+              </TooltipContent>
+            </Tooltip>
           ))}
           <div className="my-1 h-px w-6 bg-border" />
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={handleUploadClick}
-            aria-label="上传图片"
-            className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <Upload className="h-5 w-5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => updateCamera({ x: 0, y: 0, scale: 1 })}
-            aria-label="复位视图"
-            className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <RefreshCcw className="h-5 w-5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={handleClear}
-            aria-label="清空画布"
-            className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <Trash2 className="h-5 w-5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={handleUploadClick}
+                aria-label="上传图片"
+                className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <Upload className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              上传图片
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => updateCamera({ x: 0, y: 0, scale: 1 })}
+                aria-label="复位视图"
+                className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <RefreshCcw className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              复位视图
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={handleClear}
+                aria-label="清空画布"
+                className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              清空画布
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -1699,14 +1743,21 @@ export function InfiniteCanvas() {
                   </span>
                 </div>
               </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => setIsChatOpen(false)}
-                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setIsChatOpen(false)}
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="text-xs">
+                  关闭对话
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-4">
               {messages.length === 0 ? (
@@ -1738,18 +1789,25 @@ export function InfiniteCanvas() {
                     <span className="shrink-0">{hasMultiSelection ? '已选对象' : '当前对象'}</span>
                     <span className="truncate text-foreground">{selectedItemLabel}</span>
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    type="button"
-                    onClick={() => {
-                      clearSelection()
-                      setEditingId(null)
-                    }}
-                    className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        type="button"
+                        onClick={() => {
+                          clearSelection()
+                          setEditingId(null)
+                        }}
+                        className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="text-xs">
+                      取消选择
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
               <div className="flex items-end gap-2 rounded-2xl border border-border bg-background px-3 py-2 shadow-sm">
@@ -1765,14 +1823,21 @@ export function InfiniteCanvas() {
                   placeholder="描述你的需求，例如：生成服装平铺图"
                   className="max-h-32 flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
-                <Button
-                  size="icon"
-                  type="submit"
-                  disabled={isChatBusy || chatInput.trim().length === 0}
-                  className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  <ArrowUpRight className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      type="submit"
+                      disabled={isChatBusy || chatInput.trim().length === 0}
+                      className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="text-xs">
+                    发送
+                  </TooltipContent>
+                </Tooltip>
               </div>
               <div className="mt-2 text-[11px] text-muted-foreground">Enter 发送，Shift+Enter 换行</div>
             </form>
@@ -1780,45 +1845,98 @@ export function InfiniteCanvas() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 w-[min(720px,calc(100%-3rem))] -translate-x-1/2">
-        <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-border bg-background/85 px-4 py-3 shadow-lg backdrop-blur">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Wand2 className="h-4 w-4" />
+      {isCanvasPromptOpen && (
+        <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 w-[min(720px,calc(100%-3rem))] -translate-x-1/2">
+          <div className="pointer-events-auto rounded-3xl border border-border bg-background/85 px-4 py-3 shadow-lg backdrop-blur">
+            <div className="flex flex-col gap-2">
+              {selectedItem?.type === 'image' && (
+                <div className="flex items-center gap-2 rounded-2xl border border-border/80 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-background">
+                    <img
+                      src={selectedItem.data.src}
+                      alt={selectedItem.data.name ?? 'reference'}
+                      className="h-full w-full object-cover"
+                      draggable={false}
+                    />
+                  </div>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="shrink-0">参考图</span>
+                    <span className="truncate text-foreground">{selectedItemLabel}</span>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <Wand2 className="h-4 w-4" />
+                </div>
+                <input
+                  ref={canvasInputRef}
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  placeholder="你想要创作什么？"
+                  value={canvasInput}
+                  onChange={(event) => setCanvasInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' || event.shiftKey) return
+                    event.preventDefault()
+                    sendCanvasText()
+                  }}
+                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleUploadClick}
+                      aria-label="添加参考图"
+                      className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    添加参考图
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setIsCanvasPromptOpen(false)}
+                      aria-label="隐藏提示词输入框"
+                      className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    隐藏
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      className="h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
+                      aria-label="发送"
+                      onClick={sendCanvasText}
+                      disabled={canvasInput.trim().length === 0}
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    发送
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
           </div>
-          <input
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-            placeholder="你想要创作什么？"
-            value={canvasInput}
-            onChange={(event) => setCanvasInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter' || event.shiftKey) return
-              event.preventDefault()
-              sendCanvasText()
-            }}
-          />
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={handleUploadClick}
-            aria-label="添加参考图"
-            className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <ImagePlus className="h-4 w-4" />
-          </Button>
-          <Button
-            size="icon"
-            className="h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
-            aria-label="发送"
-            onClick={sendCanvasText}
-            disabled={canvasInput.trim().length === 0}
-          >
-            <ArrowUpRight className="h-4 w-4" />
-          </Button>
         </div>
-      </div>
+      )}
 
       <div className="pointer-events-none absolute left-5 bottom-5 z-20 hidden items-center gap-2 rounded-full border border-border bg-background/85 px-3 py-1 text-xs text-muted-foreground shadow-sm md:flex">
-        滚轮缩放 · 空格+拖拽平移 · Shift/⌘/Ctrl 点击多选 · 拖动选框
+        触控板/滚轮平移 · Ctrl/⌘+滚轮缩放 · 空格/中键拖拽平移 · Shift/⌘/Ctrl 点击多选 · 拖动选框
       </div>
 
       {selectedItem && !hasMultiSelection && (
@@ -1840,7 +1958,10 @@ export function InfiniteCanvas() {
                     size="sm"
                     variant="ghost"
                     className="h-7 gap-1 rounded-full px-2 text-xs"
-                    onClick={() => setEditingId(selectedItem.id)}
+                    onClick={() => {
+                      setEditingId(selectedItem.id)
+                      setIsCanvasPromptOpen(true)
+                    }}
                   >
                     <Type className="h-3.5 w-3.5" />
                     编辑
@@ -1857,7 +1978,12 @@ export function InfiniteCanvas() {
                 </>
               ) : (
                 <>
-                  <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 rounded-full px-2 text-xs"
+                    onClick={() => setIsCanvasPromptOpen(true)}
+                  >
                     <Wand2 className="h-3.5 w-3.5" />
                     编辑
                   </Button>
@@ -1934,7 +2060,7 @@ export function InfiniteCanvas() {
             ? 'cursor-grabbing'
             : dragMode === 'select'
             ? 'cursor-crosshair'
-            : isSpaceDown
+            : isSpacePanningActive
             ? 'cursor-grab'
             : activeTool === 'text'
             ? 'cursor-text'
@@ -1945,7 +2071,8 @@ export function InfiniteCanvas() {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        onPointerEnter={handleViewportPointerEnter}
+        onPointerLeave={handleViewportPointerLeave}
         onDoubleClick={handleDoubleClick}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
