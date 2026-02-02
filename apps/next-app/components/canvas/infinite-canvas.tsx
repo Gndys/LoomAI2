@@ -35,14 +35,17 @@ import { cn } from '@/lib/utils'
 import { Message, MessageContent } from '@/components/ai-elements/message'
 import type { UIMessage } from 'ai'
 
-type CanvasItem = {
+type CanvasBaseItem = {
   id: string
-  type: 'image'
   x: number
   y: number
   width: number
   height: number
   rotation?: number
+}
+
+type CanvasImageItem = CanvasBaseItem & {
+  type: 'image'
   data: {
     src: string
     key?: string
@@ -51,6 +54,16 @@ type CanvasItem = {
     name?: string
   }
 }
+
+type CanvasTextItem = CanvasBaseItem & {
+  type: 'text'
+  data: {
+    text: string
+    fontSize: number
+  }
+}
+
+type CanvasItem = CanvasImageItem | CanvasTextItem
 
 type CameraState = {
   x: number
@@ -95,6 +108,12 @@ const USE_MOCK_UPLOAD = true
 const MAX_PERSISTED_SRC_LENGTH = 200_000
 const MAX_PERSISTED_TOTAL_LENGTH = 3_000_000
 const DUPLICATE_OFFSET = 24
+const DEFAULT_TEXT = '双击编辑文字'
+const DEFAULT_TEXT_SIZE = 28
+const MIN_TEXT_WIDTH = 40
+const MIN_TEXT_HEIGHT = 24
+const EXPORT_PADDING = 48
+const MAX_EXPORT_SIZE = 8192
 const DEBUG_CANVAS = false
 
 type ToolId = 'select' | 'hand' | 'text' | 'image' | 'shape'
@@ -115,10 +134,12 @@ export function InfiniteCanvas() {
   const warnedLargeItemsRef = useRef(false)
   const pendingPanTimeoutRef = useRef<number | null>(null)
   const pendingPanStartRef = useRef<{ x: number; y: number } | null>(null)
+  const textEditRef = useRef<HTMLTextAreaElement | null>(null)
 
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, scale: 1 })
   const [items, setItems] = useState<CanvasItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [isSpaceDown, setIsSpaceDown] = useState(false)
   const [dragMode, setDragMode] = useState<'pan' | 'item' | 'resize' | null>(null)
   const [hasHydrated, setHasHydrated] = useState(false)
@@ -129,6 +150,7 @@ export function InfiniteCanvas() {
   const [backgroundIntensity, setBackgroundIntensity] = useState<'low' | 'medium' | 'high'>('medium')
   const [isChatOpen, setIsChatOpen] = useState(true)
   const [chatInput, setChatInput] = useState('')
+  const [canvasInput, setCanvasInput] = useState('')
 
   const { messages, sendMessage, status, error } = useChat({
     messages: [
@@ -168,6 +190,83 @@ export function InfiniteCanvas() {
     [camera]
   )
 
+  const measureTextBox = useCallback((text: string, fontSize: number) => {
+    if (typeof document === 'undefined') {
+      return { width: MIN_TEXT_WIDTH, height: MIN_TEXT_HEIGHT }
+    }
+    const measurer = document.createElement('div')
+    measurer.style.position = 'absolute'
+    measurer.style.visibility = 'hidden'
+    measurer.style.whiteSpace = 'pre-wrap'
+    measurer.style.fontSize = `${fontSize}px`
+    measurer.style.lineHeight = '1.3'
+    measurer.style.fontWeight = '500'
+    measurer.style.fontFamily = 'inherit'
+    measurer.style.padding = '0'
+    measurer.style.border = '0'
+    measurer.style.margin = '0'
+    measurer.textContent = text && text.length > 0 ? text : ' '
+    document.body.appendChild(measurer)
+    const rect = measurer.getBoundingClientRect()
+    document.body.removeChild(measurer)
+    return {
+      width: Math.max(Math.ceil(rect.width), MIN_TEXT_WIDTH),
+      height: Math.max(Math.ceil(rect.height), MIN_TEXT_HEIGHT),
+    }
+  }, [])
+
+  const getViewportCenterWorld = useCallback(() => {
+    const rect = getViewportRect()
+    const centerX = rect ? rect.width / 2 : 0
+    const centerY = rect ? rect.height / 2 : 0
+    return screenToWorld(centerX, centerY)
+  }, [screenToWorld])
+
+  const createTextItem = useCallback(
+    (worldX: number, worldY: number, text?: string, shouldEdit = false) => {
+      const value = text?.trim() ? text : DEFAULT_TEXT
+      const { width, height } = measureTextBox(value, DEFAULT_TEXT_SIZE)
+      const nextItem: CanvasTextItem = {
+        id: nanoid(),
+        type: 'text',
+        x: worldX,
+        y: worldY,
+        width,
+        height,
+        data: {
+          text: value,
+          fontSize: DEFAULT_TEXT_SIZE,
+        },
+      }
+      setItems((prev) => [...prev, nextItem])
+      setSelectedId(nextItem.id)
+      if (shouldEdit) {
+        setEditingId(nextItem.id)
+      }
+      return nextItem.id
+    },
+    [measureTextBox]
+  )
+
+  const handleDeleteItem = useCallback((itemId: string | null) => {
+    if (!itemId) return
+    setItems((prev) => prev.filter((item) => item.id !== itemId))
+    setSelectedId((prev) => (prev === itemId ? null : prev))
+    setEditingId((prev) => (prev === itemId ? null : prev))
+    setLoadedImages((prev) => {
+      if (!prev[itemId]) return prev
+      const next = { ...prev }
+      delete next[itemId]
+      return next
+    })
+    setBrokenImages((prev) => {
+      if (!prev[itemId]) return prev
+      const next = { ...prev }
+      delete next[itemId]
+      return next
+    })
+  }, [])
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code !== 'Space') return
@@ -190,6 +289,26 @@ export function InfiniteCanvas() {
       window.removeEventListener('keyup', handleKeyUp)
     }
   }, [])
+
+  useEffect(() => {
+    const handleDeleteKey = (event: KeyboardEvent) => {
+      const isDeleteKey =
+        event.key === 'Delete' ||
+        event.key === 'Backspace' ||
+        event.code === 'Delete' ||
+        event.code === 'Backspace'
+      if (!isDeleteKey) return
+      if (isEditableTarget(event.target)) return
+      if (!selectedId) return
+      event.preventDefault()
+      handleDeleteItem(selectedId)
+    }
+
+    window.addEventListener('keydown', handleDeleteKey, { capture: true })
+    return () => {
+      window.removeEventListener('keydown', handleDeleteKey, { capture: true })
+    }
+  }, [handleDeleteItem, selectedId])
 
   useEffect(() => {
     const viewport = viewportRef.current
@@ -228,7 +347,13 @@ export function InfiniteCanvas() {
       }
       const parsed = JSON.parse(raw) as { camera?: CameraState; items?: CanvasItem[] }
       if (parsed.camera) setCamera(parsed.camera)
-      if (parsed.items) setItems(parsed.items.filter((item) => Boolean(item.data?.src)))
+      if (parsed.items) {
+        setItems(
+          parsed.items.filter((item) =>
+            item.type === 'text' ? Boolean(item.data?.text?.trim()) : Boolean(item.data?.src)
+          )
+        )
+      }
     } catch (error) {
       console.error('Failed to restore canvas state', error)
     } finally {
@@ -246,7 +371,7 @@ export function InfiniteCanvas() {
         const persistItems: CanvasItem[] = []
 
         for (const item of items) {
-          const src = item.data?.src
+          const src = item.type === 'image' ? item.data?.src : undefined
           const srcLength = src ? src.length : 0
           const isDataUrl = typeof src === 'string' && src.startsWith('data:')
           const exceedsLimit =
@@ -282,6 +407,15 @@ export function InfiniteCanvas() {
     const message = error instanceof Error ? error.message : 'AI 请求失败，请稍后再试'
     toast.error(message)
   }, [error])
+
+  useEffect(() => {
+    if (!editingId) return
+    const handle = window.requestAnimationFrame(() => {
+      textEditRef.current?.focus()
+      textEditRef.current?.select()
+    })
+    return () => window.cancelAnimationFrame(handle)
+  }, [editingId])
 
   const gridStyle = useMemo(() => {
     if (backgroundMode === 'solid') {
@@ -353,7 +487,19 @@ export function InfiniteCanvas() {
       return
     }
 
+    if (activeTool === 'text' && event.button === 0) {
+      event.preventDefault()
+      const rect = getViewportRect()
+      if (!rect) return
+      const screenX = event.clientX - rect.left
+      const screenY = event.clientY - rect.top
+      const worldPoint = screenToWorld(screenX, screenY)
+      createTextItem(worldPoint.x, worldPoint.y, '', true)
+      return
+    }
+
     setSelectedId(null)
+    setEditingId(null)
     setDragMode(null)
 
     if (event.button === 0) {
@@ -498,6 +644,7 @@ export function InfiniteCanvas() {
   const handleItemPointerDown = (event: React.PointerEvent<HTMLDivElement>, item: CanvasItem) => {
     if (event.button !== 0) return
     if (isSpaceDown) return
+    if (item.type === 'text' && editingId === item.id) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -518,6 +665,9 @@ export function InfiniteCanvas() {
     }
 
     setSelectedId(item.id)
+    if (editingId && editingId !== item.id) {
+      setEditingId(null)
+    }
     setDragMode('item')
     viewportRef.current?.setPointerCapture(event.pointerId)
   }
@@ -604,6 +754,38 @@ export function InfiniteCanvas() {
       })
     }
     img.src = src
+  }
+
+  const updateTextItem = (id: string, text: string, fontSize: number) => {
+    const { width, height } = measureTextBox(text, fontSize)
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id && item.type === 'text'
+          ? {
+              ...item,
+              width,
+              height,
+              data: {
+                ...item.data,
+                text,
+                fontSize,
+              },
+            }
+          : item
+      )
+    )
+  }
+
+  const commitTextItem = (id: string) => {
+    setItems((prev) => {
+      const current = prev.find((item) => item.id === id)
+      if (!current || current.type !== 'text') return prev
+      if (!current.data.text.trim()) {
+        return prev.filter((item) => item.id !== id)
+      }
+      return prev
+    })
+    setEditingId(null)
   }
 
   const handleFiles = async (files: FileList | null) => {
@@ -699,7 +881,7 @@ export function InfiniteCanvas() {
     return `${name ?? 'canvas-image'}.png`
   }
 
-  const handleDownloadItem = async (item: CanvasItem) => {
+  const handleDownloadItem = async (item: CanvasImageItem) => {
     const fallbackName = getDownloadName(item.data.name)
     try {
       const response = await fetch(item.data.src)
@@ -759,6 +941,15 @@ export function InfiniteCanvas() {
     await sendMessage({ text })
   }
 
+  const sendCanvasText = () => {
+    const text = canvasInput.trim()
+    if (!text) return
+    const { width, height } = measureTextBox(text, DEFAULT_TEXT_SIZE)
+    const center = getViewportCenterWorld()
+    createTextItem(center.x - width / 2, center.y - height / 2, text, false)
+    setCanvasInput('')
+  }
+
   const handleChatSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     await sendChat()
@@ -778,7 +969,13 @@ export function InfiniteCanvas() {
   const zoomPercent = Math.round(camera.scale * 100)
   const isChatBusy = status === 'streaming' || status === 'submitted'
   const selectedItem = items.find((item) => item.id === selectedId) ?? null
-  const selectedItemLabel = selectedItem?.data?.name?.trim() || '未命名图片'
+  const selectedItemLabel = selectedItem
+    ? selectedItem.type === 'text'
+      ? selectedItem.data.text.trim().split('\n')[0].slice(0, 16) || '未命名文本'
+      : selectedItem.data?.name?.trim() || '未命名图片'
+    : ''
+  const isImageSelected = selectedItem?.type === 'image'
+  const isTextSelected = selectedItem?.type === 'text'
   const tools: { id: ToolId; label: string; Icon: LucideIcon }[] = [
     { id: 'select', label: '选择', Icon: MousePointer2 },
     { id: 'hand', label: '拖拽', Icon: Hand },
@@ -1025,6 +1222,13 @@ export function InfiniteCanvas() {
           <input
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
             placeholder="你想要创作什么？"
+            value={canvasInput}
+            onChange={(event) => setCanvasInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || event.shiftKey) return
+              event.preventDefault()
+              sendCanvasText()
+            }}
           />
           <Button
             size="icon"
@@ -1039,6 +1243,8 @@ export function InfiniteCanvas() {
             size="icon"
             className="h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
             aria-label="发送"
+            onClick={sendCanvasText}
+            disabled={canvasInput.trim().length === 0}
           >
             <ArrowUpRight className="h-4 w-4" />
           </Button>
@@ -1062,35 +1268,69 @@ export function InfiniteCanvas() {
             }}
           >
             <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-border bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-md backdrop-blur">
-              <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
-                <Wand2 className="h-3.5 w-3.5" />
-                编辑
-              </Button>
-              <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
-                <Layers className="h-3.5 w-3.5" />
-                变体
-              </Button>
-              <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
-                <Scissors className="h-3.5 w-3.5" />
-                去背
-              </Button>
+              {isTextSelected ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 rounded-full px-2 text-xs"
+                    onClick={() => setEditingId(selectedItem.id)}
+                  >
+                    <Type className="h-3.5 w-3.5" />
+                    编辑
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 rounded-full px-2 text-xs"
+                    onClick={() => handleCopyItem(selectedItem)}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    复制
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
+                    <Wand2 className="h-3.5 w-3.5" />
+                    编辑
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
+                    <Layers className="h-3.5 w-3.5" />
+                    变体
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
+                    <Scissors className="h-3.5 w-3.5" />
+                    去背
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 rounded-full px-2 text-xs"
+                    onClick={() => handleDownloadItem(selectedItem as CanvasImageItem)}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    下载
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 rounded-full px-2 text-xs"
+                    onClick={() => handleCopyItem(selectedItem)}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    复制
+                  </Button>
+                </>
+              )}
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 gap-1 rounded-full px-2 text-xs"
-                onClick={() => handleDownloadItem(selectedItem)}
+                className="h-7 gap-1 rounded-full px-2 text-xs text-destructive hover:text-destructive"
+                onClick={() => handleDeleteItem(selectedItem.id)}
               >
-                <Download className="h-3.5 w-3.5" />
-                下载
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 gap-1 rounded-full px-2 text-xs"
-                onClick={() => handleCopyItem(selectedItem)}
-              >
-                <Copy className="h-3.5 w-3.5" />
-                复制
+                <Trash2 className="h-3.5 w-3.5" />
+                删除
               </Button>
             </div>
           </div>
@@ -1140,35 +1380,46 @@ export function InfiniteCanvas() {
           className="absolute left-0 top-0 h-full w-full origin-top-left"
           style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})` }}
         >
-              {items.map((item) => {
-                const selected = item.id === selectedId
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      'absolute select-none',
-                      dragMode === 'item' && selected ? 'cursor-grabbing' : 'cursor-move'
-                    )}
-                    style={{
-                      left: item.x,
-                      top: item.y,
-                      width: item.width,
-                      height: item.height,
+          {items.map((item) => {
+            const selected = item.id === selectedId
+            const isText = item.type === 'text'
+            const isEditing = isText && editingId === item.id
+            return (
+              <div
+                key={item.id}
+                className={cn(
+                  'absolute',
+                  !isEditing && 'select-none',
+                  dragMode === 'item' && selected ? 'cursor-grabbing' : isText ? 'cursor-text' : 'cursor-move'
+                )}
+                style={{
+                  left: item.x,
+                  top: item.y,
+                  width: item.width,
+                  height: item.height,
                   outline: DEBUG_CANVAS ? '1px dashed rgba(148,163,184,0.6)' : undefined,
                   background: DEBUG_CANVAS ? 'rgba(15, 23, 42, 0.2)' : undefined,
                 }}
                 onPointerDown={(event) => handleItemPointerDown(event, item)}
+                onDoubleClick={(event) => {
+                  if (item.type !== 'text') return
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setEditingId(item.id)
+                }}
               >
                 {DEBUG_CANVAS && (
                   <div className="pointer-events-none absolute left-2 top-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white">
                     {Math.round(item.width)}×{Math.round(item.height)}
                   </div>
                 )}
-                {!loadedImages[item.id] && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-dashed border-border bg-muted/50 text-xs text-muted-foreground">
-                    {brokenImages[item.id] ? '图片加载失败' : '图片加载中'}
-                  </div>
-                )}
+                {item.type === 'image' ? (
+                  <>
+                    {!loadedImages[item.id] && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-dashed border-border bg-muted/50 text-xs text-muted-foreground">
+                        {brokenImages[item.id] ? '图片加载失败' : '图片加载中'}
+                      </div>
+                    )}
                     <img
                       src={item.data.src}
                       alt={item.data.name ?? 'canvas'}
@@ -1207,9 +1458,40 @@ export function InfiniteCanvas() {
                         />
                       </>
                     )}
-                  </div>
-                )
-              })}
+                  </>
+                ) : (
+                  <>
+                    {selected && (
+                      <div className="pointer-events-none absolute -inset-1 rounded-lg border border-primary/70 shadow-[0_0_0_2px_hsl(var(--primary)/0.12)]" />
+                    )}
+                    {isEditing ? (
+                      <textarea
+                        ref={textEditRef}
+                        value={item.data.text}
+                        onChange={(event) => updateTextItem(item.id, event.target.value, item.data.fontSize)}
+                        onBlur={() => commitTextItem(item.id)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' || event.shiftKey) return
+                          event.preventDefault()
+                          commitTextItem(item.id)
+                        }}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        className="h-full w-full resize-none bg-transparent text-foreground outline-none"
+                        style={{ fontSize: `${item.data.fontSize}px`, lineHeight: 1.3 }}
+                      />
+                    ) : (
+                      <div
+                        className="whitespace-pre-wrap text-foreground"
+                        style={{ fontSize: `${item.data.fontSize}px`, lineHeight: 1.3 }}
+                      >
+                        {item.data.text}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+          })}
 
           {items.length === 0 && (
             <div className="absolute left-1/2 top-1/2 w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-dashed border-border bg-background/80 p-6 text-center text-sm text-muted-foreground shadow-[0_12px_35px_-25px_hsl(var(--foreground)/0.25)]">
