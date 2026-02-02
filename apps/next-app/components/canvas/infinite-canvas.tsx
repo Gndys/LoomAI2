@@ -86,6 +86,7 @@ const MAX_FILE_SIZE_MB = 10
 const USE_MOCK_UPLOAD = true
 const MAX_PERSISTED_SRC_LENGTH = 200_000
 const MAX_PERSISTED_TOTAL_LENGTH = 3_000_000
+const DUPLICATE_OFFSET = 24
 const DEBUG_CANVAS = false
 
 type ToolId = 'select' | 'hand' | 'text' | 'image' | 'shape'
@@ -670,6 +671,23 @@ export function InfiniteCanvas() {
     }
   }
 
+  const handleCopyItem = (item: CanvasItem | null) => {
+    if (!item) return
+    const nextId = nanoid()
+    const nextItem: CanvasItem = {
+      ...item,
+      id: nextId,
+      x: Math.round((item.x + DUPLICATE_OFFSET) * 100) / 100,
+      y: Math.round((item.y + DUPLICATE_OFFSET) * 100) / 100,
+      data: { ...item.data },
+    }
+
+    setItems((prev) => [...prev, nextItem])
+    setSelectedId(nextId)
+    setLoadedImages((prev) => (prev[item.id] ? { ...prev, [nextId]: true } : prev))
+    setBrokenImages((prev) => (prev[item.id] ? { ...prev, [nextId]: true } : prev))
+  }
+
   const zoomPercent = Math.round(camera.scale * 100)
   const selectedItem = items.find((item) => item.id === selectedId) ?? null
   const tools: { id: ToolId; label: string; Icon: LucideIcon }[] = [
@@ -850,7 +868,12 @@ export function InfiniteCanvas() {
                 <Download className="h-3.5 w-3.5" />
                 下载
               </Button>
-              <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1 rounded-full px-2 text-xs"
+                onClick={() => handleCopyItem(selectedItem)}
+              >
                 <Copy className="h-3.5 w-3.5" />
                 复制
               </Button>
