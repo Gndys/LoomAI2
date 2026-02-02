@@ -118,6 +118,7 @@ type DragState =
       startHeight: number
       itemX: number
       itemY: number
+      startFontSize?: number
     }
   | {
       kind: 'select'
@@ -139,6 +140,10 @@ const MAX_PERSISTED_TOTAL_LENGTH = 3_000_000
 const DUPLICATE_OFFSET = 24
 const DEFAULT_TEXT = '双击编辑文字'
 const DEFAULT_TEXT_SIZE = 28
+const DEFAULT_TEXT_BOX_WIDTH = 320
+const DEFAULT_TEXT_BOX_HEIGHT = 56
+const MIN_TEXT_FONT_SIZE = 12
+const MAX_TEXT_FONT_SIZE = 160
 const MIN_TEXT_WIDTH = 40
 const MIN_TEXT_HEIGHT = 24
 const EXPORT_PADDING = 48
@@ -278,14 +283,15 @@ export function InfiniteCanvas() {
     [camera]
   )
 
-  const measureTextBox = useCallback((text: string, fontSize: number) => {
+  const measureTextBox = useCallback((text: string, fontSize: number, maxWidth?: number, minHeight = MIN_TEXT_HEIGHT) => {
     if (typeof document === 'undefined') {
-      return { width: MIN_TEXT_WIDTH, height: MIN_TEXT_HEIGHT }
+      return { width: maxWidth ?? MIN_TEXT_WIDTH, height: minHeight }
     }
     const measurer = document.createElement('div')
     measurer.style.position = 'absolute'
     measurer.style.visibility = 'hidden'
     measurer.style.whiteSpace = 'pre-wrap'
+    measurer.style.wordBreak = 'break-word'
     measurer.style.fontSize = `${fontSize}px`
     measurer.style.lineHeight = '1.3'
     measurer.style.fontWeight = '500'
@@ -293,13 +299,16 @@ export function InfiniteCanvas() {
     measurer.style.padding = '0'
     measurer.style.border = '0'
     measurer.style.margin = '0'
+    if (maxWidth) {
+      measurer.style.width = `${maxWidth}px`
+    }
     measurer.textContent = text && text.length > 0 ? text : ' '
     document.body.appendChild(measurer)
     const rect = measurer.getBoundingClientRect()
     document.body.removeChild(measurer)
     return {
-      width: Math.max(Math.ceil(rect.width), MIN_TEXT_WIDTH),
-      height: Math.max(Math.ceil(rect.height), MIN_TEXT_HEIGHT),
+      width: maxWidth ? Math.max(Math.ceil(maxWidth), MIN_TEXT_WIDTH) : Math.max(Math.ceil(rect.width), MIN_TEXT_WIDTH),
+      height: Math.max(Math.ceil(rect.height), minHeight),
     }
   }, [])
 
@@ -338,8 +347,15 @@ export function InfiniteCanvas() {
 
   const createTextItem = useCallback(
     (worldX: number, worldY: number, text?: string, shouldEdit = false) => {
-      const value = text?.trim() ? text : DEFAULT_TEXT
-      const { width, height } = measureTextBox(value, DEFAULT_TEXT_SIZE)
+      const rawText = typeof text === 'string' ? text : ''
+      const hasText = rawText.trim().length > 0
+      const value = hasText ? rawText : shouldEdit ? '' : DEFAULT_TEXT
+      const { width, height } = measureTextBox(
+        value,
+        DEFAULT_TEXT_SIZE,
+        DEFAULT_TEXT_BOX_WIDTH,
+        shouldEdit ? DEFAULT_TEXT_BOX_HEIGHT : MIN_TEXT_HEIGHT
+      )
       const nextItem: CanvasTextItem = {
         id: nanoid(),
         type: 'text',
@@ -904,6 +920,17 @@ export function InfiniteCanvas() {
                 y: Math.round(nextY * 100) / 100,
                 width: Math.round(nextWidth * 100) / 100,
                 height: Math.round(nextHeight * 100) / 100,
+                data:
+                  item.type === 'text'
+                    ? {
+                        ...item.data,
+                        fontSize: clamp(
+                          Math.round(((dragState.startFontSize ?? item.data.fontSize) * scale) * 10) / 10,
+                          MIN_TEXT_FONT_SIZE,
+                          MAX_TEXT_FONT_SIZE
+                        ),
+                      }
+                    : item.data,
               }
             : item
         )
@@ -1061,6 +1088,7 @@ export function InfiniteCanvas() {
       startHeight: item.height,
       itemX: item.x,
       itemY: item.y,
+      startFontSize: item.type === 'text' ? item.data.fontSize : undefined,
     }
 
     syncSelection([item.id], item.id)
@@ -1122,20 +1150,23 @@ export function InfiniteCanvas() {
   }
 
   const updateTextItem = (id: string, text: string, fontSize: number) => {
-    const { width, height } = measureTextBox(text, fontSize)
     setItems((prev) =>
       prev.map((item) =>
         item.id === id && item.type === 'text'
-          ? {
-              ...item,
-              width,
-              height,
-              data: {
-                ...item.data,
-                text,
-                fontSize,
-              },
-            }
+          ? (() => {
+              const targetWidth = Math.max(item.width, MIN_TEXT_WIDTH)
+              const { height } = measureTextBox(text, fontSize, targetWidth)
+              return {
+                ...item,
+                width: targetWidth,
+                height,
+                data: {
+                  ...item.data,
+                  text,
+                  fontSize,
+                },
+              }
+            })()
           : item
       )
     )
@@ -1529,7 +1560,7 @@ export function InfiniteCanvas() {
   const sendCanvasText = () => {
     const text = resolvedCanvasPrompt.trim()
     if (!text) return
-    const { width, height } = measureTextBox(text, DEFAULT_TEXT_SIZE)
+    const { width, height } = measureTextBox(text, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_BOX_WIDTH)
     const center = getViewportCenterWorld()
     createTextItem(center.x - width / 2, center.y - height / 2, text, false)
     setCanvasInput('')
@@ -2445,6 +2476,30 @@ export function InfiniteCanvas() {
                     {selected && (
                       <div className="pointer-events-none absolute -inset-1 rounded-lg border border-primary/70 shadow-[0_0_0_2px_hsl(var(--primary)/0.12)]" />
                     )}
+                    {selected && isPrimary && !hasMultiSelection && !isEditing && (
+                      <>
+                        <div
+                          className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                          onPointerDown={(event) => handleResizePointerDown(event, item, 'tl')}
+                          style={{ cursor: 'nwse-resize' }}
+                        />
+                        <div
+                          className="absolute -right-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                          onPointerDown={(event) => handleResizePointerDown(event, item, 'tr')}
+                          style={{ cursor: 'nesw-resize' }}
+                        />
+                        <div
+                          className="absolute -left-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                          onPointerDown={(event) => handleResizePointerDown(event, item, 'bl')}
+                          style={{ cursor: 'nesw-resize' }}
+                        />
+                        <div
+                          className="absolute -right-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                          onPointerDown={(event) => handleResizePointerDown(event, item, 'br')}
+                          style={{ cursor: 'nwse-resize' }}
+                        />
+                      </>
+                    )}
                     {isEditing ? (
                       <textarea
                         ref={textEditRef}
@@ -2458,12 +2513,12 @@ export function InfiniteCanvas() {
                         }}
                         onPointerDown={(event) => event.stopPropagation()}
                         onDoubleClick={(event) => event.stopPropagation()}
-                        className="h-full w-full resize-none bg-transparent text-foreground outline-none font-medium"
+                        className="h-full w-full resize-none break-words bg-transparent text-foreground outline-none font-medium"
                         style={{ fontSize: `${item.data.fontSize}px`, lineHeight: 1.3 }}
                       />
                     ) : (
                       <div
-                        className="whitespace-pre-wrap text-foreground font-medium"
+                        className="whitespace-pre-wrap break-words text-foreground font-medium"
                         style={{ fontSize: `${item.data.fontSize}px`, lineHeight: 1.3 }}
                         onDoubleClick={(event) => {
                           event.preventDefault()
