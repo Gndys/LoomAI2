@@ -15,7 +15,6 @@ import {
   RefreshCcw,
   Share2,
   Sparkles,
-  SlidersHorizontal,
   Trash2,
   Type,
   Upload,
@@ -25,7 +24,6 @@ import {
   Copy,
   Layers,
   X,
-  Grid2X2,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -203,7 +201,9 @@ export function InfiniteCanvas() {
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [isCreditsLoading, setIsCreditsLoading] = useState(false)
   const [canvasInput, setCanvasInput] = useState('')
+  const [isCanvasPromptOpen, setIsCanvasPromptOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const canvasInputRef = useRef<HTMLInputElement | null>(null)
 
   const { data: session } = authClientReact.useSession()
   const user = session?.user
@@ -1376,20 +1376,6 @@ export function InfiniteCanvas() {
     }
   }
 
-  const toggleBackgroundMode = () => {
-    setBackgroundMode((prev) => (prev === 'solid' ? 'transparent' : 'solid'))
-  }
-
-  const toggleBackgroundIntensity = () => {
-    setBackgroundIntensity((prev) => {
-      if (prev === 'low') return 'medium'
-      if (prev === 'medium') return 'high'
-      return 'low'
-    })
-  }
-
-  const intensityLabel = backgroundIntensity === 'low' ? '弱' : backgroundIntensity === 'medium' ? '中' : '强'
-
   const handleCopyItem = (item: CanvasItem | null) => {
     if (!item) return
     const nextId = nanoid()
@@ -1547,7 +1533,7 @@ export function InfiniteCanvas() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-64">
                 <DropdownMenuLabel>画布设置</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+              <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs text-muted-foreground">主题色</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={colorScheme}
@@ -1563,6 +1549,29 @@ export function InfiniteCanvas() {
                     </DropdownMenuRadioItem>
                   ))}
                 </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-muted-foreground">背景</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={backgroundMode}
+                  onValueChange={(value) => setBackgroundMode(value as 'solid' | 'transparent')}
+                >
+                  <DropdownMenuRadioItem value="solid">纯色</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="transparent">透明</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                {backgroundMode === 'transparent' && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">透明强度</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup
+                      value={backgroundIntensity}
+                      onValueChange={(value) => setBackgroundIntensity(value as 'low' | 'medium' | 'high')}
+                    >
+                      <DropdownMenuRadioItem value="low">弱</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="medium">中</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="high">强</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1575,26 +1584,6 @@ export function InfiniteCanvas() {
               <span className="max-w-[120px] truncate text-foreground">{userDisplayName}</span>
             </div>
             <ThemeToggle />
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={toggleBackgroundMode}
-              className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Grid2X2 className="h-3.5 w-3.5" />
-              {backgroundMode === 'solid' ? '透明' : '纯色'}
-            </Button>
-            {backgroundMode === 'transparent' && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={toggleBackgroundIntensity}
-                className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                强度 {intensityLabel}
-              </Button>
-            )}
             <Button
               size="sm"
               variant="ghost"
