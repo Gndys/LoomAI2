@@ -17,6 +17,9 @@ import {
   Upload,
   Wand2,
   Square,
+  Scissors,
+  Copy,
+  Layers,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -63,6 +66,17 @@ type DragState =
       itemX: number
       itemY: number
     }
+  | {
+      kind: 'resize'
+      id: string
+      corner: 'tl' | 'tr' | 'bl' | 'br'
+      startWorldX: number
+      startWorldY: number
+      startWidth: number
+      startHeight: number
+      itemX: number
+      itemY: number
+    }
 
 const STORAGE_KEY = 'loomai:canvas:phase0'
 const MIN_SCALE = 0.2
@@ -90,12 +104,14 @@ export function InfiniteCanvas() {
   const dragStateRef = useRef<DragState | null>(null)
   const storageDisabledRef = useRef(false)
   const warnedLargeItemsRef = useRef(false)
+  const pendingPanTimeoutRef = useRef<number | null>(null)
+  const pendingPanStartRef = useRef<{ x: number; y: number } | null>(null)
 
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, scale: 1 })
   const [items, setItems] = useState<CanvasItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [isSpaceDown, setIsSpaceDown] = useState(false)
-  const [dragMode, setDragMode] = useState<'pan' | 'item' | null>(null)
+  const [dragMode, setDragMode] = useState<'pan' | 'item' | 'resize' | null>(null)
   const [hasHydrated, setHasHydrated] = useState(false)
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({})
@@ -108,6 +124,16 @@ export function InfiniteCanvas() {
       return {
         x: (screenX - camera.x) / camera.scale,
         y: (screenY - camera.y) / camera.scale,
+      }
+    },
+    [camera]
+  )
+
+  const worldToScreen = useCallback(
+    (worldX: number, worldY: number) => {
+      return {
+        x: worldX * camera.scale + camera.x,
+        y: worldY * camera.scale + camera.y,
       }
     },
     [camera]
@@ -223,16 +249,16 @@ export function InfiniteCanvas() {
   }, [camera, items, hasHydrated])
 
   const gridStyle = useMemo(() => {
-    const gridSize = 22 * camera.scale
+    const gridSize = 24 * camera.scale
     const positionX = camera.x % gridSize
     const positionY = camera.y % gridSize
 
     return {
       backgroundColor: 'hsl(var(--background))',
       backgroundImage:
-        'radial-gradient(circle, hsl(var(--muted-foreground) / 0.25) 1.1px, transparent 1.1px)',
-      backgroundSize: `${gridSize}px ${gridSize}px`,
-      backgroundPosition: `${positionX}px ${positionY}px`,
+        'radial-gradient(circle, hsl(var(--foreground) / 0.16) 1.6px, transparent 1.6px), radial-gradient(circle, hsl(var(--primary) / 0.08) 0.9px, transparent 0.9px)',
+      backgroundSize: `${gridSize}px ${gridSize}px, ${gridSize * 2}px ${gridSize * 2}px`,
+      backgroundPosition: `${positionX}px ${positionY}px, ${positionX / 2}px ${positionY / 2}px`,
     }
   }, [camera])
 
@@ -278,9 +304,37 @@ export function InfiniteCanvas() {
     }
 
     setSelectedId(null)
+    setDragMode(null)
+
+    if (event.button === 0) {
+      pendingPanStartRef.current = { x: event.clientX, y: event.clientY }
+      pendingPanTimeoutRef.current = window.setTimeout(() => {
+        dragStateRef.current = {
+          kind: 'pan',
+          startX: event.clientX,
+          startY: event.clientY,
+          cameraX: camera.x,
+          cameraY: camera.y,
+        }
+        setDragMode('pan')
+        viewportRef.current?.setPointerCapture(event.pointerId)
+        pendingPanTimeoutRef.current = null
+        pendingPanStartRef.current = null
+      }, 180)
+    }
   }
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStateRef.current && pendingPanTimeoutRef.current && pendingPanStartRef.current) {
+      const dx = Math.abs(event.clientX - pendingPanStartRef.current.x)
+      const dy = Math.abs(event.clientY - pendingPanStartRef.current.y)
+      if (dx > 3 || dy > 3) {
+        window.clearTimeout(pendingPanTimeoutRef.current)
+        pendingPanTimeoutRef.current = null
+        pendingPanStartRef.current = null
+      }
+    }
+
     const dragState = dragStateRef.current
     if (!dragState) return
 
@@ -316,9 +370,71 @@ export function InfiniteCanvas() {
         )
       )
     }
+
+    if (dragState.kind === 'resize') {
+      event.preventDefault()
+      const rect = getViewportRect()
+      if (!rect) return
+      const screenX = event.clientX - rect.left
+      const screenY = event.clientY - rect.top
+      const worldPoint = screenToWorld(screenX, screenY)
+      const minSize = 40
+
+      const startWidth = dragState.startWidth
+      const startHeight = dragState.startHeight
+      const anchor = (() => {
+        switch (dragState.corner) {
+          case 'tl':
+            return { x: dragState.itemX + startWidth, y: dragState.itemY + startHeight }
+          case 'tr':
+            return { x: dragState.itemX, y: dragState.itemY + startHeight }
+          case 'bl':
+            return { x: dragState.itemX + startWidth, y: dragState.itemY }
+          case 'br':
+            return { x: dragState.itemX, y: dragState.itemY }
+        }
+      })()
+
+      const rawWidth =
+        dragState.corner === 'tl' || dragState.corner === 'bl'
+          ? anchor.x - worldPoint.x
+          : worldPoint.x - anchor.x
+      const rawHeight =
+        dragState.corner === 'tl' || dragState.corner === 'tr'
+          ? anchor.y - worldPoint.y
+          : worldPoint.y - anchor.y
+
+      const scale = Math.max(rawWidth / startWidth, rawHeight / startHeight, minSize / startWidth, minSize / startHeight)
+      const nextWidth = Math.max(startWidth * scale, minSize)
+      const nextHeight = Math.max(startHeight * scale, minSize)
+
+      const nextX =
+        dragState.corner === 'tl' || dragState.corner === 'bl' ? anchor.x - nextWidth : anchor.x
+      const nextY =
+        dragState.corner === 'tl' || dragState.corner === 'tr' ? anchor.y - nextHeight : anchor.y
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === dragState.id
+            ? {
+                ...item,
+                x: Math.round(nextX * 100) / 100,
+                y: Math.round(nextY * 100) / 100,
+                width: Math.round(nextWidth * 100) / 100,
+                height: Math.round(nextHeight * 100) / 100,
+              }
+            : item
+        )
+      )
+    }
   }
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (pendingPanTimeoutRef.current) {
+      window.clearTimeout(pendingPanTimeoutRef.current)
+      pendingPanTimeoutRef.current = null
+      pendingPanStartRef.current = null
+    }
     if (!dragStateRef.current) return
     dragStateRef.current = null
     setDragMode(null)
@@ -333,6 +449,7 @@ export function InfiniteCanvas() {
     if (event.button !== 0) return
     if (isSpaceDown) return
 
+    event.preventDefault()
     event.stopPropagation()
     const rect = getViewportRect()
     if (!rect) return
@@ -352,6 +469,37 @@ export function InfiniteCanvas() {
 
     setSelectedId(item.id)
     setDragMode('item')
+    viewportRef.current?.setPointerCapture(event.pointerId)
+  }
+
+  const handleResizePointerDown = (
+    event: React.PointerEvent<HTMLDivElement>,
+    item: CanvasItem,
+    corner: 'tl' | 'tr' | 'bl' | 'br'
+  ) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    const rect = getViewportRect()
+    if (!rect) return
+    const screenX = event.clientX - rect.left
+    const screenY = event.clientY - rect.top
+    const worldPoint = screenToWorld(screenX, screenY)
+
+    dragStateRef.current = {
+      kind: 'resize',
+      id: item.id,
+      corner,
+      startWorldX: worldPoint.x,
+      startWorldY: worldPoint.y,
+      startWidth: item.width,
+      startHeight: item.height,
+      itemX: item.x,
+      itemY: item.y,
+    }
+
+    setSelectedId(item.id)
+    setDragMode('resize')
     viewportRef.current?.setPointerCapture(event.pointerId)
   }
 
@@ -493,7 +641,37 @@ export function InfiniteCanvas() {
     setSelectedId(null)
   }
 
+  const getDownloadName = (name?: string, mimeType?: string) => {
+    if (name && name.includes('.')) return name
+    if (mimeType?.includes('png')) return `${name ?? 'canvas-image'}.png`
+    if (mimeType?.includes('jpeg')) return `${name ?? 'canvas-image'}.jpg`
+    if (mimeType?.includes('webp')) return `${name ?? 'canvas-image'}.webp`
+    return `${name ?? 'canvas-image'}.png`
+  }
+
+  const handleDownloadItem = async (item: CanvasItem) => {
+    const fallbackName = getDownloadName(item.data.name)
+    try {
+      const response = await fetch(item.data.src)
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = getDownloadName(item.data.name, blob.type)
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      const link = document.createElement('a')
+      link.href = item.data.src
+      link.download = fallbackName
+      link.target = '_blank'
+      link.rel = 'noopener'
+      link.click()
+    }
+  }
+
   const zoomPercent = Math.round(camera.scale * 100)
+  const selectedItem = items.find((item) => item.id === selectedId) ?? null
   const tools: { id: ToolId; label: string; Icon: LucideIcon }[] = [
     { id: 'select', label: '选择', Icon: MousePointer2 },
     { id: 'hand', label: '拖拽', Icon: Hand },
@@ -638,6 +816,61 @@ export function InfiniteCanvas() {
         滚轮缩放 · 空格+拖拽平移 · 双击复位
       </div>
 
+      {selectedItem && (
+        <>
+          <div
+            className="pointer-events-none absolute z-20"
+            style={{
+              left: worldToScreen(selectedItem.x + selectedItem.width / 2, selectedItem.y + selectedItem.height)
+                .x,
+              top: worldToScreen(selectedItem.x + selectedItem.width / 2, selectedItem.y + selectedItem.height)
+                .y,
+              transform: 'translate(-50%, 16px)',
+            }}
+          >
+            <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-border bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-md backdrop-blur">
+              <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
+                <Wand2 className="h-3.5 w-3.5" />
+                编辑
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
+                <Layers className="h-3.5 w-3.5" />
+                变体
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
+                <Scissors className="h-3.5 w-3.5" />
+                去背
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1 rounded-full px-2 text-xs"
+                onClick={() => handleDownloadItem(selectedItem)}
+              >
+                <Download className="h-3.5 w-3.5" />
+                下载
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
+                <Copy className="h-3.5 w-3.5" />
+                复制
+              </Button>
+            </div>
+          </div>
+          <div
+            className="pointer-events-none absolute z-20"
+            style={{
+              left: worldToScreen(selectedItem.x + selectedItem.width, selectedItem.y).x,
+              top: worldToScreen(selectedItem.x + selectedItem.width, selectedItem.y).y,
+              transform: 'translate(10px, -24px)',
+            }}
+          >
+            <div className="pointer-events-auto rounded-full border border-border bg-background/85 px-2 py-1 text-[10px] font-medium text-muted-foreground shadow-sm">
+              {Math.round(selectedItem.width)} × {Math.round(selectedItem.height)}
+            </div>
+          </div>
+        </>
+      )}
+
       <input
         ref={fileInputRef}
         type="file"
@@ -669,20 +902,20 @@ export function InfiniteCanvas() {
           className="absolute left-0 top-0 h-full w-full origin-top-left"
           style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})` }}
         >
-          {items.map((item) => {
-            const selected = item.id === selectedId
-            return (
-              <div
-                key={item.id}
-                className={cn(
-                  'absolute select-none',
-                  dragMode === 'item' && selected ? 'cursor-grabbing' : 'cursor-move'
-                )}
-                style={{
-                  left: item.x,
-                  top: item.y,
-                  width: item.width,
-                  height: item.height,
+              {items.map((item) => {
+                const selected = item.id === selectedId
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      'absolute select-none',
+                      dragMode === 'item' && selected ? 'cursor-grabbing' : 'cursor-move'
+                    )}
+                    style={{
+                      left: item.x,
+                      top: item.y,
+                      width: item.width,
+                      height: item.height,
                   outline: DEBUG_CANVAS ? '1px dashed rgba(148,163,184,0.6)' : undefined,
                   background: DEBUG_CANVAS ? 'rgba(15, 23, 42, 0.2)' : undefined,
                 }}
@@ -698,24 +931,47 @@ export function InfiniteCanvas() {
                     {brokenImages[item.id] ? '图片加载失败' : '图片加载中'}
                   </div>
                 )}
-                <img
-                  src={item.data.src}
-                  alt={item.data.name ?? 'canvas'}
-                  className="h-full w-full rounded-2xl object-contain shadow-[0_16px_40px_-28px_hsl(var(--foreground)/0.35)]"
-                  draggable={false}
-                  onLoad={() => {
-                    setLoadedImages((prev) => ({ ...prev, [item.id]: true }))
-                  }}
-                  onError={() => {
-                    setBrokenImages((prev) => ({ ...prev, [item.id]: true }))
-                  }}
-                />
-                {selected && (
-                  <div className="pointer-events-none absolute -inset-1 rounded-[20px] border border-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.2)]" />
-                )}
-              </div>
-            )
-          })}
+                    <img
+                      src={item.data.src}
+                      alt={item.data.name ?? 'canvas'}
+                      className="h-full w-full rounded-2xl object-contain shadow-[0_16px_40px_-28px_hsl(var(--foreground)/0.35)]"
+                      draggable={false}
+                      style={{ WebkitUserDrag: 'none' }}
+                      onLoad={() => {
+                        setLoadedImages((prev) => ({ ...prev, [item.id]: true }))
+                      }}
+                      onError={() => {
+                        setBrokenImages((prev) => ({ ...prev, [item.id]: true }))
+                      }}
+                    />
+                    {selected && (
+                      <>
+                        <div className="pointer-events-none absolute -inset-1 rounded-[20px] border border-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.2)]" />
+                        <div
+                          className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                          onPointerDown={(event) => handleResizePointerDown(event, item, 'tl')}
+                          style={{ cursor: 'nwse-resize' }}
+                        />
+                        <div
+                          className="absolute -right-1.5 -top-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                          onPointerDown={(event) => handleResizePointerDown(event, item, 'tr')}
+                          style={{ cursor: 'nesw-resize' }}
+                        />
+                        <div
+                          className="absolute -left-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                          onPointerDown={(event) => handleResizePointerDown(event, item, 'bl')}
+                          style={{ cursor: 'nesw-resize' }}
+                        />
+                        <div
+                          className="absolute -right-1.5 -bottom-1.5 h-3 w-3 rounded-full border border-primary bg-background shadow-sm"
+                          onPointerDown={(event) => handleResizePointerDown(event, item, 'br')}
+                          style={{ cursor: 'nwse-resize' }}
+                        />
+                      </>
+                    )}
+                  </div>
+                )
+              })}
 
           {items.length === 0 && (
             <div className="absolute left-1/2 top-1/2 w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-dashed border-border bg-background/80 p-6 text-center text-sm text-muted-foreground shadow-[0_12px_35px_-25px_hsl(var(--foreground)/0.25)]">
