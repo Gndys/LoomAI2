@@ -30,12 +30,23 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { ColorSchemeToggle, ThemeToggle } from '@/components/theme-toggle'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 import { Message, MessageContent } from '@/components/ai-elements/message'
-import type { UIMessage } from 'ai'
+import type { FileUIPart, UIMessage } from 'ai'
 import { authClientReact } from '@libs/auth/authClient'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useTheme } from '@/hooks/use-theme'
+import { type ColorScheme, THEME_CONFIG } from '@libs/ui/themes'
 
 type CanvasBaseItem = {
   id: string
@@ -196,6 +207,7 @@ export function InfiniteCanvas() {
 
   const { data: session } = authClientReact.useSession()
   const user = session?.user
+  const { colorScheme, setColorScheme } = useTheme()
   const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; width: number; height: number } | null>(
     null
   )
@@ -1395,13 +1407,55 @@ export function InfiniteCanvas() {
     setBrokenImages((prev) => (prev[item.id] ? { ...prev, [nextId]: true } : prev))
   }
 
+  const resolveImageMediaType = (src: string, name?: string) => {
+    if (src.startsWith('data:')) {
+      const match = src.match(/^data:([^;]+);/)
+      if (match?.[1]) return match[1]
+    }
+    const base = (name || src).split('?')[0]
+    const ext = base.split('.').pop()?.toLowerCase()
+    if (ext === 'png') return 'image/png'
+    if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg'
+    if (ext === 'webp') return 'image/webp'
+    if (ext === 'gif') return 'image/gif'
+    return 'image/png'
+  }
+
+  const resolveImageFileName = (name: string | undefined, mediaType: string) => {
+    if (name) return name
+    const fallbackExt = mediaType.split('/')[1] || 'png'
+    return `selected-image.${fallbackExt}`
+  }
+
   const sendChat = async () => {
     const text = chatInput.trim()
     if (!text) return
     if (status === 'streaming' || status === 'submitted') return
+    const selectedItemsNow = items.filter((item) => selectedIds.includes(item.id))
+    const primaryItem = selectedItemsNow.find((item) => item.id === selectedId) ?? selectedItemsNow[0] ?? null
+    const hasMultiSelectionNow = selectedItemsNow.length > 1
+    let files: FileUIPart[] | undefined
+    let attachmentHint = ''
+
+    if (primaryItem?.type === 'image' && primaryItem.data?.src) {
+      const mediaType = resolveImageMediaType(primaryItem.data.src, primaryItem.data.name)
+      const filename = resolveImageFileName(primaryItem.data.name, mediaType)
+      files = [
+        {
+          type: 'file',
+          mediaType,
+          filename,
+          url: primaryItem.data.src,
+        },
+      ]
+      const label = primaryItem.data?.name?.trim() || '未命名图片'
+      attachmentHint = hasMultiSelectionNow
+        ? `【已附加图片：${label}（多选，仅附加一张）】\n`
+        : `【已附加图片：${label}】\n`
+    }
     setChatInput('')
     await sendMessage(
-      { text },
+      { text: attachmentHint ? `${attachmentHint}${text}` : text, files },
       {
         body: {
           provider: chatProvider,
@@ -1473,16 +1527,44 @@ export function InfiniteCanvas() {
       <div className="pointer-events-none absolute left-1/2 top-4 z-30 w-[min(1200px,calc(100%-2.5rem))] -translate-x-1/2">
         <div className="pointer-events-auto flex items-center justify-between rounded-full border border-border bg-background/80 px-4 py-2 shadow-sm backdrop-blur">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-              LA
-            </div>
-            <div className="flex flex-col leading-tight">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                无限画布
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <span className="text-xs text-muted-foreground">Phase 0 · LoomAI</span>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-3 rounded-full px-2 py-1 text-left transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    LA
+                  </div>
+                  <div className="flex flex-col leading-tight">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      无限画布
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <span className="text-xs text-muted-foreground">Phase 0 · LoomAI</span>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuLabel>画布设置</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-muted-foreground">主题色</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={colorScheme}
+                  onValueChange={(value) => setColorScheme(value as ColorScheme)}
+                >
+                  {Object.entries(THEME_CONFIG).map(([key, config]) => (
+                    <DropdownMenuRadioItem key={key} value={key} className="gap-2">
+                      <span
+                        className="h-3.5 w-3.5 rounded-full"
+                        style={{ backgroundColor: config.color }}
+                      />
+                      <span>{config.name}</span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 rounded-full border border-border bg-background/70 px-2 py-1 text-xs font-medium text-muted-foreground">
@@ -1493,7 +1575,6 @@ export function InfiniteCanvas() {
               <span className="max-w-[120px] truncate text-foreground">{userDisplayName}</span>
             </div>
             <ThemeToggle />
-            <ColorSchemeToggle />
             <Button
               size="sm"
               variant="ghost"
