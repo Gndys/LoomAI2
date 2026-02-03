@@ -159,6 +159,7 @@ const USE_MOCK_UPLOAD = true
 const MAX_PERSISTED_SRC_LENGTH = 200_000
 const MAX_PERSISTED_TOTAL_LENGTH = 3_000_000
 const DUPLICATE_OFFSET = 24
+const SIGNED_URL_REFRESH_BUFFER_MS = 2 * 60 * 1000
 const DEFAULT_TEXT = '双击编辑文字'
 const DEFAULT_TEXT_SIZE = 28
 const DEFAULT_TEXT_BOX_WIDTH = 320
@@ -188,6 +189,60 @@ const NOTE_NEUTRAL_BORDER_COLOR = '#e2e8f0'
 const EXPORT_PADDING = 48
 const MAX_EXPORT_SIZE = 8192
 const DEBUG_CANVAS = false
+
+type SignedUrlPayload = {
+  url: string
+  key?: string
+  provider?: string
+  expiresAt?: string
+}
+
+const parseAmzDate = (value: string) => {
+  const match = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/)
+  if (!match) return null
+  const [, year, month, day, hour, minute, second] = match
+  return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)))
+}
+
+const parseUrlExpiry = (src: string) => {
+  try {
+    const url = new URL(src)
+    const expires = url.searchParams.get('Expires')
+    if (expires) {
+      const expiresAt = Number(expires) * 1000
+      if (Number.isFinite(expiresAt)) return expiresAt
+    }
+    const amzDate = url.searchParams.get('X-Amz-Date')
+    const amzExpires = url.searchParams.get('X-Amz-Expires')
+    if (amzDate && amzExpires) {
+      const parsed = parseAmzDate(amzDate)
+      const ttl = Number(amzExpires) * 1000
+      if (parsed && Number.isFinite(ttl)) {
+        return parsed.getTime() + ttl
+      }
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+const isSignedUrlExpiring = (src: string, expiresAt?: string) => {
+  const parsedExpiry = expiresAt ? new Date(expiresAt).getTime() : parseUrlExpiry(src)
+  if (!Number.isFinite(parsedExpiry) || !parsedExpiry) return false
+  return parsedExpiry - Date.now() < SIGNED_URL_REFRESH_BUFFER_MS
+}
+
+const parseStorageKeyFromUrl = (src: string) => {
+  try {
+    const url = new URL(src)
+    const pathname = decodeURIComponent(url.pathname || '')
+    const key = pathname.replace(/^\/+/, '')
+    return key || null
+  } catch {
+    return null
+  }
+}
 
 const TEXT_STROKE_COLORS = [
   { value: 'transparent', label: '无' },
@@ -342,6 +397,7 @@ export function InfiniteCanvas() {
   const textEditRef = useRef<HTMLTextAreaElement | null>(null)
   const textStylePanelRef = useRef<HTMLDivElement | null>(null)
   const lastTextClickRef = useRef<{ id: string | null; time: number }>({ id: null, time: 0 })
+  const refreshingSignedUrlsRef = useRef<Record<string, Promise<SignedUrlPayload | null>>>({})
 
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, scale: 1 })
   const [items, setItems] = useState<CanvasItem[]>([])
@@ -1344,7 +1400,7 @@ export function InfiniteCanvas() {
     viewportRef.current?.setPointerCapture(event.pointerId)
   }
 
-  const addImageItem = (src: string, name: string) => {
+  const addImageItem = (src: string, name: string, metadata?: Partial<CanvasImageItem['data']>) => {
     const img = new Image()
     img.onerror = () => {
       toast.error('图片加载失败，请换一张图试试')
@@ -1376,6 +1432,7 @@ export function InfiniteCanvas() {
         data: {
           src,
           name,
+          ...metadata,
         },
       }
 
@@ -1395,6 +1452,37 @@ export function InfiniteCanvas() {
       })
     }
     img.src = src
+  }
+
+  const resetImageLoadState = (id: string) => {
+    setLoadedImages((prev) => {
+      if (!prev[id]) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setBrokenImages((prev) => {
+      if (!prev[id]) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+
+  const updateImageItem = (id: string, updates: Partial<CanvasImageItem['data']>) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id && item.type === 'image'
+          ? {
+              ...item,
+              data: {
+                ...item.data,
+                ...updates,
+              },
+            }
+          : item
+      )
+    )
   }
 
   const updateTextItem = (id: string, text: string, fontSize: number) => {
@@ -1534,7 +1622,11 @@ export function InfiniteCanvas() {
         originalName?: string
       }
 
-      addImageItem(data.url, data.originalName ?? file.name)
+      addImageItem(data.url, data.originalName ?? file.name, {
+        key: data.key,
+        provider: data.provider,
+        expiresAt: data.expiresAt,
+      })
       toast.success('上传完成', { id: toastId })
     } catch (error) {
       const message = error instanceof Error ? error.message : '上传失败'
@@ -1796,7 +1888,11 @@ export function InfiniteCanvas() {
   const handleDownloadItem = async (item: CanvasImageItem) => {
     const fallbackName = getDownloadName(item.data.name)
     try {
-      const response = await fetch(item.data.src)
+      const resolved = await ensureRemoteImageUrl(item, { allowLocal: true })
+      const response = await fetch(resolved.url)
+      if (!response.ok) {
+        throw new Error('图片请求失败')
+      }
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -1812,6 +1908,28 @@ export function InfiniteCanvas() {
       link.rel = 'noopener'
       link.click()
     }
+  }
+
+  const handleImageLoadError = (item: CanvasImageItem) => {
+    const src = item.data?.src
+    if (!src) {
+      setBrokenImages((prev) => ({ ...prev, [item.id]: true }))
+      return
+    }
+    const shouldRefresh = Boolean(item.data?.key) || isSignedUrlExpiring(src, item.data?.expiresAt)
+    if (!shouldRefresh) {
+      setBrokenImages((prev) => ({ ...prev, [item.id]: true }))
+      return
+    }
+    void (async () => {
+      try {
+        const refreshed = await refreshSignedUrlForItem(item)
+        if (refreshed?.url) return
+      } catch {
+        // ignore and fall through to mark broken
+      }
+      setBrokenImages((prev) => ({ ...prev, [item.id]: true }))
+    })()
   }
 
   const buildCutoutName = (name?: string) => {
@@ -1836,6 +1954,51 @@ export function InfiniteCanvas() {
     return new File([bytes], name, { type: mimeType })
   }
 
+  const requestSignedUrl = async (key: string, provider?: string) => {
+    const response = await fetch('/api/storage/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, provider }),
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      const message = payload?.message || payload?.error || '刷新图片地址失败'
+      throw new Error(message)
+    }
+    return payload?.data as SignedUrlPayload
+  }
+
+  const refreshSignedUrlForItem = async (item: CanvasImageItem) => {
+    const src = item.data?.src
+    if (!src) return null
+    const key = item.data?.key ?? parseStorageKeyFromUrl(src)
+    if (!key) return null
+    if (user?.id && !key.startsWith(`uploads/${user.id}/`)) return null
+    const inFlight = refreshingSignedUrlsRef.current[item.id]
+    if (inFlight) {
+      return inFlight
+    }
+    const requestPromise = (async () => {
+      const refreshed = await requestSignedUrl(key, item.data?.provider)
+      if (refreshed?.url) {
+        updateImageItem(item.id, {
+          src: refreshed.url,
+          key: refreshed.key ?? key,
+          provider: refreshed.provider ?? item.data?.provider,
+          expiresAt: refreshed.expiresAt,
+        })
+        resetImageLoadState(item.id)
+      }
+      return refreshed ?? null
+    })()
+    refreshingSignedUrlsRef.current[item.id] = requestPromise
+    try {
+      return await requestPromise
+    } finally {
+      delete refreshingSignedUrlsRef.current[item.id]
+    }
+  }
+
   const uploadImageFile = async (file: File) => {
     const formData = new FormData()
     formData.append('file', file)
@@ -1852,7 +2015,7 @@ export function InfiniteCanvas() {
       }
       throw new Error(message)
     }
-    return payload?.data as {
+    return payload?.data as SignedUrlPayload & {
       url: string
       key?: string
       provider?: string
@@ -1861,13 +2024,30 @@ export function InfiniteCanvas() {
     }
   }
 
-  const ensureRemoteImageUrl = async (item: CanvasImageItem) => {
+  const ensureRemoteImageUrl = async (item: CanvasImageItem, options?: { allowLocal?: boolean }) => {
     const src = item.data?.src
     if (!src) {
       throw new Error('图片地址缺失')
     }
     if (src.startsWith('http://') || src.startsWith('https://')) {
-      return { url: src }
+      if (isSignedUrlExpiring(src, item.data?.expiresAt)) {
+        const refreshed = await refreshSignedUrlForItem(item)
+        if (refreshed?.url) return refreshed
+      }
+      return {
+        url: src,
+        key: item.data?.key,
+        provider: item.data?.provider,
+        expiresAt: item.data?.expiresAt,
+      }
+    }
+    if (options?.allowLocal) {
+      return {
+        url: src,
+        key: item.data?.key,
+        provider: item.data?.provider,
+        expiresAt: item.data?.expiresAt,
+      }
     }
     const mediaType = resolveImageMediaType(src, item.data?.name)
     const filename = resolveImageFileName(item.data?.name, mediaType)
@@ -1886,7 +2066,14 @@ export function InfiniteCanvas() {
     if (!uploaded?.url || typeof uploaded.url !== 'string') {
       throw new Error('上传失败，未获取到图片地址')
     }
-    return { url: uploaded.url }
+    updateImageItem(item.id, {
+      src: uploaded.url,
+      key: uploaded.key,
+      provider: uploaded.provider,
+      expiresAt: uploaded.expiresAt,
+    })
+    resetImageLoadState(item.id)
+    return uploaded
   }
 
   const pollRemoveBackgroundResult = async (jobId: string, filename?: string) => {
@@ -1909,7 +2096,12 @@ export function InfiniteCanvas() {
         if (!imageUrl) {
           throw new Error('未获取到去背结果')
         }
-        return imageUrl as string
+        return {
+          url: imageUrl as string,
+          key: payload?.data?.key,
+          provider: payload?.data?.provider,
+          expiresAt: payload?.data?.expiresAt,
+        }
       }
       if (status === 'PROCESS_FAILED') {
         throw new Error(payload?.data?.errorMessage || '去背失败')
@@ -1924,7 +2116,7 @@ export function InfiniteCanvas() {
     if (removingBackgroundIds[item.id]) return
     setRemovingBackgroundIds((prev) => ({ ...prev, [item.id]: true }))
     const toastId = toast.loading('正在去背...')
-    const appendCutout = (resultUrl: string, nextName: string) => {
+    const appendCutout = (result: SignedUrlPayload, nextName: string) => {
       const nextId = nanoid()
       const nextItem: CanvasItem = {
         id: nextId,
@@ -1934,8 +2126,11 @@ export function InfiniteCanvas() {
         width: item.width,
         height: item.height,
         data: {
-          src: resultUrl,
+          src: result.url,
           name: nextName,
+          key: result.key,
+          provider: result.provider,
+          expiresAt: result.expiresAt,
         },
       }
       setItems((prev) => [...prev, nextItem])
@@ -1959,7 +2154,15 @@ export function InfiniteCanvas() {
       }
       const immediateUrl = payload?.data?.imageUrl
       if (payload?.data?.status === 'PROCESS_SUCCESS' && immediateUrl) {
-        appendCutout(immediateUrl, nextName)
+        appendCutout(
+          {
+            url: immediateUrl,
+            key: payload?.data?.key,
+            provider: payload?.data?.provider,
+            expiresAt: payload?.data?.expiresAt,
+          },
+          nextName
+        )
         toast.success('去背完成', { id: toastId })
         return
       }
@@ -1967,8 +2170,8 @@ export function InfiniteCanvas() {
       if (!jobId) {
         throw new Error('任务创建失败')
       }
-      const resultUrl = await pollRemoveBackgroundResult(jobId, nextName)
-      appendCutout(resultUrl, nextName)
+      const result = await pollRemoveBackgroundResult(jobId, nextName)
+      appendCutout(result, nextName)
       toast.success('去背完成', { id: toastId })
     } catch (error) {
       const message = error instanceof Error ? error.message : '去背失败'
@@ -2043,20 +2246,26 @@ export function InfiniteCanvas() {
     let attachmentHint = ''
 
     if (primaryItem?.type === 'image' && primaryItem.data?.src) {
-      const mediaType = resolveImageMediaType(primaryItem.data.src, primaryItem.data.name)
-      const filename = resolveImageFileName(primaryItem.data.name, mediaType)
-      files = [
-        {
-          type: 'file',
-          mediaType,
-          filename,
-          url: primaryItem.data.src,
-        },
-      ]
-      const label = primaryItem.data?.name?.trim() || '未命名图片'
-      attachmentHint = hasMultiSelectionNow
-        ? `【已附加图片：${label}（多选，仅附加一张）】\n`
-        : `【已附加图片：${label}】\n`
+      try {
+        const ensured = await ensureRemoteImageUrl(primaryItem)
+        const mediaType = resolveImageMediaType(ensured.url, primaryItem.data.name)
+        const filename = resolveImageFileName(primaryItem.data.name, mediaType)
+        files = [
+          {
+            type: 'file',
+            mediaType,
+            filename,
+            url: ensured.url,
+          },
+        ]
+        const label = primaryItem.data?.name?.trim() || '未命名图片'
+        attachmentHint = hasMultiSelectionNow
+          ? `【已附加图片：${label}（多选，仅附加一张）】\n`
+          : `【已附加图片：${label}】\n`
+      } catch (chatImageError) {
+        const message = chatImageError instanceof Error ? chatImageError.message : '图片链接已失效'
+        toast.error(message)
+      }
     }
     setChatInput('')
     await sendMessage(
@@ -3552,9 +3761,7 @@ export function InfiniteCanvas() {
                       onLoad={() => {
                         setLoadedImages((prev) => ({ ...prev, [item.id]: true }))
                       }}
-                      onError={() => {
-                        setBrokenImages((prev) => ({ ...prev, [item.id]: true }))
-                      }}
+                      onError={() => handleImageLoadError(item)}
                     />
                     {selected && (
                       <>

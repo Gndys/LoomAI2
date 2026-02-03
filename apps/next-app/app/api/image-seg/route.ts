@@ -160,6 +160,8 @@ export async function POST(request: NextRequest) {
         data: {
           status: 'PROCESS_SUCCESS',
           imageUrl: persisted.url,
+          key: persisted.key,
+          provider: config.storage.defaultProvider,
           originalImageUrl: immediateImageUrl,
           expiresAt: persisted.expiresAt,
         },
@@ -229,6 +231,8 @@ export async function GET(request: NextRequest) {
           status,
           jobId,
           imageUrl: persisted.url,
+          key: persisted.key,
+          provider: config.storage.defaultProvider,
           originalImageUrl: rawImageUrl,
           expiresAt: persisted.expiresAt,
         },

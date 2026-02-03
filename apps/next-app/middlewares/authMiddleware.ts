@@ -239,6 +239,11 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     requiresAuth: true
   },
   {
+    pattern: new RegExp('^/api/storage/sign(\\/.*)?$'),
+    type: 'api',
+    requiresAuth: true
+  },
+  {
     pattern: new RegExp('^/api/clothes-split(\\/.*)?$'),
     type: 'api',
     requiresAuth: true,
