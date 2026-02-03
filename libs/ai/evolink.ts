@@ -1,15 +1,18 @@
 import { config } from '@config';
 
-export type EvolinkImageModel = 'gemini-2.5-flash-image';
+export type EvolinkImageModel = 'gemini-2.5-flash-image' | 'z-image-turbo';
 export type EvolinkImageSize =
   | 'auto'
   | '1:1'
+  | '1:2'
   | '2:3'
+  | '2:1'
   | '3:2'
   | '3:4'
   | '4:3'
   | '9:16'
-  | '16:9';
+  | '16:9'
+  | `${number}x${number}`;
 export type EvolinkImageQuality = '1K' | '2K' | '4K';
 
 export type EvolinkTaskStatus = 'pending' | 'processing' | 'completed' | 'failed';

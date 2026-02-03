@@ -180,6 +180,10 @@ const NOTE_CHUNK_TARGET = 140
 const NOTE_CHUNK_MAX = 200
 const NOTE_LAYOUT_GAP_X = 24
 const NOTE_LAYOUT_GAP_Y = 20
+const NOTE_FONT_SIZE = 14
+const NOTE_PADDING_X = 12
+const NOTE_PADDING_Y = 8
+const NOTE_RADIUS = 14
 const NOTE_STICKY_TEXT_COLOR = '#713f12'
 const NOTE_STICKY_BACKGROUND_COLOR = '#fef9c3'
 const NOTE_STICKY_BORDER_COLOR = '#fde68a'
@@ -316,8 +320,10 @@ const IMAGE_PROVIDER_LABELS = {
   evolink: 'EvoLink',
 } as const
 
-const DEFAULT_EVOLINK_SIZE =
-  config.aiImage.defaults.size ?? config.aiImage.evolinkSizes[0]?.value
+const resolveDefaultEvolinkSize = (model: string) =>
+  model === 'z-image-turbo'
+    ? '1:1'
+    : (config.aiImage.defaults.size ?? config.aiImage.evolinkSizes[0]?.value)
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -433,6 +439,9 @@ export function InfiniteCanvas() {
   const defaultImageModel =
     config.aiImage.defaultModels[defaultImageProvider] ?? imageProviderModels[defaultImageProvider]?.[0] ?? ''
   const [imageModel, setImageModel] = useState<string>(defaultImageModel)
+  const [imageSizeMode, setImageSizeMode] = useState<string>(config.aiImage.defaults.size ?? 'auto')
+  const [customSizeWidth, setCustomSizeWidth] = useState('')
+  const [customSizeHeight, setCustomSizeHeight] = useState('')
   const [isImageGenerating, setIsImageGenerating] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const canvasInputRef = useRef<HTMLInputElement | null>(null)
@@ -1490,6 +1499,8 @@ export function InfiniteCanvas() {
       prev.map((item) =>
         item.id === id && item.type === 'text'
           ? (() => {
+              const paddingX = item.data.noteStyle ? NOTE_PADDING_X : TEXT_PADDING_X
+              const paddingY = item.data.noteStyle ? NOTE_PADDING_Y : TEXT_PADDING_Y
               const targetWidth = Math.max(item.width, MIN_TEXT_WIDTH)
               const { height } = measureTextBox(
                 text,
@@ -1498,7 +1509,9 @@ export function InfiniteCanvas() {
                 MIN_TEXT_HEIGHT,
                 item.data.fontFamily,
                 item.data.fontWeight,
-                item.data.fontStyle
+                item.data.fontStyle,
+                paddingX,
+                paddingY
               )
               const nextHeight = Math.max(height, item.height)
               return {
@@ -2286,13 +2299,38 @@ export function InfiniteCanvas() {
     setIsImageGenerating(true)
 
     try {
+      let resolvedSize: string | undefined
+      if (imageSizeMode === 'custom') {
+        const width = Number(customSizeWidth)
+        const height = Number(customSizeHeight)
+        if (!Number.isFinite(width) || !Number.isFinite(height)) {
+          toast.error('请输入有效的自定义尺寸', { id: toastId })
+          return
+        }
+        if (width < 376 || width > 1536 || height < 376 || height > 1536) {
+          toast.error('自定义尺寸需在 376-1536 之间', { id: toastId })
+          return
+        }
+        resolvedSize = `${Math.round(width)}x${Math.round(height)}`
+      } else {
+        resolvedSize = imageSizeMode
+      }
+
+      if (isTurboImageModel && resolvedSize === 'auto') {
+        resolvedSize = '1:1'
+      }
+
+      if (!resolvedSize) {
+        resolvedSize = resolveDefaultEvolinkSize(imageModel)
+      }
+
       const payload: Record<string, unknown> = {
         prompt,
         model: imageModel,
       }
 
-      if (DEFAULT_EVOLINK_SIZE) {
-        payload.size = DEFAULT_EVOLINK_SIZE
+      if (resolvedSize) {
+        payload.size = resolvedSize
       }
 
       const response = await fetch('/api/image-generate', {
@@ -2426,6 +2464,21 @@ export function InfiniteCanvas() {
       }))
     })
   }, [imageProviderModels])
+  const isTurboImageModel = imageModel === 'z-image-turbo'
+  const imageSizeOptions = useMemo(() => {
+    const base = config.aiImage.evolinkSizes
+    if (isTurboImageModel) {
+      return base.filter((option) => option.value !== 'auto')
+    }
+    return base.filter((option) => option.value !== '1:2' && option.value !== '2:1')
+  }, [isTurboImageModel])
+  const imageSizeSelectOptions = useMemo(
+    () => [
+      ...imageSizeOptions,
+      { value: 'custom', label: '自定义', disabled: !isTurboImageModel },
+    ],
+    [imageSizeOptions, isTurboImageModel]
+  )
   const isImagePromptMode =
     isCanvasPromptOpen && (activeTool === 'image' || selectedItem?.type === 'image')
   const resolvedCanvasPrompt = useMemo(() => {
@@ -2437,9 +2490,11 @@ export function InfiniteCanvas() {
     return userText
   }, [canvasInput, isImagePromptMode, selectedPreset])
   const canvasPlaceholder = isImagePromptMode
-    ? selectedPreset
-      ? `补充${selectedPreset.name}的需求…`
-      : '你想要创作什么？'
+    ? selectedItem?.type === 'image'
+      ? '你想要调整什么？'
+      : selectedPreset
+        ? `补充${selectedPreset.name}的需求…`
+        : '你想要创作什么？'
     : '输入文字...'
   const chatQuickPrompts = useMemo(() => {
     const basePrompts = [
@@ -2456,6 +2511,19 @@ export function InfiniteCanvas() {
     if (isImagePromptMode) return
     setIsCanvasPresetOpen(false)
   }, [isImagePromptMode])
+
+  useEffect(() => {
+    if (imageSizeMode === 'custom') {
+      if (!isTurboImageModel) {
+        setImageSizeMode(imageSizeOptions[0]?.value ?? '1:1')
+      }
+      return
+    }
+    const allowed = new Set(imageSizeOptions.map((option) => option.value))
+    if (!allowed.has(imageSizeMode)) {
+      setImageSizeMode(imageSizeOptions[0]?.value ?? '1:1')
+    }
+  }, [imageSizeMode, imageSizeOptions, isTurboImageModel])
 
   const tools: { id: ToolId; label: string; Icon: LucideIcon; shortcut?: string }[] = [
     { id: 'select', label: '选择', Icon: MousePointer2, shortcut: 'V' },
@@ -2537,6 +2605,7 @@ export function InfiniteCanvas() {
     (text: string, asNote = false, noteTone: 'neutral' | 'sticky' = 'sticky') => {
       const value = text.trim()
       if (!value) return
+      const targetFontSize = asNote ? NOTE_FONT_SIZE : DEFAULT_TEXT_SIZE
       const chunks = splitChatTextToNotes(value)
       const noteChunks = chunks.length > 0 ? chunks : [value]
       const rect = getViewportRect()
@@ -2547,7 +2616,7 @@ export function InfiniteCanvas() {
         Math.floor((worldWidth + NOTE_LAYOUT_GAP_X) / (DEFAULT_TEXT_BOX_WIDTH + NOTE_LAYOUT_GAP_X))
       )
       const columns = Math.min(preferredColumns, maxColumns, noteChunks.length)
-      const sizes = noteChunks.map((chunk) => measureTextBox(chunk, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_BOX_WIDTH))
+      const sizes = noteChunks.map((chunk) => measureTextBox(chunk, targetFontSize, DEFAULT_TEXT_BOX_WIDTH))
       const rowCount = Math.ceil(noteChunks.length / columns)
       const rowHeights = Array.from({ length: rowCount }, () => 0)
 
@@ -2582,6 +2651,7 @@ export function InfiniteCanvas() {
               color: noteText,
               strokeColor: 'transparent',
               strokeWidth: 0,
+              fontSize: targetFontSize,
               noteStyle: true,
               noteTone,
             })

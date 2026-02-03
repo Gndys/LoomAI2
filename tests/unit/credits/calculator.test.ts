@@ -384,12 +384,8 @@ describe('Credits Calculator', () => {
             aiImage: {
               default: 10,
               models: {
-                'qwen-image-max': 8,
-                'qwen-image-plus': 5,
-                'fal-ai/flux/schnell': 6,
-                'fal-ai/flux/dev': 10,
-                'dall-e-3': 15,
-                'dall-e-2': 8,
+                'gemini-2.5-flash-image': 8,
+                'z-image-turbo': 6,
               }
             }
           },
@@ -407,66 +403,40 @@ describe('Credits Calculator', () => {
       const { calculateImageCreditCost } = await import('@libs/ai/image');
       
       const result = calculateImageCreditCost({
-        provider: 'qwen',
         model: 'unknown-model'
       });
       
       expect(result).toBe(10); // global default
     });
 
-    test('should return model-specific cost for qwen-image-max', async () => {
+    test('should return model-specific cost for gemini-2.5-flash-image', async () => {
       const { calculateImageCreditCost } = await import('@libs/ai/image');
       
       const result = calculateImageCreditCost({
-        provider: 'qwen',
-        model: 'qwen-image-max'
+        model: 'gemini-2.5-flash-image'
       });
       
       expect(result).toBe(8);
     });
 
-    test('should return model-specific cost for dall-e-2', async () => {
+    test('should return model-specific cost for z-image-turbo', async () => {
       const { calculateImageCreditCost } = await import('@libs/ai/image');
       
       const result = calculateImageCreditCost({
-        provider: 'openai',
-        model: 'dall-e-2'
+        model: 'z-image-turbo'
       });
       
-      expect(result).toBe(8);
+      expect(result).toBe(6);
     });
 
-    test('should return model-specific cost for dall-e-3', async () => {
+    test('should return default for unknown evolink model', async () => {
       const { calculateImageCreditCost } = await import('@libs/ai/image');
       
       const result = calculateImageCreditCost({
-        provider: 'openai',
-        model: 'dall-e-3'
+        model: 'evolink-unknown'
       });
       
-      expect(result).toBe(15);
-    });
-
-    test('should return fal model-specific cost', async () => {
-      const { calculateImageCreditCost } = await import('@libs/ai/image');
-      
-      const result = calculateImageCreditCost({
-        provider: 'fal',
-        model: 'fal-ai/flux/dev'
-      });
-      
-      expect(result).toBe(10);
-    });
-
-    test('should return default for unknown fal model', async () => {
-      const { calculateImageCreditCost } = await import('@libs/ai/image');
-      
-      const result = calculateImageCreditCost({
-        provider: 'fal',
-        model: 'fal-ai/unknown-model'
-      });
-      
-      expect(result).toBe(10); // global default (no provider default anymore)
+      expect(result).toBe(10); // global default
     });
   });
 

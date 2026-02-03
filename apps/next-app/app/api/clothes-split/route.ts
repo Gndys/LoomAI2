@@ -25,7 +25,9 @@ function toOptionalSize(value: unknown): EvolinkImageSize | undefined {
   const allowed: EvolinkImageSize[] = [
     'auto',
     '1:1',
+    '1:2',
     '2:3',
+    '2:1',
     '3:2',
     '3:4',
     '4:3',

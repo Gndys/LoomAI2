@@ -44,6 +44,8 @@ export const creditsConfig = {
       models: {
         // Evolink Nano Banana
         'gemini-2.5-flash-image': 10,
+        // Evolink Z Image Turbo
+        'z-image-turbo': 10,
       },
     } as FixedConsumptionConfig,
   },

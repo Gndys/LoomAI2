@@ -13,7 +13,14 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const toOptionalSize = (value: unknown): EvolinkImageSize | undefined => {
   if (typeof value !== 'string') return undefined;
   const allowed = new Set(config.aiImage.evolinkSizes.map((item) => item.value));
-  return allowed.has(value) ? (value as EvolinkImageSize) : undefined;
+  if (allowed.has(value)) return value as EvolinkImageSize;
+  const match = value.match(/^(\d{3,4})x(\d{3,4})$/i);
+  if (!match) return undefined;
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return undefined;
+  if (width < 376 || width > 1536 || height < 376 || height > 1536) return undefined;
+  return `${width}x${height}` as EvolinkImageSize;
 };
 
 const toImageUrls = (value: unknown): string[] | undefined => {
@@ -49,7 +56,11 @@ export async function POST(req: Request) {
       typeof body?.model === 'string' && allowedModels.has(body.model)
         ? body.model
         : config.aiImage.defaultModels.evolink;
-    const size = toOptionalSize(body?.size) ?? config.aiImage.defaults.size;
+    const fallbackSize: EvolinkImageSize =
+      model === 'z-image-turbo'
+        ? '1:1'
+        : ((config.aiImage.defaults.size ?? 'auto') as EvolinkImageSize);
+    const size = toOptionalSize(body?.size) ?? fallbackSize;
     const imageUrls = toImageUrls(body?.image_urls ?? body?.imageUrls);
     
     // Validate prompt
