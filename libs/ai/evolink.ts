@@ -1,6 +1,6 @@
 import { config } from '@config';
 
-export type EvolinkImageModel = 'gemini-3-pro-image-preview';
+export type EvolinkImageModel = 'gemini-2.5-flash-image';
 export type EvolinkImageSize =
   | 'auto'
   | '1:1'
@@ -8,11 +8,8 @@ export type EvolinkImageSize =
   | '3:2'
   | '3:4'
   | '4:3'
-  | '4:5'
-  | '5:4'
   | '9:16'
-  | '16:9'
-  | '21:9';
+  | '16:9';
 export type EvolinkImageQuality = '1K' | '2K' | '4K';
 
 export type EvolinkTaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
@@ -106,4 +103,3 @@ export async function evolinkGetTaskDetail(taskId: string): Promise<EvolinkTaskD
     },
   });
 }
-

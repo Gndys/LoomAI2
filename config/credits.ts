@@ -42,18 +42,8 @@ export const creditsConfig = {
     aiImage: {
       default: 10,
       models: {
-        // Qwen models
-        'qwen-image-max': 8,
-        'qwen-image-plus': 5,
-        // Fal models
-        'fal-ai/flux/schnell': 6,
-        'fal-ai/flux/dev': 10,
-        'fal-ai/flux-pro': 12,
-        'fal-ai/qwen-image-2512/lora': 8,
-        'fal-ai/nano-banana-pro': 6,
-        // OpenAI models
-        'dall-e-3': 15,
-        'dall-e-2': 8,
+        // Evolink Nano Banana
+        'gemini-2.5-flash-image': 10,
       },
     } as FixedConsumptionConfig,
   },

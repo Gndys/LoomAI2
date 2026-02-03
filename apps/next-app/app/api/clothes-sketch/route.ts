@@ -43,11 +43,8 @@ function toOptionalSize(value: unknown): EvolinkImageSize | undefined {
     '3:2',
     '3:4',
     '4:3',
-    '4:5',
-    '5:4',
     '9:16',
     '16:9',
-    '21:9',
   ];
   return typeof value === 'string' && (allowed as string[]).includes(value) ? (value as EvolinkImageSize) : undefined;
 }
@@ -127,7 +124,7 @@ export async function POST(request: NextRequest) {
     const prompt = promptLines.join('\n');
 
     const task = await evolinkCreateImageGenerationTask({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-2.5-flash-image',
       prompt,
       size,
       quality,

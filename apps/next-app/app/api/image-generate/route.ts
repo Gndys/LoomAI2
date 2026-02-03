@@ -1,10 +1,27 @@
-import { generateImageResponse, calculateImageCreditCost } from '@libs/ai';
-import type { ImageProviderName, ImageGenerationOptions } from '@libs/ai';
+import { calculateImageCreditCost } from '@libs/ai';
+import { evolinkCreateImageGenerationTask, evolinkGetTaskDetail } from '@libs/ai/evolink';
+import type { EvolinkImageSize } from '@libs/ai/evolink';
 import { auth } from '@libs/auth';
 import { creditService, TransactionTypeCode } from '@libs/credits';
+import { config } from '@config';
 
-// Allow longer timeout for image generation
-export const maxDuration = 60;
+// Allow longer timeout for async image generation
+export const maxDuration = 120;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const toOptionalSize = (value: unknown): EvolinkImageSize | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const allowed = new Set(config.aiImage.evolinkSizes.map((item) => item.value));
+  return allowed.has(value) ? (value as EvolinkImageSize) : undefined;
+};
+
+const toImageUrls = (value: unknown): string[] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  const urls = value.filter((item): item is string => typeof item === 'string' && item.length > 0);
+  const limited = urls.slice(0, 5);
+  return limited.length ? limited : undefined;
+};
 
 export async function POST(req: Request) {
   try {
@@ -24,21 +41,16 @@ export async function POST(req: Request) {
       );
     }
     
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     
-    const {
-      prompt,
-      provider = 'qwen',
-      model,
-      negativePrompt,
-      size,
-      aspectRatio,
-      seed,
-      promptExtend,
-      watermark,
-      numInferenceSteps,
-      guidanceScale,
-    } = body;
+    const prompt = body?.prompt;
+    const allowedModels = new Set(config.aiImage.availableModels.evolink);
+    const model =
+      typeof body?.model === 'string' && allowedModels.has(body.model)
+        ? body.model
+        : config.aiImage.defaultModels.evolink;
+    const size = toOptionalSize(body?.size) ?? config.aiImage.defaults.size;
+    const imageUrls = toImageUrls(body?.image_urls ?? body?.imageUrls);
     
     // Validate prompt
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -50,7 +62,7 @@ export async function POST(req: Request) {
     
     // Check credit balance
     const creditBalance = await creditService.getBalance(userId);
-    const creditCost = calculateImageCreditCost({ provider, model });
+    const creditCost = calculateImageCreditCost({ model });
     
     if (creditBalance < creditCost) {
       return new Response(
@@ -68,10 +80,9 @@ export async function POST(req: Request) {
     }
     
     console.log('Image generation request:', { 
-      provider,
+      provider: 'evolink',
       model,
-      size: provider === 'fal' ? undefined : size,
-      aspectRatio: provider === 'fal' ? aspectRatio : undefined,
+      size,
       userId,
       creditBalance,
       creditCost
@@ -83,7 +94,7 @@ export async function POST(req: Request) {
       amount: creditCost,
       description: TransactionTypeCode.AI_IMAGE_GENERATION,
       metadata: {
-        provider,
+        provider: 'evolink',
         model,
         prompt: prompt.trim().substring(0, 100), // Store truncated prompt for reference
       }
@@ -104,26 +115,37 @@ export async function POST(req: Request) {
       );
     }
     
-    // Build generation options
-    const options: ImageGenerationOptions = {
-      prompt: prompt.trim(),
-      provider: provider as ImageProviderName,
-      model,
-      negativePrompt,
-      size,
-      aspectRatio,
-      seed,
-      promptExtend,
-      watermark,
-      numInferenceSteps,
-      guidanceScale,
-    };
-    
     // Generate image (credits already consumed)
     // If generation fails, we need to refund the credits
-    let result;
+    let imageUrl: string | null = null;
     try {
-      result = await generateImageResponse(options);
+      const task = await evolinkCreateImageGenerationTask({
+        model: model as typeof config.aiImage.availableModels.evolink[number],
+        prompt: prompt.trim(),
+        size,
+        image_urls: imageUrls,
+      });
+
+      const maxAttempts = 60;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const detail = await evolinkGetTaskDetail(task.id);
+        if (detail.status === 'completed') {
+          const resultUrl = detail.results?.[0];
+          if (!resultUrl || typeof resultUrl !== 'string') {
+            throw new Error('No image URL in Evolink response');
+          }
+          imageUrl = resultUrl;
+          break;
+        }
+        if (detail.status === 'failed') {
+          throw new Error('Evolink task failed');
+        }
+        await sleep(1500);
+      }
+
+      if (!imageUrl) {
+        throw new Error('Evolink task timeout');
+      }
     } catch (generationError) {
       // Refund credits on generation failure
       console.error('Image generation failed, refunding credits:', generationError);
@@ -136,7 +158,7 @@ export async function POST(req: Request) {
           description: 'Refund for failed image generation',
           metadata: {
             originalTransactionId: consumeResult.transactionId,
-            provider,
+            provider: 'evolink',
             model,
             error: generationError instanceof Error ? generationError.message : 'Unknown error',
           }
@@ -158,7 +180,11 @@ export async function POST(req: Request) {
     return new Response(
       JSON.stringify({
         success: true,
-        data: result,
+        data: {
+          imageUrl,
+          model,
+          provider: 'evolink',
+        },
         credits: {
           consumed: creditCost,
           remaining: consumeResult.newBalance  // Use actual balance from consumption result

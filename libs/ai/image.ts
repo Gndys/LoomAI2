@@ -198,7 +198,6 @@ export async function generateImageResponse(options: ImageGenerationOptions): Pr
  * Now uses unified flat format: { default, models: { modelName: cost } }
  */
 export function calculateImageCreditCost(options: {
-  provider: ImageProviderName;
   model?: string;
 }): number {
   const { model } = options;

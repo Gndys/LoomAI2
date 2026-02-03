@@ -62,6 +62,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useTheme } from '@/hooks/use-theme'
 import { type ColorScheme, THEME_CONFIG } from '@libs/ui/themes'
 import { getAllFunctions } from '@libs/ai/prompt-engine'
+import { config } from '@config'
 
 type CanvasBaseItem = {
   id: string
@@ -98,6 +99,7 @@ type CanvasTextItem = CanvasBaseItem & {
     textDecoration: 'none' | 'underline'
     align: 'left' | 'center' | 'right' | 'justify'
     noteStyle?: boolean
+    noteTone?: 'neutral' | 'sticky'
   }
 }
 
@@ -173,9 +175,16 @@ const DEFAULT_TEXT_STROKE = 'transparent'
 const DEFAULT_TEXT_STROKE_WIDTH = 0
 const DEFAULT_TEXT_FONT_FAMILY = 'inherit'
 const DEFAULT_TEXT_FONT_WEIGHT = 500
-const NOTE_TEXT_COLOR = '#713f12'
-const NOTE_BACKGROUND_COLOR = '#fef9c3'
-const NOTE_BORDER_COLOR = '#fde68a'
+const NOTE_CHUNK_TARGET = 140
+const NOTE_CHUNK_MAX = 200
+const NOTE_LAYOUT_GAP_X = 24
+const NOTE_LAYOUT_GAP_Y = 20
+const NOTE_STICKY_TEXT_COLOR = '#713f12'
+const NOTE_STICKY_BACKGROUND_COLOR = '#fef9c3'
+const NOTE_STICKY_BORDER_COLOR = '#fde68a'
+const NOTE_NEUTRAL_TEXT_COLOR = '#0f172a'
+const NOTE_NEUTRAL_BACKGROUND_COLOR = '#f1f5f9'
+const NOTE_NEUTRAL_BORDER_COLOR = '#e2e8f0'
 const EXPORT_PADDING = 48
 const MAX_EXPORT_SIZE = 8192
 const DEBUG_CANVAS = false
@@ -247,6 +256,13 @@ const CANVAS_PRESET_ACTIONS = getAllFunctions().map((preset) => ({
   Icon: CANVAS_PRESET_ICON_MAP[preset.id] ?? Sparkles,
   prompt: preset.positive,
 }))
+
+const IMAGE_PROVIDER_LABELS = {
+  evolink: 'EvoLink',
+} as const
+
+const DEFAULT_EVOLINK_SIZE =
+  config.aiImage.defaults.size ?? config.aiImage.evolinkSizes[0]?.value
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -356,6 +372,12 @@ export function InfiniteCanvas() {
   const [isCanvasPromptOpen, setIsCanvasPromptOpen] = useState(false)
   const [isCanvasPresetOpen, setIsCanvasPresetOpen] = useState(false)
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
+  const imageProviderModels = config.aiImage.availableModels
+  const defaultImageProvider = config.aiImage.defaultProvider
+  const defaultImageModel =
+    config.aiImage.defaultModels[defaultImageProvider] ?? imageProviderModels[defaultImageProvider]?.[0] ?? ''
+  const [imageModel, setImageModel] = useState<string>(defaultImageModel)
+  const [isImageGenerating, setIsImageGenerating] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const canvasInputRef = useRef<HTMLInputElement | null>(null)
   const chatInputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -522,6 +544,7 @@ export function InfiniteCanvas() {
           textDecoration: 'none',
           align: 'left',
           noteStyle: false,
+          noteTone: 'sticky',
         },
       }
       setItems((prev) => [...prev, nextItem])
@@ -2047,13 +2070,75 @@ export function InfiniteCanvas() {
     )
   }
 
-  const sendCanvasText = () => {
+  const handleGenerateCanvasImage = async () => {
+    const prompt = resolvedCanvasPrompt.trim()
+    if (!prompt || isImageGenerating) return
+    const toastId = toast.loading('正在生成图片...')
+    setIsImageGenerating(true)
+
+    try {
+      const payload: Record<string, unknown> = {
+        prompt,
+        model: imageModel,
+      }
+
+      if (DEFAULT_EVOLINK_SIZE) {
+        payload.size = DEFAULT_EVOLINK_SIZE
+      }
+
+      const response = await fetch('/api/image-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        const message = data?.message || data?.error || '生成失败'
+        if (response.status === 401) {
+          toast.error('请先登录后再试', { id: toastId })
+        } else if (response.status === 402) {
+          toast.error('积分不足，请先充值', { id: toastId })
+        } else {
+          toast.error(message, { id: toastId })
+        }
+        return
+      }
+
+      const imageUrl = data?.data?.imageUrl
+      if (!imageUrl || typeof imageUrl !== 'string') {
+        throw new Error('未返回图片地址')
+      }
+
+      addImageItem(imageUrl, `AI-${imageModel}`)
+      setCanvasInput('')
+      if (typeof data?.credits?.remaining === 'number') {
+        setCreditBalance(data.credits.remaining)
+      }
+      toast.success('已生成并添加到画布', { id: toastId })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '生成失败，请稍后重试'
+      toast.error(message, { id: toastId })
+    } finally {
+      setIsImageGenerating(false)
+    }
+  }
+
+  const insertCanvasText = () => {
     const text = resolvedCanvasPrompt.trim()
     if (!text) return
     const { width, height } = measureTextBox(text, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_BOX_WIDTH)
     const center = getViewportCenterWorld()
     createTextItem(center.x - width / 2, center.y - height / 2, text, false)
     setCanvasInput('')
+  }
+
+  const handleCanvasSubmit = () => {
+    if (isImagePromptMode) {
+      void handleGenerateCanvasImage()
+      return
+    }
+    insertCanvasText()
   }
 
   const handleCanvasPresetSelect = (presetId: string) => {
@@ -2121,14 +2206,32 @@ export function InfiniteCanvas() {
     [items, editingId]
   )
   const isTextEditing = Boolean(editingTextItem)
+  const imageModelOptions = useMemo(() => {
+    const providers = Object.entries(imageProviderModels) as Array<[keyof typeof imageProviderModels, string[]]>
+    return providers.flatMap(([provider, models]) => {
+      const providerLabel = IMAGE_PROVIDER_LABELS[provider as keyof typeof IMAGE_PROVIDER_LABELS] ?? provider
+      return models.map((model) => ({
+        value: model,
+        label: `${providerLabel} · ${model}`,
+        provider,
+      }))
+    })
+  }, [imageProviderModels])
+  const isImagePromptMode =
+    isCanvasPromptOpen && (activeTool === 'image' || selectedItem?.type === 'image')
   const resolvedCanvasPrompt = useMemo(() => {
     const userText = canvasInput.trim()
+    if (!isImagePromptMode) return userText
     const presetPrompt = selectedPreset?.prompt?.trim()
     if (presetPrompt && userText) return `${presetPrompt}\n${userText}`
     if (presetPrompt) return presetPrompt
     return userText
-  }, [canvasInput, selectedPreset])
-  const canvasPlaceholder = selectedPreset ? `补充${selectedPreset.name}的需求…` : '你想要创作什么？'
+  }, [canvasInput, isImagePromptMode, selectedPreset])
+  const canvasPlaceholder = isImagePromptMode
+    ? selectedPreset
+      ? `补充${selectedPreset.name}的需求…`
+      : '你想要创作什么？'
+    : '输入文字...'
   const chatQuickPrompts = useMemo(() => {
     const basePrompts = [
       '给我 3 个构图方案',
@@ -2139,6 +2242,12 @@ export function InfiniteCanvas() {
     const focusPrompt = selectedItem ? '总结当前选中对象' : '总结当前画布'
     return [focusPrompt, ...basePrompts].slice(0, 5)
   }, [selectedItem])
+
+  useEffect(() => {
+    if (isImagePromptMode) return
+    setIsCanvasPresetOpen(false)
+  }, [isImagePromptMode])
+
   const tools: { id: ToolId; label: string; Icon: LucideIcon; shortcut?: string }[] = [
     { id: 'select', label: '选择', Icon: MousePointer2, shortcut: 'V' },
     { id: 'hand', label: '拖拽', Icon: Hand, shortcut: 'H' },
@@ -2148,6 +2257,43 @@ export function InfiniteCanvas() {
   ]
   const toolOrder: Array<ToolId | 'upload'> = ['select', 'hand', 'text', 'upload', 'shape']
   const imageTool = tools.find((tool) => tool.id === 'image')
+
+  const splitChatTextToNotes = useCallback((text: string) => {
+    const normalized = text.replace(/\r\n/g, '\n').trim()
+    if (!normalized) return []
+    const breakChars = new Set(['。', '！', '？', '；', ';', '，', ',', '、', '\n', '.', '!', '?', ':', '：'])
+    const paragraphs = normalized.split(/\n\s*\n+/).map((line) => line.trim()).filter(Boolean)
+    const chunks: string[] = []
+
+    const findBreakIndex = (slice: string) => {
+      for (let i = slice.length - 1; i >= 0; i -= 1) {
+        if (breakChars.has(slice[i])) return i
+      }
+      return -1
+    }
+
+    const pushChunk = (value: string) => {
+      const trimmed = value.trim()
+      if (trimmed) chunks.push(trimmed)
+    }
+
+    const splitParagraph = (paragraph: string) => {
+      let rest = paragraph.trim()
+      while (rest.length > NOTE_CHUNK_TARGET) {
+        const maxLen = rest.length > NOTE_CHUNK_MAX ? NOTE_CHUNK_MAX : NOTE_CHUNK_TARGET
+        const slice = rest.slice(0, maxLen)
+        const breakIndex = findBreakIndex(slice)
+        const minBreak = Math.floor(maxLen * 0.6)
+        const cutIndex = breakIndex >= minBreak ? breakIndex + 1 : maxLen
+        pushChunk(rest.slice(0, cutIndex))
+        rest = rest.slice(cutIndex).trim()
+      }
+      pushChunk(rest)
+    }
+
+    paragraphs.forEach(splitParagraph)
+    return chunks
+  }, [])
 
   const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     const container = chatScrollRef.current
@@ -2179,26 +2325,73 @@ export function InfiniteCanvas() {
   }, [])
 
   const insertChatTextToCanvas = useCallback(
-    (text: string, asNote = false) => {
+    (text: string, asNote = false, noteTone: 'neutral' | 'sticky' = 'sticky') => {
       const value = text.trim()
       if (!value) return
-      const { width, height } = measureTextBox(value, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_BOX_WIDTH)
+      const chunks = splitChatTextToNotes(value)
+      const noteChunks = chunks.length > 0 ? chunks : [value]
+      const rect = getViewportRect()
+      const worldWidth = rect ? rect.width / camera.scale : DEFAULT_TEXT_BOX_WIDTH * 2
+      const preferredColumns = noteChunks.length >= 6 ? 3 : noteChunks.length >= 3 ? 2 : 1
+      const maxColumns = Math.max(
+        1,
+        Math.floor((worldWidth + NOTE_LAYOUT_GAP_X) / (DEFAULT_TEXT_BOX_WIDTH + NOTE_LAYOUT_GAP_X))
+      )
+      const columns = Math.min(preferredColumns, maxColumns, noteChunks.length)
+      const sizes = noteChunks.map((chunk) => measureTextBox(chunk, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_BOX_WIDTH))
+      const rowCount = Math.ceil(noteChunks.length / columns)
+      const rowHeights = Array.from({ length: rowCount }, () => 0)
+
+      sizes.forEach((size, index) => {
+        const row = Math.floor(index / columns)
+        rowHeights[row] = Math.max(rowHeights[row], size.height)
+      })
+
+      const totalHeight =
+        rowHeights.reduce((total, height) => total + height, 0) + NOTE_LAYOUT_GAP_Y * (rowCount - 1)
+      const totalWidth = columns * DEFAULT_TEXT_BOX_WIDTH + NOTE_LAYOUT_GAP_X * (columns - 1)
       const center = getViewportCenterWorld()
-      const id = createTextItem(center.x - width / 2, center.y - height / 2, value, false)
+      const startX = center.x - totalWidth / 2
+      let currentY = center.y - totalHeight / 2
+      const createdIds: string[] = []
+
+      const noteBackground =
+        noteTone === 'neutral' ? NOTE_NEUTRAL_BACKGROUND_COLOR : NOTE_STICKY_BACKGROUND_COLOR
+      const noteText = noteTone === 'neutral' ? NOTE_NEUTRAL_TEXT_COLOR : NOTE_STICKY_TEXT_COLOR
+
+      for (let row = 0; row < rowCount; row += 1) {
+        for (let col = 0; col < columns; col += 1) {
+          const index = row * columns + col
+          if (index >= noteChunks.length) break
+          const x = startX + col * (DEFAULT_TEXT_BOX_WIDTH + NOTE_LAYOUT_GAP_X)
+          const y = currentY
+          const id = createTextItem(x, y, noteChunks[index], false)
+          createdIds.push(id)
+          if (asNote) {
+            updateTextStyle(id, {
+              backgroundColor: noteBackground,
+              color: noteText,
+              strokeColor: 'transparent',
+              strokeWidth: 0,
+              noteStyle: true,
+              noteTone,
+            })
+          }
+        }
+        currentY += rowHeights[row] + NOTE_LAYOUT_GAP_Y
+      }
+
+      if (createdIds.length > 1) {
+        syncSelection(createdIds, createdIds[createdIds.length - 1])
+      }
+
       if (asNote) {
-        updateTextStyle(id, {
-          backgroundColor: NOTE_BACKGROUND_COLOR,
-          color: NOTE_TEXT_COLOR,
-          strokeColor: 'transparent',
-          strokeWidth: 0,
-          noteStyle: true,
-        })
-        toast.success('已保存为便签')
+        toast.success(noteTone === 'sticky' ? '已保存为便签' : '已插入便签')
         return
       }
       toast.success('已插入到画布')
     },
-    [createTextItem, getViewportCenterWorld, measureTextBox, updateTextStyle]
+    [camera.scale, createTextItem, getViewportCenterWorld, measureTextBox, splitChatTextToNotes, syncSelection, updateTextStyle]
   )
 
   const handleChatScroll = useCallback(() => {
@@ -2783,7 +2976,7 @@ export function InfiniteCanvas() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => insertChatTextToCanvas(text, false)}
+                                onClick={() => insertChatTextToCanvas(text, true, 'neutral')}
                                 className={cn(
                                   'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
                                   actionButtonClass
@@ -2793,7 +2986,7 @@ export function InfiniteCanvas() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => insertChatTextToCanvas(text, true)}
+                                onClick={() => insertChatTextToCanvas(text, true, 'sticky')}
                                 className={cn(
                                   'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
                                   actionButtonClass
@@ -2967,68 +3160,91 @@ export function InfiniteCanvas() {
                 </div>
               )}
               <div className="flex items-center gap-3">
-                <DropdownMenu open={isCanvasPresetOpen} onOpenChange={setIsCanvasPresetOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="快速功能"
-                      aria-pressed={isCanvasPresetOpen}
-                      className={cn(
-                        'inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground',
-                        (isCanvasPresetOpen || selectedPresetId) && 'border-primary/40 text-primary'
-                      )}
+                {isImagePromptMode && (
+                  <DropdownMenu open={isCanvasPresetOpen} onOpenChange={setIsCanvasPresetOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="快速功能"
+                        aria-pressed={isCanvasPresetOpen}
+                        className={cn(
+                          'inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground',
+                          (isCanvasPresetOpen || selectedPresetId) && 'border-primary/40 text-primary'
+                        )}
+                      >
+                        <span className="text-muted-foreground">功能</span>
+                        <span className="max-w-[80px] truncate text-foreground">
+                          {selectedPreset ? selectedPreset.name : '无'}
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      side="top"
+                      className="w-[320px] rounded-2xl border border-border/80 bg-popover/95 p-3 shadow-lg backdrop-blur"
                     >
-                      <span className="text-muted-foreground">功能</span>
-                      <span className="max-w-[80px] truncate text-foreground">
-                        {selectedPreset ? selectedPreset.name : '无'}
-                      </span>
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="start"
-                    side="top"
-                    className="w-[320px] rounded-2xl border border-border/80 bg-popover/95 p-3 shadow-lg backdrop-blur"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-                        <Sparkles className="h-3.5 w-3.5 text-primary" />
-                        <span>快速功能</span>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          <span>快速功能</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          <span>{selectedPreset ? `已选：${selectedPreset.name}` : '未选择'}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPresetId(null)}
+                            className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                          >
+                            清空选择
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span>{selectedPreset ? `已选：${selectedPreset.name}` : '未选择'}</span>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPresetId(null)}
-                          className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        >
-                          清空选择
-                        </button>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {CANVAS_PRESET_ACTIONS.map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => handleCanvasPresetSelect(preset.id)}
+                            className={cn(
+                              'flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition',
+                              selectedPresetId === preset.id
+                                ? 'border-primary/60 bg-primary/10 text-primary'
+                                : 'border-border bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground'
+                            )}
+                          >
+                            <preset.Icon className="h-3.5 w-3.5" />
+                            <span className="truncate">{preset.name}</span>
+                          </button>
+                        ))}
                       </div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      {CANVAS_PRESET_ACTIONS.map((preset) => (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          onClick={() => handleCanvasPresetSelect(preset.id)}
-                          className={cn(
-                            'flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition',
-                            selectedPresetId === preset.id
-                              ? 'border-primary/60 bg-primary/10 text-primary'
-                              : 'border-border bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground'
-                          )}
-                        >
-                          <preset.Icon className="h-3.5 w-3.5" />
-                          <span className="truncate">{preset.name}</span>
-                        </button>
+                      {selectedPreset && (
+                        <div className="mt-2 text-[11px] text-muted-foreground">{selectedPreset.description}</div>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                {isImagePromptMode && (
+                  <Select value={imageModel} onValueChange={setImageModel} disabled={isImageGenerating}>
+                    <SelectTrigger
+                      size="sm"
+                      className="h-7 rounded-full border border-border bg-background/80 px-2.5 text-[11px] text-muted-foreground hover:bg-muted"
+                    >
+                      <span className="text-muted-foreground">模型</span>
+                      <SelectValue placeholder="选择模型" />
+                    </SelectTrigger>
+                    <SelectContent
+                      side="top"
+                      className="w-[260px] rounded-2xl border border-border/80 bg-popover/95 p-2 text-xs shadow-lg backdrop-blur"
+                    >
+                      {imageModelOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value} className="text-xs">
+                          {option.label}
+                        </SelectItem>
                       ))}
-                    </div>
-                    {selectedPreset && (
-                      <div className="mt-2 text-[11px] text-muted-foreground">{selectedPreset.description}</div>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    </SelectContent>
+                  </Select>
+                )}
                 <input
                   ref={canvasInputRef}
                   className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
@@ -3038,8 +3254,10 @@ export function InfiniteCanvas() {
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter' || event.shiftKey) return
                     event.preventDefault()
-                    sendCanvasText()
+                    if (isImagePromptMode && isImageGenerating) return
+                    handleCanvasSubmit()
                   }}
+                  disabled={isImagePromptMode && isImageGenerating}
                 />
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -3078,15 +3296,19 @@ export function InfiniteCanvas() {
                     <Button
                       size="icon"
                       className="h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
-                      aria-label="发送"
-                      onClick={sendCanvasText}
-                      disabled={resolvedCanvasPrompt.trim().length === 0}
+                      aria-label={isImagePromptMode ? '生成图片' : '发送'}
+                      onClick={handleCanvasSubmit}
+                      disabled={resolvedCanvasPrompt.trim().length === 0 || (isImagePromptMode && isImageGenerating)}
                     >
-                      <ArrowUpRight className="h-4 w-4" />
+                      {isImagePromptMode && isImageGenerating ? (
+                        <RefreshCcw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ArrowUpRight className="h-4 w-4" />
+                      )}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs">
-                    发送
+                    {isImagePromptMode ? (isImageGenerating ? '生成中...' : '生成图片') : '发送'}
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -3270,10 +3492,16 @@ export function InfiniteCanvas() {
               item.type === 'text'
                 ? buildTextStrokeShadow(item.data.strokeColor, item.data.strokeWidth)
                 : 'none'
+            const noteTone = item.data.noteTone ?? 'sticky'
             const noteDecoration = isNote
               ? {
-                  border: `1px solid ${NOTE_BORDER_COLOR}`,
-                  boxShadow: '0 12px 24px -18px rgba(15, 23, 42, 0.45)',
+                  border: `1px solid ${
+                    noteTone === 'neutral' ? NOTE_NEUTRAL_BORDER_COLOR : NOTE_STICKY_BORDER_COLOR
+                  }`,
+                  boxShadow:
+                    noteTone === 'neutral'
+                      ? '0 10px 20px -16px rgba(15, 23, 42, 0.45)'
+                      : '0 12px 24px -18px rgba(120, 53, 15, 0.45)',
                 }
               : { border: 'none', boxShadow: 'none' }
             return (

@@ -1,88 +1,60 @@
 /**
  * AI Image Generation Configuration
- * Providers: qwen (native HTTP), fal (AI SDK), openai (AI SDK)
+ * Provider: evolink (Nano Banana)
  */
 
 export const aiImageConfig = {
   /**
    * Default Image Provider
-   * @type {'qwen' | 'fal' | 'openai'}
+   * @type {'evolink'}
    */
-  defaultProvider: 'qwen' as const,
+  defaultProvider: 'evolink' as const,
 
   /**
-   * Default Model for each image provider
+   * Default Model for image generation
    */
   defaultModels: {
-    qwen: 'qwen-image-plus',
-    fal: 'fal-ai/qwen-image-2512/lora',
-    openai: 'dall-e-3'
+    evolink: 'gemini-2.5-flash-image',
   },
 
   /**
-   * Available Image Models for each provider
+   * Available Image Models
    */
   availableModels: {
-    qwen: ['qwen-image-plus', 'qwen-image-max'],
-    fal: ['fal-ai/qwen-image-2512/lora', 'fal-ai/nano-banana-pro', 'fal-ai/recraft/v3/text-to-image', 'fal-ai/flux/dev'],
-    openai: ['dall-e-3', 'dall-e-2']
+    evolink: ['gemini-2.5-flash-image'],
   },
 
   /**
-   * Size options for Qwen (format: width*height)
+   * Size options for Evolink (aspect ratios)
    */
-  qwenSizes: [
-    { value: '1664*928', label: '16:9' },
-    { value: '1472*1104', label: '4:3' },
-    { value: '1328*1328', label: '1:1' },
-    { value: '1104*1472', label: '3:4' },
-    { value: '928*1664', label: '9:16' },
-  ],
-
-  /**
-   * Aspect ratio options for fal (format: width:height)
-  */
-  falAspectRatios: [
-    { value: '21:9', label: '21:9' },
-    { value: '16:9', label: '16:9' },
-    { value: '4:3', label: '4:3' },
+  evolinkSizes: [
+    { value: 'auto', label: 'auto' },
     { value: '1:1', label: '1:1' },
+    { value: '2:3', label: '2:3' },
+    { value: '3:2', label: '3:2' },
+    { value: '4:3', label: '4:3' },
     { value: '3:4', label: '3:4' },
+    { value: '16:9', label: '16:9' },
     { value: '9:16', label: '9:16' },
-    { value: '9:21', label: '9:21' },
-  ],
-
-  /**
-   * Size options for OpenAI DALL-E (format: widthxheight)
-   */
-  openaiSizes: [
-    { value: '1024x1024', label: '1:1' },
-    { value: '1792x1024', label: '16:9' },
-    { value: '1024x1792', label: '9:16' },
   ],
 
   /**
    * Default generation parameters
    */
   defaults: {
-    numInferenceSteps: 28,
-    guidanceScale: 4,
-    promptExtend: true,
-    watermark: false,
+    size: 'auto',
   },
 } as const;
 
 // Type exports for external use
-export type ImageProviderName = 'qwen' | 'fal' | 'openai';
+export type ImageProviderName = 'evolink';
 
 /**
  * Get size/aspect ratio options for a provider
  */
 export function getImageSizesForProvider(provider: ImageProviderName) {
   switch (provider) {
-    case 'qwen': return aiImageConfig.qwenSizes;
-    case 'fal': return aiImageConfig.falAspectRatios;
-    case 'openai': return aiImageConfig.openaiSizes;
+    case 'evolink': return aiImageConfig.evolinkSizes;
     default: return [];
   }
 }

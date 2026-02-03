@@ -156,7 +156,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const runNanoBanana = async (imageUrl: string, prompt: string) => {
   const task = await evolinkCreateImageGenerationTask({
-    model: "gemini-3-pro-image-preview",
+    model: "gemini-2.5-flash-image",
     prompt,
     image_urls: [imageUrl],
     size: "auto",
