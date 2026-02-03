@@ -13,6 +13,7 @@ const IMAGESEG_VERSION = '2019-12-30';
 const IMAGESEG_ENDPOINT = process.env.ALIYUN_IMAGESEG_ENDPOINT || 'imageseg.cn-shanghai.aliyuncs.com';
 const IMAGESEG_REGION = process.env.ALIYUN_IMAGESEG_REGION || 'cn-shanghai';
 const RESULT_FOLDER = 'segmented';
+const SOURCE_FOLDER = 'segmented-source';
 const SEGMENT_ACTION = 'SegmentHDCommonImage';
 
 const runtime = new $Util.RuntimeOptions({});
@@ -84,6 +85,71 @@ function sanitizeBaseName(name?: string | null) {
   return sanitized || 'cutout';
 }
 
+function inferExtensionFromContentType(contentType?: string | null) {
+  const normalized = (contentType || '').toLowerCase();
+  if (normalized.includes('jpeg')) return 'jpg';
+  if (normalized.includes('png')) return 'png';
+  if (normalized.includes('webp')) return 'webp';
+  if (normalized.includes('gif')) return 'gif';
+  return 'png';
+}
+
+function isUserUploadUrl(imageUrl: string, userId: string) {
+  try {
+    const url = new URL(imageUrl);
+    return url.pathname.includes(`/uploads/${userId}/`);
+  } catch {
+    return false;
+  }
+}
+
+async function rehostSourceImage(
+  imageUrl: string,
+  userId: string,
+  filename?: string | null
+) {
+  let parsed: URL;
+  try {
+    parsed = new URL(imageUrl);
+  } catch {
+    throw new Error('Invalid image URL');
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Invalid image URL protocol');
+  }
+
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download source image (${response.status})`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const contentType = response.headers.get('content-type') || 'image/png';
+  const baseName = sanitizeBaseName(filename);
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const ext = inferExtensionFromContentType(contentType);
+  const fileName = `${baseName}-${uniqueSuffix}.${ext}`;
+
+  const storage = createStorageProvider(config.storage.defaultProvider);
+  const upload = await storage.uploadFile({
+    file: buffer,
+    fileName,
+    contentType,
+    folder: `uploads/${userId}/${SOURCE_FOLDER}`,
+    metadata: {
+      source: 'imageseg-input',
+      originalUrl: imageUrl,
+    },
+  });
+  const signed = await storage.generateSignedUrl({
+    key: upload.key,
+    expiresIn: 3600,
+    operation: 'get',
+  });
+
+  return signed.url;
+}
+
 async function persistResultImage(
   imageUrl: string,
   userId: string,
@@ -145,10 +211,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only SegmentHDCommonImage is supported' }, { status: 400 });
     }
 
+    let sourceImageUrl = imageUrl;
+    if (config.storage.defaultProvider !== 'local' && !isUserUploadUrl(imageUrl, session.user.id)) {
+      sourceImageUrl = await rehostSourceImage(imageUrl, session.user.id, body?.filename);
+    }
+
     const action = SEGMENT_ACTION;
     const query: Record<string, string> = {
-      ImageUrl: imageUrl,
-      ImageURL: imageUrl,
+      ImageUrl: sourceImageUrl,
+      ImageURL: sourceImageUrl,
     };
     const result = await callImageseg(action, query);
 
