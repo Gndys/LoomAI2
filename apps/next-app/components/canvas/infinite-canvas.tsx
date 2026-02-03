@@ -333,6 +333,7 @@ export function InfiniteCanvas() {
   const [hasHydrated, setHasHydrated] = useState(false)
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({})
+  const [removingBackgroundIds, setRemovingBackgroundIds] = useState<Record<string, boolean>>({})
   const [activeTool, setActiveTool] = useState<ToolId>('select')
   const [backgroundMode, setBackgroundMode] = useState<'solid' | 'transparent'>('solid')
   const [backgroundIntensity, setBackgroundIntensity] = useState<'low' | 'medium' | 'high'>('medium')
@@ -1778,6 +1779,175 @@ export function InfiniteCanvas() {
     }
   }
 
+  const buildCutoutName = (name?: string) => {
+    if (!name) return 'cutout.png'
+    const base = name.includes('.') ? name.slice(0, Math.max(0, name.lastIndexOf('.'))) : name
+    const resolvedBase = base || 'cutout'
+    return `${resolvedBase}-cutout.png`
+  }
+
+  const dataUrlToFile = (dataUrl: string, name: string) => {
+    const [header, data] = dataUrl.split(',')
+    if (!header || !data) {
+      throw new Error('图片数据格式错误')
+    }
+    const mimeMatch = header.match(/data:(.*?);base64/)
+    const mimeType = mimeMatch?.[1] || 'image/png'
+    const binary = atob(data)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return new File([bytes], name, { type: mimeType })
+  }
+
+  const uploadImageFile = async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('provider', 'oss')
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      const message = payload?.error || payload?.message || '上传失败'
+      if (response.status === 401) {
+        throw new Error('请先登录后再上传')
+      }
+      throw new Error(message)
+    }
+    return payload?.data as {
+      url: string
+      key?: string
+      provider?: string
+      expiresAt?: string
+      originalName?: string
+    }
+  }
+
+  const ensureRemoteImageUrl = async (item: CanvasImageItem) => {
+    const src = item.data?.src
+    if (!src) {
+      throw new Error('图片地址缺失')
+    }
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      return { url: src }
+    }
+    const mediaType = resolveImageMediaType(src, item.data?.name)
+    const filename = resolveImageFileName(item.data?.name, mediaType)
+    let file: File
+    if (src.startsWith('data:')) {
+      file = dataUrlToFile(src, filename)
+    } else {
+      const response = await fetch(src)
+      if (!response.ok) {
+        throw new Error('读取图片失败')
+      }
+      const blob = await response.blob()
+      file = new File([blob], filename, { type: blob.type || mediaType })
+    }
+    const uploaded = await uploadImageFile(file)
+    if (!uploaded?.url || typeof uploaded.url !== 'string') {
+      throw new Error('上传失败，未获取到图片地址')
+    }
+    return { url: uploaded.url }
+  }
+
+  const pollRemoveBackgroundResult = async (jobId: string, filename?: string) => {
+    const maxAttempts = 20
+    const delayMs = 1500
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const query = new URLSearchParams({ jobId })
+      if (filename) {
+        query.set('filename', filename)
+      }
+      const response = await fetch(`/api/image-seg?${query.toString()}`)
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const message = payload?.message || payload?.error || '查询失败'
+        throw new Error(message)
+      }
+      const status = payload?.data?.status
+      if (status === 'PROCESS_SUCCESS') {
+        const imageUrl = payload?.data?.imageUrl
+        if (!imageUrl) {
+          throw new Error('未获取到去背结果')
+        }
+        return imageUrl as string
+      }
+      if (status === 'PROCESS_FAILED') {
+        throw new Error(payload?.data?.errorMessage || '去背失败')
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+    throw new Error('处理超时，请稍后重试')
+  }
+
+  const handleRemoveBackground = async (item: CanvasImageItem) => {
+    if (!item.data?.src) return
+    if (removingBackgroundIds[item.id]) return
+    setRemovingBackgroundIds((prev) => ({ ...prev, [item.id]: true }))
+    const toastId = toast.loading('正在去背...')
+    const appendCutout = (resultUrl: string, nextName: string) => {
+      const nextId = nanoid()
+      const nextItem: CanvasItem = {
+        id: nextId,
+        type: 'image',
+        x: Math.round((item.x + DUPLICATE_OFFSET) * 100) / 100,
+        y: Math.round((item.y + DUPLICATE_OFFSET) * 100) / 100,
+        width: item.width,
+        height: item.height,
+        data: {
+          src: resultUrl,
+          name: nextName,
+        },
+      }
+      setItems((prev) => [...prev, nextItem])
+      syncSelection([nextId], nextId)
+    }
+    try {
+      const { url } = await ensureRemoteImageUrl(item)
+      const nextName = buildCutoutName(item.data.name)
+      const response = await fetch('/api/image-seg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: url,
+          filename: nextName,
+        }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const message = payload?.message || payload?.error || '提交失败'
+        throw new Error(message)
+      }
+      const immediateUrl = payload?.data?.imageUrl
+      if (payload?.data?.status === 'PROCESS_SUCCESS' && immediateUrl) {
+        appendCutout(immediateUrl, nextName)
+        toast.success('去背完成', { id: toastId })
+        return
+      }
+      const jobId = payload?.data?.jobId
+      if (!jobId) {
+        throw new Error('任务创建失败')
+      }
+      const resultUrl = await pollRemoveBackgroundResult(jobId, nextName)
+      appendCutout(resultUrl, nextName)
+      toast.success('去背完成', { id: toastId })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '去背失败'
+      toast.error(message, { id: toastId })
+    } finally {
+      setRemovingBackgroundIds((prev) => {
+        if (!prev[item.id]) return prev
+        const next = { ...prev }
+        delete next[item.id]
+        return next
+      })
+    }
+  }
+
   const handleCopyItem = (item: CanvasItem | null) => {
     if (!item) return
     const nextId = nanoid()
@@ -1927,6 +2097,8 @@ export function InfiniteCanvas() {
       ? Math.round(creditBalance).toString()
       : '--'
   const isTextSelected = selectedItem?.type === 'text' && !hasMultiSelection
+  const isRemovingBackground =
+    selectedItem?.type === 'image' && Boolean(removingBackgroundIds[selectedItem.id])
   const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds])
   const selectedPreset = useMemo(
     () => CANVAS_PRESET_ACTIONS.find((item) => item.id === selectedPresetId) ?? null,
@@ -2941,9 +3113,19 @@ export function InfiniteCanvas() {
                     <Layers className="h-3.5 w-3.5" />
                     变体
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
-                    <Scissors className="h-3.5 w-3.5" />
-                    去背
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 rounded-full px-2 text-xs"
+                    onClick={() => handleRemoveBackground(selectedItem as CanvasImageItem)}
+                    disabled={isRemovingBackground}
+                  >
+                    {isRemovingBackground ? (
+                      <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Scissors className="h-3.5 w-3.5" />
+                    )}
+                    {isRemovingBackground ? '处理中' : '去背'}
                   </Button>
                   <Button
                     size="sm"
