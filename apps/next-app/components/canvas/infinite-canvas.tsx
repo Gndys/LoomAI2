@@ -97,6 +97,7 @@ type CanvasTextItem = CanvasBaseItem & {
     fontStyle: 'normal' | 'italic'
     textDecoration: 'none' | 'underline'
     align: 'left' | 'center' | 'right' | 'justify'
+    noteStyle?: boolean
   }
 }
 
@@ -172,6 +173,9 @@ const DEFAULT_TEXT_STROKE = 'transparent'
 const DEFAULT_TEXT_STROKE_WIDTH = 0
 const DEFAULT_TEXT_FONT_FAMILY = 'inherit'
 const DEFAULT_TEXT_FONT_WEIGHT = 500
+const NOTE_TEXT_COLOR = '#713f12'
+const NOTE_BACKGROUND_COLOR = '#fef9c3'
+const NOTE_BORDER_COLOR = '#fde68a'
 const EXPORT_PADDING = 48
 const MAX_EXPORT_SIZE = 8192
 const DEBUG_CANVAS = false
@@ -320,6 +324,7 @@ export function InfiniteCanvas() {
   const storageDisabledRef = useRef(false)
   const warnedLargeItemsRef = useRef(false)
   const textEditRef = useRef<HTMLTextAreaElement | null>(null)
+  const textStylePanelRef = useRef<HTMLDivElement | null>(null)
   const lastTextClickRef = useRef<{ id: string | null; time: number }>({ id: null, time: 0 })
 
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, scale: 1 })
@@ -516,6 +521,7 @@ export function InfiniteCanvas() {
           fontStyle: 'normal',
           textDecoration: 'none',
           align: 'left',
+          noteStyle: false,
         },
       }
       setItems((prev) => [...prev, nextItem])
@@ -979,6 +985,12 @@ export function InfiniteCanvas() {
     clearSelection()
     setEditingId(null)
     setDragMode(null)
+  }
+
+  const isWithinTextStylePanel = (node: Element | null) => {
+    if (!node) return false
+    if (textStylePanelRef.current?.contains(node)) return true
+    return Boolean((node as HTMLElement).closest('[data-canvas-text-style-panel]'))
   }
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -2175,9 +2187,11 @@ export function InfiniteCanvas() {
       const id = createTextItem(center.x - width / 2, center.y - height / 2, value, false)
       if (asNote) {
         updateTextStyle(id, {
-          backgroundColor: 'hsl(var(--primary) / 0.12)',
-          strokeColor: 'hsl(var(--primary) / 0.35)',
-          strokeWidth: 1,
+          backgroundColor: NOTE_BACKGROUND_COLOR,
+          color: NOTE_TEXT_COLOR,
+          strokeColor: 'transparent',
+          strokeWidth: 0,
+          noteStyle: true,
         })
         toast.success('已保存为便签')
         return
@@ -2493,7 +2507,11 @@ export function InfiniteCanvas() {
 
       {isTextEditing && editingTextItem && (
         <div className="pointer-events-none absolute left-20 top-32 z-30">
-          <div className="pointer-events-auto w-64 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
+          <div
+            ref={textStylePanelRef}
+            data-canvas-text-style-panel
+            className="pointer-events-auto w-64 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur"
+          >
             <div className="space-y-3 text-xs text-muted-foreground">
               <div>
                 <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">STROKE</div>
@@ -2562,7 +2580,7 @@ export function InfiniteCanvas() {
                     <SelectTrigger className="h-9 w-full rounded-lg text-xs">
                       <SelectValue placeholder="选择字体" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent data-canvas-text-style-panel>
                       {TEXT_FONT_OPTIONS.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -2727,12 +2745,17 @@ export function InfiniteCanvas() {
                   {messages.map((message) => {
                     const text = resolveMessageText(message)
                     if (!text) return null
-                    const showActions = message.role === 'assistant'
+                    const isAssistant = message.role === 'assistant'
+                    const actionPlacement = isAssistant ? 'left-2' : 'right-2'
+                    const actionPadding = isAssistant ? 'pl-14' : 'pr-14'
+                    const actionButtonClass = isAssistant
+                      ? 'border-border/70 bg-background/90 text-muted-foreground hover:border-primary/50 hover:text-foreground'
+                      : 'border-primary/30 bg-primary/10 text-primary hover:border-primary/60 hover:text-primary'
                     return (
                       <Message key={message.id} from={message.role}>
                         <MessageContent
                           variant="contained"
-                          className={cn(showActions && 'relative overflow-visible pr-14 pt-6')}
+                          className={cn('relative overflow-visible pt-6', actionPadding)}
                         >
                           {message.role === 'assistant' ? (
                             <Response className="text-sm leading-relaxed text-foreground">
@@ -2741,31 +2764,44 @@ export function InfiniteCanvas() {
                           ) : (
                             <div className="whitespace-pre-wrap leading-relaxed">{text}</div>
                           )}
-                          {showActions && (
-                            <div className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
+                          <div
+                            className={cn(
+                              'pointer-events-none absolute top-2 flex items-center gap-1 opacity-0 transition',
+                              actionPlacement,
+                              'group-hover:pointer-events-auto group-hover:opacity-100'
+                            )}
+                          >
                               <button
                                 type="button"
                                 onClick={() => copyChatText(text)}
-                                className="rounded-full border border-border/70 bg-background/90 px-2 py-0.5 text-[10px] text-muted-foreground shadow-sm transition hover:border-primary/50 hover:text-foreground"
+                                className={cn(
+                                  'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
+                                  actionButtonClass
+                                )}
                               >
                                 复制
                               </button>
                               <button
                                 type="button"
                                 onClick={() => insertChatTextToCanvas(text, false)}
-                                className="rounded-full border border-border/70 bg-background/90 px-2 py-0.5 text-[10px] text-muted-foreground shadow-sm transition hover:border-primary/50 hover:text-foreground"
+                                className={cn(
+                                  'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
+                                  actionButtonClass
+                                )}
                               >
                                 插入到画布
                               </button>
                               <button
                                 type="button"
                                 onClick={() => insertChatTextToCanvas(text, true)}
-                                className="rounded-full border border-border/70 bg-background/90 px-2 py-0.5 text-[10px] text-muted-foreground shadow-sm transition hover:border-primary/50 hover:text-foreground"
+                                className={cn(
+                                  'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
+                                  actionButtonClass
+                                )}
                               >
                                 保存为便签
                               </button>
-                            </div>
-                          )}
+                          </div>
                         </MessageContent>
                       </Message>
                     )
@@ -3229,10 +3265,17 @@ export function InfiniteCanvas() {
             const isPrimary = item.id === selectedId
             const isText = item.type === 'text'
             const isEditing = isText && editingId === item.id
+            const isNote = isText && item.data.noteStyle
             const textShadow =
               item.type === 'text'
                 ? buildTextStrokeShadow(item.data.strokeColor, item.data.strokeWidth)
                 : 'none'
+            const noteDecoration = isNote
+              ? {
+                  border: `1px solid ${NOTE_BORDER_COLOR}`,
+                  boxShadow: '0 12px 24px -18px rgba(15, 23, 42, 0.45)',
+                }
+              : { border: 'none', boxShadow: 'none' }
             return (
               <div
                 key={item.id}
@@ -3341,7 +3384,12 @@ export function InfiniteCanvas() {
                         ref={textEditRef}
                         value={item.data.text}
                         onChange={(event) => updateTextItem(item.id, event.target.value, item.data.fontSize)}
-                        onBlur={() => commitTextItem(item.id)}
+                        onBlur={(event) => {
+                          const relatedTarget = event.relatedTarget as Element | null
+                          if (isWithinTextStylePanel(relatedTarget)) return
+                          if (isWithinTextStylePanel(document.activeElement)) return
+                          commitTextItem(item.id)
+                        }}
                         onKeyDown={(event) => {
                           if (event.key !== 'Enter' || event.shiftKey) return
                           event.preventDefault()
@@ -3364,6 +3412,7 @@ export function InfiniteCanvas() {
                           padding: `${TEXT_PADDING_Y}px ${TEXT_PADDING_X}px`,
                           boxSizing: 'border-box',
                           borderRadius: 12,
+                          ...noteDecoration,
                         }}
                       />
                     ) : (
@@ -3384,6 +3433,7 @@ export function InfiniteCanvas() {
                           boxSizing: 'border-box',
                           borderRadius: 12,
                           height: '100%',
+                          ...noteDecoration,
                         }}
                         onDoubleClick={(event) => {
                           event.preventDefault()
