@@ -1542,6 +1542,8 @@ export function InfiniteCanvas() {
               ? clamp(updates.fontSize, MIN_TEXT_FONT_SIZE, MAX_TEXT_FONT_SIZE)
               : item.data.fontSize,
         }
+        const paddingX = nextData.noteStyle ? NOTE_PADDING_X : TEXT_PADDING_X
+        const paddingY = nextData.noteStyle ? NOTE_PADDING_Y : TEXT_PADDING_Y
         const shouldMeasure =
           'fontSize' in updates || 'fontFamily' in updates || 'fontWeight' in updates || 'fontStyle' in updates
         if (!shouldMeasure) {
@@ -1557,7 +1559,9 @@ export function InfiniteCanvas() {
           MIN_TEXT_HEIGHT,
           nextData.fontFamily,
           nextData.fontWeight,
-          nextData.fontStyle
+          nextData.fontStyle,
+          paddingX,
+          paddingY
         )
         return {
           ...item,
@@ -1820,12 +1824,19 @@ export function InfiniteCanvas() {
         const strokeColor = item.data.strokeColor ?? 'transparent'
         const backgroundColor = item.data.backgroundColor ?? 'transparent'
         const align = item.data.align ?? 'left'
-        const paddingX = TEXT_PADDING_X * exportScale
-        const paddingY = TEXT_PADDING_Y * exportScale
+        const isNote = item.data.noteStyle
+        const noteTone = item.data.noteTone ?? 'sticky'
+        const paddingX = (isNote ? NOTE_PADDING_X : TEXT_PADDING_X) * exportScale
+        const paddingY = (isNote ? NOTE_PADDING_Y : TEXT_PADDING_Y) * exportScale
 
         if (backgroundColor !== 'transparent') {
           ctx.fillStyle = backgroundColor
           ctx.fillRect(x, y, itemWidth, itemHeight)
+        }
+        if (isNote) {
+          ctx.strokeStyle = noteTone === 'neutral' ? NOTE_NEUTRAL_BORDER_COLOR : NOTE_STICKY_BORDER_COLOR
+          ctx.lineWidth = Math.max(1, exportScale)
+          ctx.strokeRect(x, y, itemWidth, itemHeight)
         }
 
         const resolvedTextColor =
@@ -2606,6 +2617,8 @@ export function InfiniteCanvas() {
       const value = text.trim()
       if (!value) return
       const targetFontSize = asNote ? NOTE_FONT_SIZE : DEFAULT_TEXT_SIZE
+      const paddingX = asNote ? NOTE_PADDING_X : TEXT_PADDING_X
+      const paddingY = asNote ? NOTE_PADDING_Y : TEXT_PADDING_Y
       const chunks = splitChatTextToNotes(value)
       const noteChunks = chunks.length > 0 ? chunks : [value]
       const rect = getViewportRect()
@@ -2616,7 +2629,19 @@ export function InfiniteCanvas() {
         Math.floor((worldWidth + NOTE_LAYOUT_GAP_X) / (DEFAULT_TEXT_BOX_WIDTH + NOTE_LAYOUT_GAP_X))
       )
       const columns = Math.min(preferredColumns, maxColumns, noteChunks.length)
-      const sizes = noteChunks.map((chunk) => measureTextBox(chunk, targetFontSize, DEFAULT_TEXT_BOX_WIDTH))
+      const sizes = noteChunks.map((chunk) =>
+        measureTextBox(
+          chunk,
+          targetFontSize,
+          DEFAULT_TEXT_BOX_WIDTH,
+          MIN_TEXT_HEIGHT,
+          DEFAULT_TEXT_FONT_FAMILY,
+          DEFAULT_TEXT_FONT_WEIGHT,
+          'normal',
+          paddingX,
+          paddingY
+        )
+      )
       const rowCount = Math.ceil(noteChunks.length / columns)
       const rowHeights = Array.from({ length: rowCount }, () => 0)
 
@@ -3403,57 +3428,88 @@ export function InfiniteCanvas() {
 
       {isCanvasPromptOpen && (
         <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 w-[min(720px,calc(100%-3rem))] -translate-x-1/2">
-          <div className="pointer-events-auto rounded-3xl border border-border bg-background/85 px-4 py-3 shadow-lg backdrop-blur">
-            <div className="flex flex-col gap-2">
-              {selectedItem?.type === 'image' && (
-                <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-muted/30 px-3 py-2">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-background">
-                      <img
-                        src={selectedItem.data.src}
-                        alt={primaryImageLabel || 'reference'}
-                        className="h-full w-full object-cover"
-                        draggable={false}
+          <div className="pointer-events-auto rounded-3xl border border-border bg-background/90 px-4 py-3 shadow-lg backdrop-blur">
+            <div className="flex flex-col gap-3">
+              {isImagePromptMode && (
+                <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-muted/30 px-3 py-2">
+                  <Select value={imageSizeMode} onValueChange={setImageSizeMode} disabled={isImageGenerating}>
+                    <SelectTrigger
+                      size="sm"
+                      className="h-7 rounded-full border border-border bg-background/80 px-2.5 text-[11px] text-muted-foreground hover:bg-muted"
+                    >
+                      <span className="text-muted-foreground">Aspect</span>
+                      <SelectValue placeholder="Auto" />
+                    </SelectTrigger>
+                    <SelectContent
+                      side="top"
+                      className="w-[180px] rounded-2xl border border-border/80 bg-popover/95 p-2 text-xs shadow-lg backdrop-blur"
+                    >
+                      {imageSizeSelectOptions.map((option) => (
+                        <SelectItem
+                          key={option.value}
+                          value={option.value}
+                          className="text-xs"
+                          disabled={Boolean(option.disabled)}
+                        >
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {imageSizeMode === 'custom' && (
+                    <div className="flex items-center gap-1 rounded-full border border-border/70 bg-background/80 px-2 py-1 text-[11px] text-muted-foreground">
+                      <input
+                        inputMode="numeric"
+                        value={customSizeWidth}
+                        onChange={(event) => setCustomSizeWidth(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                        placeholder="宽"
+                        className="w-12 bg-transparent text-center text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                        disabled={isImageGenerating}
+                      />
+                      <span className="text-muted-foreground">x</span>
+                      <input
+                        inputMode="numeric"
+                        value={customSizeHeight}
+                        onChange={(event) => setCustomSizeHeight(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                        placeholder="高"
+                        className="w-12 bg-transparent text-center text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                        disabled={isImageGenerating}
                       />
                     </div>
-                    <div className="flex min-w-0 flex-col">
-                      <span className="text-[11px] text-muted-foreground">原始参考</span>
-                      <span className="truncate text-sm text-foreground">{primaryImageLabel}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="rounded-full border border-border bg-background/70 px-2 py-1 text-[11px]">
-                      {selectionCountLabel}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        clearSelection()
-                        setEditingId(null)
-                      }}
-                      className="rounded-full border border-border bg-background/70 px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  )}
+                  <Select value={imageModel} onValueChange={setImageModel} disabled={isImageGenerating}>
+                    <SelectTrigger
+                      size="sm"
+                      className="h-7 rounded-full border border-border bg-background/80 px-2.5 text-[11px] text-muted-foreground hover:bg-muted"
                     >
-                      清空选择
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div className="flex items-center gap-3">
-                {isImagePromptMode && (
+                      <span className="text-muted-foreground">Model</span>
+                      <SelectValue placeholder="选择模型" />
+                    </SelectTrigger>
+                    <SelectContent
+                      side="top"
+                      className="w-[260px] rounded-2xl border border-border/80 bg-popover/95 p-2 text-xs shadow-lg backdrop-blur"
+                    >
+                      {imageModelOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value} className="text-xs">
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <DropdownMenu open={isCanvasPresetOpen} onOpenChange={setIsCanvasPresetOpen}>
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        aria-label="快速功能"
+                        aria-label="构图"
                         aria-pressed={isCanvasPresetOpen}
                         className={cn(
                           'inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground',
                           (isCanvasPresetOpen || selectedPresetId) && 'border-primary/40 text-primary'
                         )}
                       >
-                        <span className="text-muted-foreground">功能</span>
+                        <span className="text-muted-foreground">Comp</span>
                         <span className="max-w-[80px] truncate text-foreground">
-                          {selectedPreset ? selectedPreset.name : '无'}
+                          {selectedPreset ? selectedPreset.name : 'None'}
                         </span>
                         <ChevronDown className="h-3.5 w-3.5" />
                       </button>
@@ -3502,28 +3558,65 @@ export function InfiniteCanvas() {
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                )}
-                {isImagePromptMode && (
-                  <Select value={imageModel} onValueChange={setImageModel} disabled={isImageGenerating}>
-                    <SelectTrigger
-                      size="sm"
-                      className="h-7 rounded-full border border-border bg-background/80 px-2.5 text-[11px] text-muted-foreground hover:bg-muted"
+                  <div className="hidden items-center gap-2 text-[11px] text-muted-foreground sm:flex">
+                    <span className="rounded-full border border-border/60 bg-background/80 px-2 py-1">Style: None</span>
+                    <span className="rounded-full border border-border/60 bg-background/80 px-2 py-1">Light: None</span>
+                    <span className="rounded-full border border-border/60 bg-background/80 px-2 py-1">Color: None</span>
+                  </div>
+                </div>
+              )}
+              {selectedItem?.type === 'image' && (
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/80 px-3 py-2">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-background">
+                      <img
+                        src={selectedItem.data.src}
+                        alt={primaryImageLabel || 'reference'}
+                        className="h-full w-full object-cover"
+                        draggable={false}
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="text-[11px] text-muted-foreground">参考图</span>
+                      <span className="truncate text-sm text-foreground">{primaryImageLabel}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {selectionCountLabel && (
+                      <span className="rounded-full border border-border bg-background/70 px-2 py-1 text-[11px]">
+                        {selectionCountLabel}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearSelection()
+                        setEditingId(null)
+                      }}
+                      className="rounded-full border border-border bg-background/70 px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
                     >
-                      <span className="text-muted-foreground">模型</span>
-                      <SelectValue placeholder="选择模型" />
-                    </SelectTrigger>
-                    <SelectContent
-                      side="top"
-                      className="w-[260px] rounded-2xl border border-border/80 bg-popover/95 p-2 text-xs shadow-lg backdrop-blur"
+                      清空选择
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-background px-3 py-2 shadow-sm">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setIsCanvasPromptOpen(false)}
+                      aria-label="收起"
+                      className="h-8 w-8 rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
-                      {imageModelOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value} className="text-xs">
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    收起
+                  </TooltipContent>
+                </Tooltip>
                 <input
                   ref={canvasInputRef}
                   className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
@@ -3545,29 +3638,13 @@ export function InfiniteCanvas() {
                       variant="ghost"
                       onClick={handleUploadClick}
                       aria-label="添加参考图"
-                      className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                      className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <ImagePlus className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs">
                     添加参考图
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => setIsCanvasPromptOpen(false)}
-                      aria-label="隐藏提示词输入框"
-                      className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    隐藏
                   </TooltipContent>
                 </Tooltip>
                 <Tooltip>
@@ -3772,6 +3849,13 @@ export function InfiniteCanvas() {
                 ? buildTextStrokeShadow(item.data.strokeColor, item.data.strokeWidth)
                 : 'none'
             const noteTone = item.data.noteTone ?? 'sticky'
+            const notePaddingX = isNote ? NOTE_PADDING_X : TEXT_PADDING_X
+            const notePaddingY = isNote ? NOTE_PADDING_Y : TEXT_PADDING_Y
+            const noteRadius = isNote ? NOTE_RADIUS : 12
+            const noteHighlight =
+              noteTone === 'neutral'
+                ? 'linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0))'
+                : 'linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0))'
             const noteDecoration = isNote
               ? {
                   border: `1px solid ${
@@ -3781,8 +3865,9 @@ export function InfiniteCanvas() {
                     noteTone === 'neutral'
                       ? '0 10px 20px -16px rgba(15, 23, 42, 0.45)'
                       : '0 12px 24px -18px rgba(120, 53, 15, 0.45)',
+                  backgroundImage: noteHighlight,
                 }
-              : { border: 'none', boxShadow: 'none' }
+              : { border: 'none', boxShadow: 'none', backgroundImage: 'none' }
             return (
               <div
                 key={item.id}
@@ -3908,15 +3993,17 @@ export function InfiniteCanvas() {
                           lineHeight: 1.3,
                           color: item.data.color,
                           backgroundColor: item.data.backgroundColor,
+                          backgroundImage: noteDecoration.backgroundImage,
                           fontFamily: item.data.fontFamily,
                           fontWeight: item.data.fontWeight,
                           fontStyle: item.data.fontStyle,
                           textDecoration: item.data.textDecoration,
                           textAlign: item.data.align,
                           textShadow,
-                          padding: `${TEXT_PADDING_Y}px ${TEXT_PADDING_X}px`,
+                          padding: `${notePaddingY}px ${notePaddingX}px`,
                           boxSizing: 'border-box',
-                          borderRadius: 12,
+                          borderRadius: noteRadius,
+                          letterSpacing: isNote ? '0.01em' : undefined,
                           ...noteDecoration,
                         }}
                       />
@@ -3928,16 +4015,18 @@ export function InfiniteCanvas() {
                           lineHeight: 1.3,
                           color: item.data.color,
                           backgroundColor: item.data.backgroundColor,
+                          backgroundImage: noteDecoration.backgroundImage,
                           fontFamily: item.data.fontFamily,
                           fontWeight: item.data.fontWeight,
                           fontStyle: item.data.fontStyle,
                           textDecoration: item.data.textDecoration,
                           textAlign: item.data.align,
                           textShadow,
-                          padding: `${TEXT_PADDING_Y}px ${TEXT_PADDING_X}px`,
+                          padding: `${notePaddingY}px ${notePaddingX}px`,
                           boxSizing: 'border-box',
-                          borderRadius: 12,
+                          borderRadius: noteRadius,
                           height: '100%',
+                          letterSpacing: isNote ? '0.01em' : undefined,
                           ...noteDecoration,
                         }}
                         onDoubleClick={(event) => {
