@@ -5,6 +5,8 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { nanoid } from 'nanoid'
 import {
+  ArrowDown,
+  ArrowUp,
   ArrowUpRight,
   AlignCenter,
   AlignJustify,
@@ -17,10 +19,15 @@ import {
   Hand,
   ImagePlus,
   Italic,
+  Eye,
+  EyeOff,
+  Info,
   MessageSquare,
   MoreHorizontal,
   MousePointer2,
   Megaphone,
+  Lock,
+  Unlock,
   Palette,
   PencilLine,
   RefreshCcw,
@@ -71,6 +78,9 @@ type CanvasBaseItem = {
   width: number
   height: number
   rotation?: number
+  label?: string
+  hidden?: boolean
+  locked?: boolean
 }
 
 type CanvasImageItem = CanvasBaseItem & {
@@ -81,6 +91,15 @@ type CanvasImageItem = CanvasBaseItem & {
     provider?: string
     expiresAt?: string
     name?: string
+    meta?: {
+      source: 'upload' | 'generate' | 'remove-background' | 'layered' | 'duplicate' | 'import'
+      model?: string
+      provider?: string
+      prompt?: string
+      size?: string
+      derivedFromId?: string
+      createdAt?: string
+    }
   }
 }
 
@@ -437,6 +456,10 @@ export function InfiniteCanvas() {
   const [isCanvasPromptOpen, setIsCanvasPromptOpen] = useState(false)
   const [isCanvasPresetOpen, setIsCanvasPresetOpen] = useState(false)
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
+  const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(true)
+  const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null)
+  const [layerNameDraft, setLayerNameDraft] = useState('')
+  const [openLayerDetailId, setOpenLayerDetailId] = useState<string | null>(null)
   const imageProviderModels = config.aiImage.availableModels
   const defaultImageProvider = config.aiImage.defaultProvider
   const defaultImageModel =
@@ -1284,8 +1307,11 @@ export function InfiniteCanvas() {
       const selectionThreshold = 4 / camera.scale
       if (selection.width >= selectionThreshold || selection.height >= selectionThreshold) {
         const boxedIds = items
-          .filter((item) =>
-            rectsIntersect(selection, { x: item.x, y: item.y, width: item.width, height: item.height })
+          .filter(
+            (item) =>
+              !item.hidden &&
+              !item.locked &&
+              rectsIntersect(selection, { x: item.x, y: item.y, width: item.width, height: item.height })
           )
           .map((item) => item.id)
         const nextIds = dragState.additive ? Array.from(new Set([...selectedIds, ...boxedIds])) : boxedIds
@@ -1316,6 +1342,7 @@ export function InfiniteCanvas() {
   const handleItemPointerDown = (event: React.PointerEvent<HTMLDivElement>, item: CanvasItem) => {
     if (event.button !== 0) return
     if (isSpacePanningActive) return
+    if (item.locked) return
     if (item.type === 'text' && editingId === item.id) return
     if (item.type === 'text') {
       const now = performance.now()
@@ -1386,6 +1413,7 @@ export function InfiniteCanvas() {
     corner: 'tl' | 'tr' | 'bl' | 'br' | 'tm' | 'bm' | 'ml' | 'mr'
   ) => {
     if (event.button !== 0) return
+    if (item.locked) return
     event.preventDefault()
     event.stopPropagation()
     const rect = getViewportRect()
@@ -1584,6 +1612,106 @@ export function InfiniteCanvas() {
     setEditingId(null)
   }
 
+  const updateItemLabel = (id: string, label?: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              label,
+            }
+          : item
+      )
+    )
+  }
+
+  const dropSelectionForId = (id: string) => {
+    setSelectedIds((prev) => {
+      if (!prev.includes(id)) return prev
+      const next = prev.filter((entry) => entry !== id)
+      setSelectedId((current) => {
+        if (current && current !== id) return current
+        return next[next.length - 1] ?? null
+      })
+      return next
+    })
+    setEditingId((prev) => (prev === id ? null : prev))
+  }
+
+  const toggleItemHidden = (id: string) => {
+    const target = items.find((item) => item.id === id)
+    if (!target) return
+    const nextHidden = !target.hidden
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, hidden: nextHidden } : item)))
+    if (nextHidden) {
+      dropSelectionForId(id)
+    }
+  }
+
+  const toggleItemLocked = (id: string) => {
+    const target = items.find((item) => item.id === id)
+    if (!target) return
+    const nextLocked = !target.locked
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, locked: nextLocked } : item)))
+    if (nextLocked) {
+      dropSelectionForId(id)
+    }
+  }
+
+  const isItemInViewport = (item: CanvasItem) => {
+    const rect = getViewportRect()
+    if (!rect) return true
+    const left = item.x * camera.scale + camera.x
+    const top = item.y * camera.scale + camera.y
+    const right = left + item.width * camera.scale
+    const bottom = top + item.height * camera.scale
+    const margin = 80
+    return right > margin && bottom > margin && left < rect.width - margin && top < rect.height - margin
+  }
+
+  const focusItem = (item: CanvasItem) => {
+    const rect = getViewportRect()
+    if (!rect) return
+    const centerX = item.x + item.width / 2
+    const centerY = item.y + item.height / 2
+    updateCamera({
+      x: rect.width / 2 - centerX * camera.scale,
+      y: rect.height / 2 - centerY * camera.scale,
+      scale: camera.scale,
+    })
+  }
+
+  const moveItemInStack = (id: string, direction: 'up' | 'down') => {
+    setItems((prev) => {
+      const index = prev.findIndex((item) => item.id === id)
+      if (index === -1) return prev
+      const nextIndex = direction === 'up' ? Math.min(prev.length - 1, index + 1) : Math.max(0, index - 1)
+      if (index === nextIndex) return prev
+      const next = [...prev]
+      const [moved] = next.splice(index, 1)
+      next.splice(nextIndex, 0, moved)
+      return next
+    })
+  }
+
+  const commitLayerRename = (id: string, value: string) => {
+    const target = items.find((item) => item.id === id)
+    if (!target) return
+    const trimmed = value.trim()
+    if (target.type === 'image') {
+      updateImageItem(id, { name: trimmed || undefined })
+    } else {
+      updateItemLabel(id, trimmed || undefined)
+    }
+    setRenamingLayerId(null)
+    setLayerNameDraft('')
+  }
+
+  const cancelLayerRename = () => {
+    setRenamingLayerId(null)
+    setLayerNameDraft('')
+  }
+
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return
     const file = files[0]
@@ -1609,7 +1737,12 @@ export function InfiniteCanvas() {
             toast.error('读取图片失败，请重试', { id: toastId })
             return
           }
-          addImageItem(result, file.name)
+          addImageItem(result, file.name, {
+            meta: {
+              source: 'upload',
+              createdAt: new Date().toISOString(),
+            },
+          })
           toast.success('已添加到画布', { id: toastId })
         }
         reader.readAsDataURL(file)
@@ -1646,6 +1779,10 @@ export function InfiniteCanvas() {
         key: data.key,
         provider: data.provider,
         expiresAt: data.expiresAt,
+        meta: {
+          source: 'upload',
+          createdAt: new Date().toISOString(),
+        },
       })
       toast.success('上传完成', { id: toastId })
     } catch (error) {
@@ -1741,6 +1878,7 @@ export function InfiniteCanvas() {
   const handleExportCanvas = async () => {
     if (isExporting) return
     const exportItems = items.filter((item) => {
+      if (item.hidden) return false
       if (item.type === 'image') return Boolean(item.data?.src)
       return Boolean(item.data?.text?.trim())
     })
@@ -2165,6 +2303,11 @@ export function InfiniteCanvas() {
           key: result.key,
           provider: result.provider,
           expiresAt: result.expiresAt,
+          meta: {
+            source: 'remove-background',
+            derivedFromId: item.id,
+            createdAt: new Date().toISOString(),
+          },
         },
       }
       setItems((prev) => [...prev, nextItem])
@@ -2261,6 +2404,13 @@ export function InfiniteCanvas() {
             key: layer.key,
             provider: layer.provider,
             expiresAt: layer.expiresAt,
+            meta: {
+              source: 'layered',
+              model: 'qwen-image-layered',
+              provider: 'fal',
+              derivedFromId: item.id,
+              createdAt: new Date().toISOString(),
+            },
           },
         }
       })
@@ -2381,6 +2531,8 @@ export function InfiniteCanvas() {
     setIsImageGenerating(true)
 
     try {
+      const modelOption = imageModelOptions.find((option) => option.value === imageModel)
+      const providerLabel = modelOption?.provider
       let resolvedSize: string | undefined
       if (imageSizeMode === 'custom') {
         const width = Number(customSizeWidth)
@@ -2439,7 +2591,16 @@ export function InfiniteCanvas() {
         throw new Error('未返回图片地址')
       }
 
-      addImageItem(imageUrl, `AI-${imageModel}`)
+      addImageItem(imageUrl, `AI-${imageModel}`, {
+        meta: {
+          source: 'generate',
+          model: imageModel,
+          provider: providerLabel,
+          prompt,
+          size: resolvedSize,
+          createdAt: new Date().toISOString(),
+        },
+      })
       setCanvasInput('')
       if (typeof data?.credits?.remaining === 'number') {
         setCreditBalance(data.credits.remaining)
@@ -2498,6 +2659,40 @@ export function InfiniteCanvas() {
 
   const zoomPercent = Math.round(camera.scale * 100)
   const isChatBusy = status === 'streaming' || status === 'submitted'
+  const resolveTextLabel = (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed) return '未命名文本'
+    return trimmed.split('\n')[0].slice(0, 16)
+  }
+  const getLayerLabel = (item: CanvasItem) => {
+    if (item.type === 'text') {
+      const label = item.label?.trim()
+      return label || resolveTextLabel(item.data.text ?? '')
+    }
+    return item.data?.name?.trim() || '未命名图片'
+  }
+  const getLayerSourceLabel = (item: CanvasItem) => {
+    if (item.type === 'text') return '手动输入'
+    const source = item.data.meta?.source
+    if (!source) return '未知来源'
+    const map: Record<string, string> = {
+      upload: '上传',
+      generate: '生成',
+      'remove-background': '去背',
+      layered: '拆解图层',
+      duplicate: '复制',
+      import: '导入',
+    }
+    return map[source] ?? '未知来源'
+  }
+  const formatMetaTime = (value?: string) => {
+    if (!value) return '未知'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+    return date.toLocaleString()
+  }
+  const layerItems = useMemo(() => [...items].reverse(), [items])
+  const layerOrderMap = useMemo(() => new Map(items.map((item, index) => [item.id, index])), [items])
   const selectedItems = useMemo(
     () => items.filter((item) => selectedIds.includes(item.id)),
     [items, selectedIds]
@@ -2507,9 +2702,7 @@ export function InfiniteCanvas() {
   const selectedItemLabel = hasMultiSelection
     ? `已选 ${selectedItems.length} 项`
     : selectedItem
-    ? selectedItem.type === 'text'
-      ? selectedItem.data.text.trim().split('\n')[0].slice(0, 16) || '未命名文本'
-      : selectedItem.data?.name?.trim() || '未命名图片'
+    ? getLayerLabel(selectedItem)
     : ''
   const primaryImageLabel =
     selectedItem?.type === 'image' ? selectedItem.data?.name?.trim() || '未命名图片' : ''
@@ -2926,6 +3119,30 @@ export function InfiniteCanvas() {
         </div>
       </div>
 
+      <div className="pointer-events-none absolute left-5 top-4 z-30">
+        <div className="pointer-events-auto">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setIsLayerPanelOpen((prev) => !prev)}
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground',
+                  isLayerPanelOpen &&
+                    'border-primary/40 bg-primary/10 text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.2)]'
+                )}
+                aria-label={isLayerPanelOpen ? '隐藏图层面板' : '显示图层面板'}
+              >
+                <Layers className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              {isLayerPanelOpen ? '隐藏图层' : '显示图层'}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+
       <div className="pointer-events-none absolute left-5 top-24 z-20">
         <div className="pointer-events-auto flex flex-col items-center gap-2 rounded-2xl border border-border bg-background/85 p-2 shadow-md backdrop-blur">
           {toolOrder.map((item) => {
@@ -3072,6 +3289,297 @@ export function InfiniteCanvas() {
               {isChatMinimized ? '智能设计师' : '收起对话'}
             </TooltipContent>
           </Tooltip>
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-6 left-5 top-32 z-20">
+        <div
+          className={cn(
+            'flex h-full w-[280px] flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur transition-transform duration-300 ease-out',
+            isLayerPanelOpen ? 'pointer-events-auto translate-x-0' : 'pointer-events-none -translate-x-[calc(100%+1.25rem)]'
+          )}
+        >
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-xs font-semibold text-primary">
+                  <Layers className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-foreground">图层</span>
+                  <span className="text-xs text-muted-foreground">{items.length} 项</span>
+                </div>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setIsLayerPanelOpen(false)}
+                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="关闭图层面板"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-3 py-3">
+              {layerItems.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40 text-muted-foreground">
+                    <Layers className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">暂无图层</p>
+                    <p>上传图片或添加文本后显示。</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {layerItems.map((item) => {
+                    const isSelected = selectedIdsSet.has(item.id)
+                    const isHidden = Boolean(item.hidden)
+                    const isLocked = Boolean(item.locked)
+                    const isRenaming = renamingLayerId === item.id
+                    const label = getLayerLabel(item)
+                    const canSelect = !isHidden && !isLocked
+                    const orderIndex = layerOrderMap.get(item.id) ?? 0
+                    const isTopMost = orderIndex >= items.length - 1
+                    const isBottomMost = orderIndex <= 0
+                    const meta = item.type === 'image' ? item.data.meta : undefined
+                    const sourceLabel = getLayerSourceLabel(item)
+                    const derivedItem = meta?.derivedFromId
+                      ? items.find((entry) => entry.id === meta.derivedFromId) ?? null
+                      : null
+                    const derivedLabel = derivedItem ? getLayerLabel(derivedItem) : meta?.derivedFromId ? '已删除' : ''
+
+                    return (
+                      <div
+                        key={item.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          if (!canSelect) return
+                          if (!isItemInViewport(item)) {
+                            focusItem(item)
+                          }
+                          syncSelection([item.id], item.id)
+                          if (editingId && editingId !== item.id) {
+                            commitTextItem(editingId)
+                          }
+                        }}
+                        onKeyDown={(event) => {
+                          if (!canSelect) return
+                          if (event.key !== 'Enter' && event.key !== ' ') return
+                          event.preventDefault()
+                          if (!isItemInViewport(item)) {
+                            focusItem(item)
+                          }
+                          syncSelection([item.id], item.id)
+                          if (editingId && editingId !== item.id) {
+                            commitTextItem(editingId)
+                          }
+                        }}
+                        className={cn(
+                          'group flex items-center justify-between gap-2 rounded-2xl border px-3 py-2 text-xs transition',
+                          isSelected
+                            ? 'border-primary/60 bg-primary/10 text-foreground'
+                            : 'border-border bg-background/80 text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                          (isHidden || isLocked) && 'opacity-60'
+                        )}
+                      >
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div
+                            className={cn(
+                              'flex h-8 w-8 items-center justify-center rounded-xl border',
+                              isSelected
+                                ? 'border-primary/40 bg-primary/5 text-primary'
+                                : 'border-border bg-muted/40 text-muted-foreground'
+                            )}
+                          >
+                            {item.type === 'image' ? (
+                              <ImagePlus className="h-4 w-4" />
+                            ) : (
+                              <Type className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            {isRenaming ? (
+                              <input
+                                value={layerNameDraft}
+                                onChange={(event) => setLayerNameDraft(event.target.value)}
+                                onBlur={() => commitLayerRename(item.id, layerNameDraft)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter') {
+                                    event.preventDefault()
+                                    commitLayerRename(item.id, layerNameDraft)
+                                  }
+                                  if (event.key === 'Escape') {
+                                    event.preventDefault()
+                                    cancelLayerRename()
+                                  }
+                                }}
+                                onClick={(event) => event.stopPropagation()}
+                                autoFocus
+                                className="h-7 w-full rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                              />
+                            ) : (
+                              <div
+                                className={cn(
+                                  'truncate text-xs font-semibold text-foreground',
+                                  isHidden && 'line-through text-muted-foreground'
+                                )}
+                                onDoubleClick={(event) => {
+                                  event.stopPropagation()
+                                  setRenamingLayerId(item.id)
+                                  setLayerNameDraft(label)
+                                }}
+                              >
+                                {label}
+                              </div>
+                            )}
+                            <div className="text-[10px] text-muted-foreground">
+                              {item.type === 'image' ? '图片' : '文本'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              moveItemInStack(item.id, 'up')
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label="上移"
+                            title="上移"
+                            disabled={isTopMost}
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              moveItemInStack(item.id, 'down')
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label="下移"
+                            title="下移"
+                            disabled={isBottomMost}
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              toggleItemHidden(item.id)
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                            aria-label={isHidden ? '显示图层' : '隐藏图层'}
+                            title={isHidden ? '显示图层' : '隐藏图层'}
+                          >
+                            {isHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              toggleItemLocked(item.id)
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                            aria-label={isLocked ? '解锁图层' : '锁定图层'}
+                            title={isLocked ? '解锁图层' : '锁定图层'}
+                          >
+                            {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setRenamingLayerId(item.id)
+                              setLayerNameDraft(label)
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                            aria-label="重命名"
+                            title="重命名"
+                          >
+                            <PencilLine className="h-3.5 w-3.5" />
+                          </button>
+                          <DropdownMenu
+                            open={openLayerDetailId === item.id}
+                            onOpenChange={(open) => setOpenLayerDetailId(open ? item.id : null)}
+                          >
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={(event) => event.stopPropagation()}
+                                className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                                aria-label="详情"
+                                title="详情"
+                              >
+                                <Info className="h-3.5 w-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              side="left"
+                              align="end"
+                              className="w-[260px] rounded-2xl border border-border/80 bg-popover/95 p-3 text-xs shadow-lg backdrop-blur"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <div className="flex flex-col gap-2 text-xs text-muted-foreground">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span>类型</span>
+                                  <span className="text-foreground">{item.type === 'image' ? '图片' : '文本'}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3">
+                                  <span>来源</span>
+                                  <span className="text-foreground">{sourceLabel}</span>
+                                </div>
+                                {item.type === 'image' && meta?.model && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span>模型</span>
+                                    <span className="text-foreground">{meta.model}</span>
+                                  </div>
+                                )}
+                                {item.type === 'image' && meta?.provider && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span>提供方</span>
+                                    <span className="text-foreground">{meta.provider}</span>
+                                  </div>
+                                )}
+                                {item.type === 'image' && meta?.size && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span>尺寸</span>
+                                    <span className="text-foreground">{meta.size}</span>
+                                  </div>
+                                )}
+                                {item.type === 'image' && derivedLabel && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span>来源图层</span>
+                                    <span className="text-foreground">{derivedLabel}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between gap-3">
+                                  <span>创建时间</span>
+                                  <span className="text-foreground">
+                                    {item.type === 'image' ? formatMetaTime(meta?.createdAt) : '未知'}
+                                  </span>
+                                </div>
+                                {item.type === 'image' && meta?.prompt && (
+                                  <div className="mt-1 rounded-xl border border-border bg-background/70 p-2 text-[11px] text-foreground">
+                                    <div className="mb-1 text-[10px] font-semibold text-muted-foreground">提示词</div>
+                                    <div className="whitespace-pre-wrap break-words">{meta.prompt}</div>
+                                  </div>
+                                )}
+                              </div>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3978,6 +4486,7 @@ export function InfiniteCanvas() {
             />
           )}
           {items.map((item) => {
+            if (item.hidden) return null
             const selected = selectedIdsSet.has(item.id)
             const isPrimary = item.id === selectedId
             const isText = item.type === 'text'

@@ -1,6 +1,10 @@
 import { config } from '@config';
 
-export type EvolinkImageModel = 'gemini-2.5-flash-image' | 'z-image-turbo';
+export type EvolinkImageModel =
+  | 'gemini-2.5-flash-image'
+  | 'gemini-3-pro-image-preview'
+  | 'nano-banana-2-lite'
+  | 'z-image-turbo';
 export type EvolinkImageSize =
   | 'auto'
   | '1:1'

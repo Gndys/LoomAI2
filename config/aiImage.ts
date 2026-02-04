@@ -21,7 +21,12 @@ export const aiImageConfig = {
    * Available Image Models
    */
   availableModels: {
-    evolink: ['gemini-2.5-flash-image', 'z-image-turbo'],
+    evolink: [
+      'gemini-2.5-flash-image',
+      'gemini-3-pro-image-preview',
+      'nano-banana-2-lite',
+      'z-image-turbo',
+    ],
   },
 
   /**
