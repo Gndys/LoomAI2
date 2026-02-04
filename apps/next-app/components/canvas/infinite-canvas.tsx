@@ -90,7 +90,7 @@ type CanvasImageItem = CanvasBaseItem & {
     expiresAt?: string
     name?: string
     meta?: {
-      source: 'upload' | 'generate' | 'remove-background' | 'layered' | 'duplicate' | 'import'
+      source: 'upload' | 'generate' | 'remove-background' | 'layered' | 'duplicate' | 'import' | 'lasso'
       model?: string
       provider?: string
       prompt?: string
@@ -166,6 +166,18 @@ type DragState =
       currentWorldY: number
       additive: boolean
     }
+
+type LassoPoint = {
+  x: number
+  y: number
+}
+
+type LassoState = {
+  itemId: string
+  points: LassoPoint[]
+  isDrawing: boolean
+  closed: boolean
+}
 
 const STORAGE_KEY = 'loomai:canvas:phase0'
 const MIN_SCALE = 0.2
@@ -491,6 +503,8 @@ export function InfiniteCanvas() {
   const textStylePanelRef = useRef<HTMLDivElement | null>(null)
   const lastTextClickRef = useRef<{ id: string | null; time: number }>({ id: null, time: 0 })
   const refreshingSignedUrlsRef = useRef<Record<string, Promise<SignedUrlPayload | null>>>({})
+  const lassoPointerIdRef = useRef<number | null>(null)
+  const lassoStateRef = useRef<LassoState | null>(null)
 
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, scale: 1 })
   const [items, setItems] = useState<CanvasItem[]>([])
@@ -529,6 +543,9 @@ export function InfiniteCanvas() {
   const [layerNameDraft, setLayerNameDraft] = useState('')
   const [layerContextMenu, setLayerContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [layerDetailPopover, setLayerDetailPopover] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [imageSizeMap, setImageSizeMap] = useState<Record<string, { width: number; height: number }>>({})
+  const [lassoState, setLassoState] = useState<LassoState | null>(null)
+  const [isLassoProcessing, setIsLassoProcessing] = useState(false)
   const imageProviderModels = config.aiImage.availableModels
   const defaultImageProvider = config.aiImage.defaultProvider
   const defaultImageModel =
@@ -588,6 +605,99 @@ export function InfiniteCanvas() {
     },
     [camera]
   )
+
+  const resolveImageMetrics = useCallback(
+    (item: CanvasImageItem) => {
+      const size = imageSizeMap[item.id]
+      if (!size) return null
+      const intrinsicWidth = size.width
+      const intrinsicHeight = size.height
+      if (!intrinsicWidth || !intrinsicHeight) return null
+      const scale = Math.min(item.width / intrinsicWidth, item.height / intrinsicHeight)
+      const displayWidth = intrinsicWidth * scale
+      const displayHeight = intrinsicHeight * scale
+      const offsetX = (item.width - displayWidth) / 2
+      const offsetY = (item.height - displayHeight) / 2
+      return {
+        intrinsicWidth,
+        intrinsicHeight,
+        scale,
+        displayWidth,
+        displayHeight,
+        offsetX,
+        offsetY,
+      }
+    },
+    [imageSizeMap]
+  )
+
+  const resolveImagePoint = useCallback(
+    (item: CanvasImageItem, worldX: number, worldY: number) => {
+      const metrics = resolveImageMetrics(item)
+      if (!metrics) return null
+      const localX = worldX - item.x
+      const localY = worldY - item.y
+      const withinX = localX >= metrics.offsetX && localX <= metrics.offsetX + metrics.displayWidth
+      const withinY = localY >= metrics.offsetY && localY <= metrics.offsetY + metrics.displayHeight
+      if (!withinX || !withinY) return null
+      const imageX = (localX - metrics.offsetX) / metrics.scale
+      const imageY = (localY - metrics.offsetY) / metrics.scale
+      return {
+        x: clamp(imageX, 0, metrics.intrinsicWidth),
+        y: clamp(imageY, 0, metrics.intrinsicHeight),
+      }
+    },
+    [resolveImageMetrics]
+  )
+
+  const resolveLocalPoint = useCallback(
+    (item: CanvasImageItem, point: LassoPoint) => {
+      const metrics = resolveImageMetrics(item)
+      if (!metrics) return null
+      return {
+        x: point.x * metrics.scale + metrics.offsetX,
+        y: point.y * metrics.scale + metrics.offsetY,
+      }
+    },
+    [resolveImageMetrics]
+  )
+
+  const buildLassoPath = useCallback(
+    (item: CanvasImageItem, points: LassoPoint[], closed: boolean) => {
+      if (points.length === 0) return ''
+      const resolved = points
+        .map((point) => resolveLocalPoint(item, point))
+        .filter(Boolean) as Array<{ x: number; y: number }>
+      if (resolved.length === 0) return ''
+      const segments = resolved.map((point) => `${point.x},${point.y}`).join(' L ')
+      return closed ? `M ${segments} Z` : `M ${segments}`
+    },
+    [resolveLocalPoint]
+  )
+
+  const getLassoBounds = useCallback((points: LassoPoint[]) => {
+    let minX = Number.POSITIVE_INFINITY
+    let minY = Number.POSITIVE_INFINITY
+    let maxX = Number.NEGATIVE_INFINITY
+    let maxY = Number.NEGATIVE_INFINITY
+    points.forEach((point) => {
+      minX = Math.min(minX, point.x)
+      minY = Math.min(minY, point.y)
+      maxX = Math.max(maxX, point.x)
+      maxY = Math.max(maxY, point.y)
+    })
+    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+      return null
+    }
+    return {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: maxX - minX,
+      height: maxY - minY,
+    }
+  }, [])
 
   const measureTextBox = useCallback(
     (
@@ -758,6 +868,17 @@ export function InfiniteCanvas() {
         })
         return changed ? next : prev
       })
+      setImageSizeMap((prev) => {
+        let changed = false
+        const next = { ...prev }
+        idSet.forEach((id) => {
+          if (next[id]) {
+            delete next[id]
+            changed = true
+          }
+        })
+        return changed ? next : prev
+      })
     },
     [setSelectedId]
   )
@@ -836,6 +957,10 @@ export function InfiniteCanvas() {
       }
       if (event.key === 'Escape') {
         event.preventDefault()
+        if (lassoStateRef.current) {
+          setLassoState(null)
+          return
+        }
         clearSelection()
         setEditingId(null)
       }
@@ -844,6 +969,20 @@ export function InfiniteCanvas() {
     window.addEventListener('keydown', handleSelectionKeys)
     return () => window.removeEventListener('keydown', handleSelectionKeys)
   }, [clearSelection, items, syncSelection])
+
+  useEffect(() => {
+    if (!lassoState) return
+    const targetExists = items.some((item) => item.id === lassoState.itemId)
+    if (!targetExists) {
+      setLassoState(null)
+      return
+    }
+    const isSelected =
+      selectedId === lassoState.itemId || (selectedIds.length > 0 && selectedIds.includes(lassoState.itemId))
+    if (!isSelected) {
+      setLassoState(null)
+    }
+  }, [items, lassoState, selectedId, selectedIds])
 
   useEffect(() => {
     const viewport = viewportRef.current
@@ -973,6 +1112,10 @@ export function InfiniteCanvas() {
   }, [error])
 
   useEffect(() => {
+    lassoStateRef.current = lassoState
+  }, [lassoState])
+
+  useEffect(() => {
     if (!isCanvasPromptOpen) return
     const handle = window.requestAnimationFrame(() => {
       canvasInputRef.current?.focus()
@@ -1099,6 +1242,11 @@ export function InfiniteCanvas() {
   }
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (lassoState) {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('[data-lasso-overlay]')) return
+      setLassoState(null)
+    }
     if (
       editingId &&
       !isEditableTarget(event.target) &&
@@ -1412,6 +1560,7 @@ export function InfiniteCanvas() {
     if (event.button !== 0) return
     if (isSpacePanningActive) return
     if (item.locked) return
+    if (item.type === 'image' && lassoState?.itemId === item.id) return
     if (item.type === 'text' && editingId === item.id) return
     if (item.type === 'text') {
       const now = performance.now()
@@ -2342,6 +2491,191 @@ export function InfiniteCanvas() {
     return uploaded
   }
 
+  const loadImageForCutout = async (item: CanvasImageItem) => {
+    const resolved = await ensureRemoteImageUrl(item, { allowLocal: true })
+    const src = resolved.url
+    return new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image()
+      if (src.startsWith('http://') || src.startsWith('https://')) {
+        img.crossOrigin = 'anonymous'
+      }
+      img.onload = () => resolve(img)
+      img.onerror = () => reject(new Error('图片加载失败'))
+      img.src = src
+    })
+  }
+
+  const resetLassoState = () => {
+    setLassoState(null)
+  }
+
+  const resetLassoPath = () => {
+    setLassoState((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        points: [],
+        isDrawing: false,
+        closed: false,
+      }
+    })
+  }
+
+  const handleLassoPointerDown = (event: React.PointerEvent<HTMLDivElement>, item: CanvasImageItem) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    if (!resolveImageMetrics(item)) {
+      toast.error('图片尚未加载完成')
+      return
+    }
+    const rect = getViewportRect()
+    if (!rect) return
+    const worldPoint = screenToWorld(event.clientX - rect.left, event.clientY - rect.top)
+    const imagePoint = resolveImagePoint(item, worldPoint.x, worldPoint.y)
+    if (!imagePoint) return
+    lassoPointerIdRef.current = event.pointerId
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setLassoState({
+      itemId: item.id,
+      points: [imagePoint],
+      isDrawing: true,
+      closed: false,
+    })
+  }
+
+  const handleLassoPointerMove = (event: React.PointerEvent<HTMLDivElement>, item: CanvasImageItem) => {
+    if (lassoPointerIdRef.current !== event.pointerId) return
+    event.preventDefault()
+    event.stopPropagation()
+    const rect = getViewportRect()
+    if (!rect) return
+    const worldPoint = screenToWorld(event.clientX - rect.left, event.clientY - rect.top)
+    const imagePoint = resolveImagePoint(item, worldPoint.x, worldPoint.y)
+    if (!imagePoint) return
+    setLassoState((prev) => {
+      if (!prev || prev.itemId !== item.id || !prev.isDrawing) return prev
+      const last = prev.points[prev.points.length - 1]
+      if (last) {
+        const dx = imagePoint.x - last.x
+        const dy = imagePoint.y - last.y
+        if (dx * dx + dy * dy < 4) {
+          return prev
+        }
+      }
+      return {
+        ...prev,
+        points: [...prev.points, imagePoint],
+      }
+    })
+  }
+
+  const handleLassoPointerUp = (event: React.PointerEvent<HTMLDivElement>, item: CanvasImageItem) => {
+    if (lassoPointerIdRef.current !== event.pointerId) return
+    event.preventDefault()
+    event.stopPropagation()
+    lassoPointerIdRef.current = null
+    event.currentTarget.releasePointerCapture(event.pointerId)
+    setLassoState((prev) => {
+      if (!prev || prev.itemId !== item.id) return prev
+      const shouldClose = prev.points.length >= 3
+      return {
+        ...prev,
+        isDrawing: false,
+        closed: shouldClose,
+      }
+    })
+  }
+
+  const handleLassoCutout = async (item: CanvasImageItem) => {
+    if (isLassoProcessing) return
+    if (!lassoState || lassoState.itemId !== item.id) return
+    if (!lassoState.closed || lassoState.points.length < 3) {
+      toast.error('请先绘制闭合选区')
+      return
+    }
+    const metrics = resolveImageMetrics(item)
+    if (!metrics) {
+      toast.error('图片尚未加载完成')
+      return
+    }
+    const bounds = getLassoBounds(lassoState.points)
+    if (!bounds || bounds.width <= 1 || bounds.height <= 1) {
+      toast.error('选区过小，请重试')
+      return
+    }
+
+    const padding = 1
+    const minX = clamp(Math.floor(bounds.minX - padding), 0, metrics.intrinsicWidth)
+    const minY = clamp(Math.floor(bounds.minY - padding), 0, metrics.intrinsicHeight)
+    const maxX = clamp(Math.ceil(bounds.maxX + padding), 0, metrics.intrinsicWidth)
+    const maxY = clamp(Math.ceil(bounds.maxY + padding), 0, metrics.intrinsicHeight)
+    const width = Math.max(1, maxX - minX)
+    const height = Math.max(1, maxY - minY)
+
+    const toastId = toast.loading('正在生成抠图...')
+    setIsLassoProcessing(true)
+    try {
+      const image = await loadImageForCutout(item)
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        throw new Error('Canvas 初始化失败')
+      }
+      ctx.save()
+      ctx.beginPath()
+      lassoState.points.forEach((point, index) => {
+        const x = point.x - minX
+        const y = point.y - minY
+        if (index === 0) {
+          ctx.moveTo(x, y)
+        } else {
+          ctx.lineTo(x, y)
+        }
+      })
+      ctx.closePath()
+      ctx.clip()
+      ctx.drawImage(image, -minX, -minY)
+      ctx.restore()
+      let dataUrl = ''
+      try {
+        dataUrl = canvas.toDataURL('image/png')
+      } catch {
+        throw new Error('图片跨域受限，请先上传后再抠图')
+      }
+
+      const nextId = nanoid()
+      const nextItem: CanvasItem = {
+        id: nextId,
+        type: 'image',
+        x: Math.round((item.x + metrics.offsetX + minX * metrics.scale) * 100) / 100,
+        y: Math.round((item.y + metrics.offsetY + minY * metrics.scale) * 100) / 100,
+        width: Math.round(width * metrics.scale * 100) / 100,
+        height: Math.round(height * metrics.scale * 100) / 100,
+        data: {
+          src: dataUrl,
+          name: buildCutoutName(item.data.name),
+          meta: {
+            source: 'lasso',
+            derivedFromId: item.id,
+            createdAt: new Date().toISOString(),
+          },
+        },
+      }
+      setItems((prev) => [...prev, nextItem])
+      syncSelection([nextId], nextId)
+      resetLassoState()
+      toast.success('抠图完成，已生成新图层', { id: toastId })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '抠图失败'
+      toast.error(message, { id: toastId })
+    } finally {
+      setIsLassoProcessing(false)
+    }
+  }
+
   const pollRemoveBackgroundResult = async (jobId: string, filename?: string) => {
     const maxAttempts = 20
     const delayMs = 1500
@@ -2542,7 +2876,22 @@ export function InfiniteCanvas() {
     setBrokenImages((prev) => (prev[item.id] ? { ...prev, [nextId]: true } : prev))
   }
 
+  const toggleLassoForItem = (item: CanvasImageItem) => {
+    setLassoState((prev) => {
+      if (prev?.itemId === item.id) return null
+      return {
+        itemId: item.id,
+        points: [],
+        isDrawing: false,
+        closed: false,
+      }
+    })
+  }
+
   const handleToolClick = (toolId: ToolId) => {
+    if (lassoState) {
+      setLassoState(null)
+    }
     setActiveTool(toolId)
     if (toolId === 'image') {
       setIsCanvasPromptOpen((prev) => !prev)
@@ -2776,6 +3125,7 @@ export function InfiniteCanvas() {
       layered: '拆解图层',
       duplicate: '复制',
       import: '导入',
+      lasso: '套索抠图',
     }
     return map[source] ?? '未知来源'
   }
@@ -2814,6 +3164,8 @@ export function InfiniteCanvas() {
     selectedItem?.type === 'image' && Boolean(removingBackgroundIds[selectedItem.id])
   const isLayerDecomposing =
     selectedItem?.type === 'image' && Boolean(decomposingLayerIds[selectedItem.id])
+  const isLassoActive = selectedItem?.type === 'image' && lassoState?.itemId === selectedItem.id
+  const isLassoReady = Boolean(isLassoActive && lassoState?.closed && lassoState.points.length >= 3)
   const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds])
   const selectedPreset = useMemo(
     () => CANVAS_PRESET_ACTIONS.find((item) => item.id === selectedPresetId) ?? null,
@@ -4516,6 +4868,42 @@ export function InfiniteCanvas() {
                   <Button
                     size="sm"
                     variant="ghost"
+                    className={cn(
+                      'h-7 gap-1 rounded-full px-2 text-xs',
+                      isLassoActive && 'bg-primary/10 text-primary'
+                    )}
+                    onClick={() => toggleLassoForItem(selectedItem as CanvasImageItem)}
+                    disabled={isLassoProcessing}
+                  >
+                    <PencilLine className="h-3.5 w-3.5" />
+                    {isLassoActive ? '退出套索' : '套索'}
+                  </Button>
+                  {isLassoActive && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 rounded-full px-2 text-xs"
+                        onClick={() => handleLassoCutout(selectedItem as CanvasImageItem)}
+                        disabled={!isLassoReady || isLassoProcessing}
+                      >
+                        <Scissors className="h-3.5 w-3.5" />
+                        {isLassoProcessing ? '处理中' : '生成图层'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 rounded-full px-2 text-xs"
+                        onClick={resetLassoPath}
+                        disabled={isLassoProcessing}
+                      >
+                        重绘
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     className="h-7 gap-1 rounded-full px-2 text-xs"
                     onClick={() => handleRemoveBackground(selectedItem as CanvasImageItem)}
                     disabled={isRemovingBackground}
@@ -4701,6 +5089,10 @@ export function InfiniteCanvas() {
             const isPrimary = item.id === selectedId
             const isText = item.type === 'text'
             const isEditing = isText && editingId === item.id
+            const isLassoTarget = item.type === 'image' && lassoState?.itemId === item.id
+            const lassoPath =
+              isLassoTarget && lassoState ? buildLassoPath(item as CanvasImageItem, lassoState.points, lassoState.closed) : ''
+            const isLassoDrawing = isLassoTarget && Boolean(lassoState?.isDrawing)
             const isNote = isText && item.data.noteStyle
             const textShadow =
               item.type === 'text'
@@ -4768,18 +5160,67 @@ export function InfiniteCanvas() {
                     <img
                       src={item.data.src}
                       alt={item.data.name ?? 'canvas'}
+                      crossOrigin="anonymous"
                       className="h-full w-full rounded-2xl object-contain shadow-[0_16px_40px_-28px_hsl(var(--foreground)/0.35)]"
                       draggable={false}
                       style={{ WebkitUserDrag: 'none' }}
-                      onLoad={() => {
+                      onLoad={(event) => {
+                        const target = event.currentTarget
+                        if (target.naturalWidth && target.naturalHeight) {
+                          setImageSizeMap((prev) => {
+                            const existing = prev[item.id]
+                            if (
+                              existing &&
+                              existing.width === target.naturalWidth &&
+                              existing.height === target.naturalHeight
+                            ) {
+                              return prev
+                            }
+                            return {
+                              ...prev,
+                              [item.id]: { width: target.naturalWidth, height: target.naturalHeight },
+                            }
+                          })
+                        }
                         setLoadedImages((prev) => ({ ...prev, [item.id]: true }))
                       }}
                       onError={() => handleImageLoadError(item)}
                     />
+                    {isLassoTarget && (
+                      <div
+                        data-lasso-overlay
+                        className="absolute inset-0 rounded-2xl"
+                        style={{ cursor: 'crosshair', touchAction: 'none' }}
+                        onPointerDown={(event) => handleLassoPointerDown(event, item)}
+                        onPointerMove={(event) => handleLassoPointerMove(event, item)}
+                        onPointerUp={(event) => handleLassoPointerUp(event, item)}
+                        onPointerCancel={(event) => handleLassoPointerUp(event, item)}
+                      >
+                        <svg
+                          className="h-full w-full"
+                          viewBox={`0 0 ${item.width} ${item.height}`}
+                          preserveAspectRatio="none"
+                        >
+                          {lassoPath && (
+                            <path
+                              d={lassoPath}
+                              fill="rgba(59, 130, 246, 0.15)"
+                              stroke="rgba(59, 130, 246, 0.85)"
+                              strokeWidth={1.5}
+                            />
+                          )}
+                        </svg>
+                        {!lassoPath && !isLassoDrawing && (
+                          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/40 bg-background/80 px-3 py-1 text-[11px] text-muted-foreground shadow-sm">
+                            拖动绘制套索
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {selected && (
                       <>
                         <div className="pointer-events-none absolute -inset-1 rounded-[20px] border border-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.2)]" />
-                        {isPrimary && !hasMultiSelection && (
+                        {isPrimary && !hasMultiSelection && !isLassoTarget && (
                           <>
                             {RESIZE_HANDLES.map((handle) => (
                               <div
