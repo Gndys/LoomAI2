@@ -417,6 +417,9 @@ export function InfiniteCanvas() {
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({})
   const [removingBackgroundIds, setRemovingBackgroundIds] = useState<Record<string, boolean>>({})
+  const [decomposingLayerIds, setDecomposingLayerIds] = useState<Record<string, boolean>>({})
+  const [layerDecomposeCount, setLayerDecomposeCount] = useState(4)
+  const [layerGuidanceScale, setLayerGuidanceScale] = useState(5)
   const [activeTool, setActiveTool] = useState<ToolId>('select')
   const [backgroundMode, setBackgroundMode] = useState<'solid' | 'transparent'>('solid')
   const [backgroundIntensity, setBackgroundIntensity] = useState<'low' | 'medium' | 'high'>('medium')
@@ -1963,6 +1966,13 @@ export function InfiniteCanvas() {
     return `${resolvedBase}-cutout.png`
   }
 
+  const buildLayerName = (name: string | undefined, index: number) => {
+    const fallback = 'layer'
+    const base = name && name.includes('.') ? name.slice(0, Math.max(0, name.lastIndexOf('.'))) : name
+    const resolvedBase = base || fallback
+    return `${resolvedBase}-layer-${index + 1}.png`
+  }
+
   const dataUrlToFile = (dataUrl: string, name: string) => {
     const [header, data] = dataUrl.split(',')
     if (!header || !data) {
@@ -2202,6 +2212,67 @@ export function InfiniteCanvas() {
       toast.error(message, { id: toastId })
     } finally {
       setRemovingBackgroundIds((prev) => {
+        if (!prev[item.id]) return prev
+        const next = { ...prev }
+        delete next[item.id]
+        return next
+      })
+    }
+  }
+
+  const handleDecomposeLayers = async (item: CanvasImageItem) => {
+    if (!item.data?.src) return
+    if (decomposingLayerIds[item.id]) return
+    setDecomposingLayerIds((prev) => ({ ...prev, [item.id]: true }))
+    const toastId = toast.loading('正在拆解图层...')
+    try {
+      const { url } = await ensureRemoteImageUrl(item)
+      const response = await fetch('/api/image-layered', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: url,
+          filename: item.data?.name,
+          numLayers: layerDecomposeCount,
+          guidanceScale: layerGuidanceScale,
+        }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const message = payload?.message || payload?.error || '拆解失败'
+        throw new Error(message)
+      }
+      const images = Array.isArray(payload?.data?.images) ? payload.data.images : []
+      if (!images.length) {
+        throw new Error('未获取到图层结果')
+      }
+      const nextItems: CanvasItem[] = images.map((layer: SignedUrlPayload, index: number) => {
+        const layerName = buildLayerName(item.data?.name, index)
+        return {
+          id: nanoid(),
+          type: 'image',
+          x: Math.round(item.x * 100) / 100,
+          y: Math.round(item.y * 100) / 100,
+          width: item.width,
+          height: item.height,
+          data: {
+            src: layer.url,
+            name: layerName,
+            key: layer.key,
+            provider: layer.provider,
+            expiresAt: layer.expiresAt,
+          },
+        }
+      })
+      const nextIds = nextItems.map((next) => next.id)
+      setItems((prev) => [...prev, ...nextItems])
+      syncSelection(nextIds, nextIds[0])
+      toast.success('图层已拆解', { id: toastId })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '拆解失败'
+      toast.error(message, { id: toastId })
+    } finally {
+      setDecomposingLayerIds((prev) => {
         if (!prev[item.id]) return prev
         const next = { ...prev }
         delete next[item.id]
@@ -2454,6 +2525,8 @@ export function InfiniteCanvas() {
   const isTextSelected = selectedItem?.type === 'text' && !hasMultiSelection
   const isRemovingBackground =
     selectedItem?.type === 'image' && Boolean(removingBackgroundIds[selectedItem.id])
+  const isLayerDecomposing =
+    selectedItem?.type === 'image' && Boolean(decomposingLayerIds[selectedItem.id])
   const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds])
   const selectedPreset = useMemo(
     () => CANVAS_PRESET_ACTIONS.find((item) => item.id === selectedPresetId) ?? null,
@@ -3741,6 +3814,72 @@ export function InfiniteCanvas() {
                     )}
                     {isRemovingBackground ? '处理中' : '去背'}
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 rounded-full px-2 text-xs"
+                    onClick={() => handleDecomposeLayers(selectedItem as CanvasImageItem)}
+                    disabled={isLayerDecomposing}
+                  >
+                    {isLayerDecomposing ? (
+                      <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Layers className="h-3.5 w-3.5" />
+                    )}
+                    {isLayerDecomposing ? '处理中' : '拆解图层'}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 rounded-full px-2 text-xs"
+                      >
+                        参数
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side="top"
+                      className="w-[220px] rounded-2xl border border-border/80 bg-popover/95 p-3 text-xs shadow-lg backdrop-blur"
+                    >
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">图层数</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={10}
+                            step={1}
+                            value={layerDecomposeCount}
+                            onChange={(event) => {
+                              const next = Number(event.target.value)
+                              if (!Number.isFinite(next)) return
+                              setLayerDecomposeCount(clamp(Math.round(next), 1, 10))
+                            }}
+                            className="w-16 rounded-full border border-border bg-background px-2 py-1 text-center text-xs text-foreground focus:outline-none"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">引导强度</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={20}
+                            step={0.5}
+                            value={layerGuidanceScale}
+                            onChange={(event) => {
+                              const next = Number(event.target.value)
+                              if (!Number.isFinite(next)) return
+                              const clamped = clamp(next, 1, 20)
+                              setLayerGuidanceScale(Math.round(clamped * 10) / 10)
+                            }}
+                            className="w-16 rounded-full border border-border bg-background px-2 py-1 text-center text-xs text-foreground focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     size="sm"
                     variant="ghost"
