@@ -21,7 +21,6 @@ import {
   Italic,
   Eye,
   EyeOff,
-  Info,
   MessageSquare,
   MoreHorizontal,
   MousePointer2,
@@ -62,7 +61,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 import { Message, MessageContent } from '@/components/ai-elements/message'
-import { Response } from '@/components/ai-elements/response'
 import type { FileUIPart, UIMessage } from 'ai'
 import { authClientReact } from '@libs/auth/authClient'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -413,6 +411,76 @@ const rectsIntersect = (
   rectA.y <= rectB.y + rectB.height &&
   rectA.y + rectA.height >= rectB.y
 
+type PromptExtraction = {
+  body: string
+  prompt?: string
+}
+
+const PROMPT_SECTION_REGEX =
+  /^\s*(提示词|正向提示词|负向提示词|prompt|positive prompt|negative prompt)\s*(?:[:：]\s*(.*))?$/i
+
+const hasPromptLabel = (text: string) =>
+  text.includes('提示词') || text.toLowerCase().includes('prompt')
+
+const isGenericPromptLabel = (label: string) => /^(提示词|prompt)$/i.test(label.trim())
+
+const extractPromptFromText = (text: string): PromptExtraction => {
+  if (!hasPromptLabel(text)) return { body: text }
+  const lines = text.split(/\r?\n/)
+  const bodyLines: string[] = []
+  const promptBlocks: string[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i]
+    const match = line.match(PROMPT_SECTION_REGEX)
+    if (!match) {
+      bodyLines.push(line)
+      i += 1
+      continue
+    }
+
+    const label = match[1].trim()
+    const inline = (match[2] ?? '').trim()
+    const isGeneric = isGenericPromptLabel(label)
+
+    if (inline) {
+      promptBlocks.push(isGeneric ? inline : `${label}：${inline}`)
+      i += 1
+      continue
+    }
+
+    const collected: string[] = []
+    let j = i + 1
+    while (j < lines.length) {
+      const nextLine = lines[j]
+      if (nextLine.trim() === '') break
+      if (PROMPT_SECTION_REGEX.test(nextLine)) break
+      collected.push(nextLine)
+      j += 1
+    }
+
+    if (collected.length > 0) {
+      promptBlocks.push(isGeneric ? collected.join('\n') : `${label}：\n${collected.join('\n')}`)
+    } else if (!isGeneric) {
+      promptBlocks.push(`${label}：`)
+    }
+
+    let nextIndex = j
+    if (nextIndex < lines.length && lines[nextIndex].trim() === '') {
+      nextIndex += 1
+    }
+    i = nextIndex
+  }
+
+  const body = bodyLines.join('\n').trim()
+  const prompt = promptBlocks.join('\n').trim()
+  return {
+    body,
+    prompt: prompt || undefined,
+  }
+}
+
 export function InfiniteCanvas() {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -459,7 +527,8 @@ export function InfiniteCanvas() {
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(true)
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null)
   const [layerNameDraft, setLayerNameDraft] = useState('')
-  const [openLayerDetailId, setOpenLayerDetailId] = useState<string | null>(null)
+  const [layerContextMenu, setLayerContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [layerDetailPopover, setLayerDetailPopover] = useState<{ id: string; x: number; y: number } | null>(null)
   const imageProviderModels = config.aiImage.availableModels
   const defaultImageProvider = config.aiImage.defaultProvider
   const defaultImageModel =
@@ -1694,6 +1763,31 @@ export function InfiniteCanvas() {
     })
   }
 
+  const openLayerContextMenu = (event: React.MouseEvent, item: CanvasItem) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const menuWidth = 200
+    const menuHeight = 180
+    const padding = 12
+    const maxX = window.innerWidth - menuWidth - padding
+    const maxY = window.innerHeight - menuHeight - padding
+    const x = clamp(event.clientX, padding, Math.max(padding, maxX))
+    const y = clamp(event.clientY, padding, Math.max(padding, maxY))
+    setLayerDetailPopover(null)
+    setLayerContextMenu({ id: item.id, x, y })
+  }
+
+  const openLayerDetails = (id: string, anchor: { x: number; y: number }) => {
+    const panelWidth = 260
+    const panelHeight = 240
+    const padding = 12
+    const maxX = window.innerWidth - panelWidth - padding
+    const maxY = window.innerHeight - panelHeight - padding
+    const x = clamp(anchor.x, padding, Math.max(padding, maxX))
+    const y = clamp(anchor.y, padding, Math.max(padding, maxY))
+    setLayerDetailPopover({ id, x, y })
+  }
+
   const commitLayerRename = (id: string, value: string) => {
     const target = items.find((item) => item.id === id)
     if (!target) return
@@ -2878,6 +2972,23 @@ export function InfiniteCanvas() {
     }
   }, [])
 
+  const insertPromptToPanel = useCallback(
+    (prompt: string) => {
+      const value = prompt.trim()
+      if (!value) return
+      setIsCanvasPromptOpen(true)
+      setCanvasInput((prev) => {
+        const existing = prev.trim()
+        if (!existing) return value
+        if (existing === value) return existing
+        return `${existing}\n${value}`
+      })
+      requestAnimationFrame(() => canvasInputRef.current?.focus())
+      toast.success('已添加到面板')
+    },
+    [setCanvasInput, setIsCanvasPromptOpen]
+  )
+
   const insertChatTextToCanvas = useCallback(
     (text: string, asNote = false, noteTone: 'neutral' | 'sticky' = 'sticky') => {
       const value = text.trim()
@@ -2985,6 +3096,17 @@ export function InfiniteCanvas() {
     setShowChatJumpToLatest(false)
     requestAnimationFrame(() => scrollChatToBottom('auto'))
   }, [isChatOpen, isChatMinimized, scrollChatToBottom])
+
+  useEffect(() => {
+    if (!layerContextMenu && !layerDetailPopover) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setLayerContextMenu(null)
+      setLayerDetailPopover(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [layerContextMenu, layerDetailPopover])
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
@@ -3298,6 +3420,31 @@ export function InfiniteCanvas() {
             'flex h-full w-[280px] flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur transition-transform duration-300 ease-out',
             isLayerPanelOpen ? 'pointer-events-auto translate-x-0' : 'pointer-events-none -translate-x-[calc(100%+1.25rem)]'
           )}
+          onContextMenuCapture={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            const target = event.target as HTMLElement | null
+            const row = target?.closest('[data-layer-item]') as HTMLElement | null
+            const layerId = row?.dataset?.layerId
+            if (!layerId) {
+              setLayerContextMenu(null)
+              setLayerDetailPopover(null)
+              return
+            }
+            const item = items.find((entry) => entry.id === layerId)
+            if (!item) {
+              setLayerContextMenu(null)
+              setLayerDetailPopover(null)
+              return
+            }
+            if (!item.hidden && !item.locked) {
+              if (!isItemInViewport(item)) {
+                focusItem(item)
+              }
+              syncSelection([item.id], item.id)
+            }
+            openLayerContextMenu(event, item)
+          }}
         >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-3">
@@ -3339,19 +3486,12 @@ export function InfiniteCanvas() {
                     const isRenaming = renamingLayerId === item.id
                     const label = getLayerLabel(item)
                     const canSelect = !isHidden && !isLocked
-                    const orderIndex = layerOrderMap.get(item.id) ?? 0
-                    const isTopMost = orderIndex >= items.length - 1
-                    const isBottomMost = orderIndex <= 0
-                    const meta = item.type === 'image' ? item.data.meta : undefined
-                    const sourceLabel = getLayerSourceLabel(item)
-                    const derivedItem = meta?.derivedFromId
-                      ? items.find((entry) => entry.id === meta.derivedFromId) ?? null
-                      : null
-                    const derivedLabel = derivedItem ? getLayerLabel(derivedItem) : meta?.derivedFromId ? '已删除' : ''
 
                     return (
                       <div
                         key={item.id}
+                        data-layer-item
+                        data-layer-id={item.id}
                         role="button"
                         tabIndex={0}
                         onClick={() => {
@@ -3444,32 +3584,6 @@ export function InfiniteCanvas() {
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation()
-                              moveItemInStack(item.id, 'up')
-                            }}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="上移"
-                            title="上移"
-                            disabled={isTopMost}
-                          >
-                            <ArrowUp className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              moveItemInStack(item.id, 'down')
-                            }}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="下移"
-                            title="下移"
-                            disabled={isBottomMost}
-                          >
-                            <ArrowDown className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
                               toggleItemHidden(item.id)
                             }}
                             className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
@@ -3490,98 +3604,160 @@ export function InfiniteCanvas() {
                           >
                             {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                           </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              setRenamingLayerId(item.id)
-                              setLayerNameDraft(label)
-                            }}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                            aria-label="重命名"
-                            title="重命名"
-                          >
-                            <PencilLine className="h-3.5 w-3.5" />
-                          </button>
-                          <DropdownMenu
-                            open={openLayerDetailId === item.id}
-                            onOpenChange={(open) => setOpenLayerDetailId(open ? item.id : null)}
-                          >
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={(event) => event.stopPropagation()}
-                                className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                                aria-label="详情"
-                                title="详情"
-                              >
-                                <Info className="h-3.5 w-3.5" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              side="left"
-                              align="end"
-                              className="w-[260px] rounded-2xl border border-border/80 bg-popover/95 p-3 text-xs shadow-lg backdrop-blur"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <div className="flex flex-col gap-2 text-xs text-muted-foreground">
-                                <div className="flex items-center justify-between gap-3">
-                                  <span>类型</span>
-                                  <span className="text-foreground">{item.type === 'image' ? '图片' : '文本'}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-3">
-                                  <span>来源</span>
-                                  <span className="text-foreground">{sourceLabel}</span>
-                                </div>
-                                {item.type === 'image' && meta?.model && (
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span>模型</span>
-                                    <span className="text-foreground">{meta.model}</span>
-                                  </div>
-                                )}
-                                {item.type === 'image' && meta?.provider && (
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span>提供方</span>
-                                    <span className="text-foreground">{meta.provider}</span>
-                                  </div>
-                                )}
-                                {item.type === 'image' && meta?.size && (
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span>尺寸</span>
-                                    <span className="text-foreground">{meta.size}</span>
-                                  </div>
-                                )}
-                                {item.type === 'image' && derivedLabel && (
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span>来源图层</span>
-                                    <span className="text-foreground">{derivedLabel}</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center justify-between gap-3">
-                                  <span>创建时间</span>
-                                  <span className="text-foreground">
-                                    {item.type === 'image' ? formatMetaTime(meta?.createdAt) : '未知'}
-                                  </span>
-                                </div>
-                                {item.type === 'image' && meta?.prompt && (
-                                  <div className="mt-1 rounded-xl border border-border bg-background/70 p-2 text-[11px] text-foreground">
-                                    <div className="mb-1 text-[10px] font-semibold text-muted-foreground">提示词</div>
-                                    <div className="whitespace-pre-wrap break-words">{meta.prompt}</div>
-                                  </div>
-                                )}
-                              </div>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
                         </div>
                       </div>
                     )
                   })}
                 </div>
               )}
-            </div>
           </div>
         </div>
       </div>
+
+      {layerContextMenu && (() => {
+        const contextItem = items.find((item) => item.id === layerContextMenu.id)
+        if (!contextItem) return null
+        const orderIndex = layerOrderMap.get(contextItem.id) ?? 0
+        const isTopMost = orderIndex >= items.length - 1
+        const isBottomMost = orderIndex <= 0
+        const label = getLayerLabel(contextItem)
+        return (
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setLayerContextMenu(null)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              setLayerContextMenu(null)
+            }}
+          >
+            <div
+              className="absolute w-[200px] rounded-2xl border border-border bg-popover/95 p-2 text-xs shadow-lg backdrop-blur"
+              style={{ left: layerContextMenu.x, top: layerContextMenu.y }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isTopMost}
+                onClick={() => {
+                  moveItemInStack(contextItem.id, 'up')
+                  setLayerContextMenu(null)
+                }}
+              >
+                <span>上移</span>
+                <ArrowUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isBottomMost}
+                onClick={() => {
+                  moveItemInStack(contextItem.id, 'down')
+                  setLayerContextMenu(null)
+                }}
+              >
+                <span>下移</span>
+                <ArrowDown className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                onClick={() => {
+                  setRenamingLayerId(contextItem.id)
+                  setLayerNameDraft(label)
+                  setLayerContextMenu(null)
+                }}
+              >
+                <span>重命名</span>
+                <PencilLine className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                onClick={() => {
+                  setLayerContextMenu(null)
+                  openLayerDetails(contextItem.id, layerContextMenu)
+                }}
+              >
+                <span>详情</span>
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )
+      })()}
+
+      {layerDetailPopover && (() => {
+        const detailItem = items.find((item) => item.id === layerDetailPopover.id)
+        if (!detailItem) return null
+        const meta = detailItem.type === 'image' ? detailItem.data.meta : undefined
+        const sourceLabel = getLayerSourceLabel(detailItem)
+        const derivedItem = meta?.derivedFromId ? items.find((entry) => entry.id === meta.derivedFromId) ?? null : null
+        const derivedLabel = derivedItem ? getLayerLabel(derivedItem) : meta?.derivedFromId ? '已删除' : ''
+        return (
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setLayerDetailPopover(null)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              setLayerDetailPopover(null)
+            }}
+          >
+            <div
+              className="absolute w-[260px] rounded-2xl border border-border/80 bg-popover/95 p-3 text-xs shadow-lg backdrop-blur"
+              style={{ left: layerDetailPopover.x, top: layerDetailPopover.y }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex flex-col gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between gap-3">
+                  <span>类型</span>
+                  <span className="text-foreground">{detailItem.type === 'image' ? '图片' : '文本'}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>来源</span>
+                  <span className="text-foreground">{sourceLabel}</span>
+                </div>
+                {detailItem.type === 'image' && meta?.model && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span>模型</span>
+                    <span className="text-foreground">{meta.model}</span>
+                  </div>
+                )}
+                {detailItem.type === 'image' && meta?.provider && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span>提供方</span>
+                    <span className="text-foreground">{meta.provider}</span>
+                  </div>
+                )}
+                {detailItem.type === 'image' && meta?.size && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span>尺寸</span>
+                    <span className="text-foreground">{meta.size}</span>
+                  </div>
+                )}
+                {detailItem.type === 'image' && derivedLabel && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span>来源图层</span>
+                    <span className="text-foreground">{derivedLabel}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-3">
+                  <span>创建时间</span>
+                  <span className="text-foreground">
+                    {detailItem.type === 'image' ? formatMetaTime(meta?.createdAt) : '未知'}
+                  </span>
+                </div>
+                {detailItem.type === 'image' && meta?.prompt && (
+                  <div className="mt-1 rounded-xl border border-border bg-background/70 p-2 text-[11px] text-foreground">
+                    <div className="mb-1 text-[10px] font-semibold text-muted-foreground">提示词</div>
+                    <div className="whitespace-pre-wrap break-words">{meta.prompt}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {isTextEditing && editingTextItem && (
         <div className="pointer-events-none absolute left-20 top-32 z-30">
@@ -3824,6 +4000,9 @@ export function InfiniteCanvas() {
                     const text = resolveMessageText(message)
                     if (!text) return null
                     const isAssistant = message.role === 'assistant'
+                    const { body: mainText, prompt: promptText } = isAssistant
+                      ? extractPromptFromText(text)
+                      : { body: text, prompt: undefined }
                     const actionPlacement = isAssistant ? 'left-2' : 'right-2'
                     const actionPadding = isAssistant ? 'pl-14' : 'pr-14'
                     const actionButtonClass = isAssistant
@@ -3836,9 +4015,35 @@ export function InfiniteCanvas() {
                           className={cn('relative overflow-visible pt-6', actionPadding)}
                         >
                           {message.role === 'assistant' ? (
-                            <Response className="text-sm leading-relaxed text-foreground">
-                              {text}
-                            </Response>
+                            <div className="flex flex-col gap-2 text-sm leading-relaxed text-foreground">
+                              {mainText && <div className="whitespace-pre-wrap break-words">{mainText}</div>}
+                              {promptText && (
+                                <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2 text-xs">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[10px] font-semibold text-muted-foreground">提示词</span>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => copyChatText(promptText)}
+                                        className="rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                                      >
+                                        复制
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => insertPromptToPanel(promptText)}
+                                        className="rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                                      >
+                                        添加到面板
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div className="mt-2 whitespace-pre-wrap break-words text-[11px] text-foreground">
+                                    {promptText}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <div className="whitespace-pre-wrap leading-relaxed">{text}</div>
                           )}
@@ -4469,6 +4674,11 @@ export function InfiniteCanvas() {
         onDoubleClick={handleDoubleClick}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
+        onContextMenu={(event) => {
+          event.preventDefault()
+          setLayerContextMenu(null)
+          setLayerDetailPopover(null)
+        }}
       >
         <div
           className="absolute left-0 top-0 h-full w-full origin-top-left"
