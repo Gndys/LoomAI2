@@ -2506,6 +2506,7 @@ export function InfiniteCanvas() {
   }
 
   const resetLassoState = () => {
+    lassoPointerIdRef.current = null
     setLassoState(null)
   }
 
@@ -2814,10 +2815,36 @@ export function InfiniteCanvas() {
         throw new Error(message)
       }
       const images = Array.isArray(payload?.data?.images) ? payload.data.images : []
-      if (!images.length) {
+      const normalizedImages: SignedUrlPayload[] = images
+        .map((layer) => {
+          if (typeof layer === 'string') {
+            return { url: layer }
+          }
+          if (!layer || typeof layer !== 'object') return null
+          const raw = layer as Record<string, unknown>
+          const url =
+            typeof raw.url === 'string'
+              ? raw.url
+              : typeof raw.imageUrl === 'string'
+                ? raw.imageUrl
+                : typeof raw.image_url === 'string'
+                  ? raw.image_url
+                  : null
+          if (!url) return null
+          const key = typeof raw.key === 'string' ? raw.key : undefined
+          const provider = typeof raw.provider === 'string' ? raw.provider : undefined
+          const expiresAt = typeof raw.expiresAt === 'string' ? raw.expiresAt : undefined
+          return { url, key, provider, expiresAt }
+        })
+        .filter((layer): layer is SignedUrlPayload => Boolean(layer?.url))
+
+      if (!normalizedImages.length) {
         throw new Error('未获取到图层结果')
       }
-      const nextItems: CanvasItem[] = images.map((layer: SignedUrlPayload, index: number) => {
+      if (normalizedImages.length !== images.length) {
+        toast.error('部分图层缺少图片地址，已跳过')
+      }
+      const nextItems: CanvasItem[] = normalizedImages.map((layer: SignedUrlPayload, index: number) => {
         const layerName = buildLayerName(item.data?.name, index)
         return {
           id: nanoid(),
@@ -2877,6 +2904,7 @@ export function InfiniteCanvas() {
   }
 
   const toggleLassoForItem = (item: CanvasImageItem) => {
+    setActiveTool('select')
     setLassoState((prev) => {
       if (prev?.itemId === item.id) return null
       return {
@@ -3006,6 +3034,25 @@ export function InfiniteCanvas() {
         model: imageModel,
       }
 
+      if (referenceImageLimit > 0 && selectedImageItems.length > referenceImageLimit) {
+        toast.error(`当前模型最多支持 ${referenceImageLimit} 张参考图`, { id: toastId })
+        return
+      }
+
+      if (referenceImageLimit > 0 && selectedImageItems.length > 0) {
+        const resolvedUrls: string[] = []
+        for (const item of selectedImageItems) {
+          const ensured = await ensureRemoteImageUrl(item)
+          if (!ensured?.url) {
+            throw new Error('参考图获取失败')
+          }
+          resolvedUrls.push(ensured.url)
+        }
+        if (resolvedUrls.length > 0) {
+          payload.image_urls = resolvedUrls
+        }
+      }
+
       if (resolvedSize) {
         payload.size = resolvedSize
       }
@@ -3034,7 +3081,14 @@ export function InfiniteCanvas() {
         throw new Error('未返回图片地址')
       }
 
+      const storageKey = typeof data?.data?.key === 'string' ? data.data.key : undefined
+      const storageProvider = typeof data?.data?.provider === 'string' ? data.data.provider : undefined
+      const expiresAt = typeof data?.data?.expiresAt === 'string' ? data.data.expiresAt : undefined
+
       addImageItem(imageUrl, `AI-${imageModel}`, {
+        key: storageKey,
+        provider: storageProvider,
+        expiresAt,
         meta: {
           source: 'generate',
           model: imageModel,
@@ -3141,6 +3195,10 @@ export function InfiniteCanvas() {
     () => items.filter((item) => selectedIds.includes(item.id)),
     [items, selectedIds]
   )
+  const selectedImageItems = useMemo(
+    () => selectedItems.filter((item): item is CanvasImageItem => item.type === 'image'),
+    [selectedItems]
+  )
   const selectedItem = selectedItems.find((item) => item.id === selectedId) ?? selectedItems[0] ?? null
   const hasMultiSelection = selectedItems.length > 1
   const selectedItemLabel = hasMultiSelection
@@ -3148,9 +3206,9 @@ export function InfiniteCanvas() {
     : selectedItem
     ? getLayerLabel(selectedItem)
     : ''
-  const primaryImageLabel =
-    selectedItem?.type === 'image' ? selectedItem.data?.name?.trim() || '未命名图片' : ''
-  const selectionCountLabel = selectedItems.length > 0 ? `1/${selectedItems.length}` : ''
+  const primaryReferenceItem =
+    selectedItem?.type === 'image' ? selectedItem : selectedImageItems[0] ?? null
+  const primaryReferenceLabel = primaryReferenceItem?.data?.name?.trim() || '未命名图片'
   const userDisplayName = user?.name?.trim() || user?.email?.split('@')[0] || '访客'
   const userInitials = userDisplayName.slice(0, 2)
   const hasUserMessage = useMemo(() => messages.some((message) => message.role === 'user'), [messages])
@@ -3188,6 +3246,12 @@ export function InfiniteCanvas() {
     })
   }, [imageProviderModels])
   const isTurboImageModel = imageModel === 'z-image-turbo'
+  const referenceImageLimit = useMemo(() => {
+    const limits = (config.aiImage.referenceImageLimits?.evolink ?? {}) as Record<string, number>
+    const fallback = config.aiImage.referenceImageFallback ?? 1
+    const limit = limits[imageModel]
+    return typeof limit === 'number' ? Math.max(0, limit) : fallback
+  }, [imageModel])
   const imageSizeOptions = useMemo(() => {
     const base = config.aiImage.evolinkSizes
     if (isTurboImageModel) {
@@ -4703,28 +4767,44 @@ export function InfiniteCanvas() {
                   </div>
                 </div>
               )}
-              {selectedItem?.type === 'image' && (
+              {selectedImageItems.length > 0 && (
                 <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/80 px-3 py-2">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-background">
-                      <img
-                        src={selectedItem.data.src}
-                        alt={primaryImageLabel || 'reference'}
-                        className="h-full w-full object-cover"
-                        draggable={false}
-                      />
+                    <div className="flex items-center -space-x-2">
+                      {selectedImageItems.slice(0, 3).map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm"
+                        >
+                          <img
+                            src={item.data.src}
+                            alt={item.data?.name?.trim() || 'reference'}
+                            className="h-full w-full object-cover"
+                            draggable={false}
+                          />
+                        </div>
+                      ))}
+                      {selectedImageItems.length > 3 && (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background text-[11px] text-muted-foreground">
+                          +{selectedImageItems.length - 3}
+                        </div>
+                      )}
                     </div>
                     <div className="flex min-w-0 flex-col">
                       <span className="text-[11px] text-muted-foreground">参考图</span>
-                      <span className="truncate text-sm text-foreground">{primaryImageLabel}</span>
+                      <span className="truncate text-sm text-foreground">
+                        {selectedImageItems.length === 1 ? primaryReferenceLabel : `已选 ${selectedImageItems.length} 张`}
+                      </span>
+                      {isImagePromptMode && (
+                        <span className="text-[11px] text-muted-foreground">
+                          {referenceImageLimit === 0
+                            ? '当前模型不支持参考图'
+                            : `最多支持 ${referenceImageLimit} 张参考图`}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {selectionCountLabel && (
-                      <span className="rounded-full border border-border bg-background/70 px-2 py-1 text-[11px]">
-                        {selectionCountLabel}
-                      </span>
-                    )}
                     <button
                       type="button"
                       onClick={() => {

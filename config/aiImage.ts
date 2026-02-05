@@ -30,6 +30,23 @@ export const aiImageConfig = {
   },
 
   /**
+   * Max reference images per model (Evolink limits)
+   */
+  referenceImageLimits: {
+    evolink: {
+      'gemini-2.5-flash-image': 5,
+      'gemini-3-pro-image-preview': 10,
+      'nano-banana-2-lite': 10,
+      'z-image-turbo': 0,
+    },
+  },
+
+  /**
+   * Fallback limit when a model is missing from referenceImageLimits
+   */
+  referenceImageFallback: 1,
+
+  /**
    * Size options for Evolink (aspect ratios)
    */
   evolinkSizes: [

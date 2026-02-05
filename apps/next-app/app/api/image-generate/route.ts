@@ -3,12 +3,70 @@ import { evolinkCreateImageGenerationTask, evolinkGetTaskDetail } from '@libs/ai
 import type { EvolinkImageSize } from '@libs/ai/evolink';
 import { auth } from '@libs/auth';
 import { creditService, TransactionTypeCode } from '@libs/credits';
+import { createStorageProvider } from '@libs/storage';
 import { config } from '@config';
 
 // Allow longer timeout for async image generation
 export const maxDuration = 120;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const GENERATED_FOLDER = 'generated';
+
+const sanitizeBaseName = (name?: string | null) => {
+  if (!name) return 'generated';
+  const base = name.replace(/\.[^/.]+$/, '');
+  const sanitized = base.replace(/[^a-zA-Z0-9-_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return sanitized || 'generated';
+};
+
+const inferExtensionFromContentType = (contentType?: string | null) => {
+  const normalized = (contentType || '').toLowerCase();
+  if (normalized.includes('jpeg')) return 'jpg';
+  if (normalized.includes('png')) return 'png';
+  if (normalized.includes('webp')) return 'webp';
+  if (normalized.includes('gif')) return 'gif';
+  return 'png';
+};
+
+const persistGeneratedImage = async (imageUrl: string, userId: string, model: string) => {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download generated image (${response.status})`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const contentType = response.headers.get('content-type') || 'image/png';
+  const baseName = sanitizeBaseName(`ai-${model}`);
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const ext = inferExtensionFromContentType(contentType);
+  const fileName = `${baseName}-${uniqueSuffix}.${ext}`;
+
+  const storage = createStorageProvider(config.storage.defaultProvider);
+  const upload = await storage.uploadFile({
+    file: buffer,
+    fileName,
+    contentType,
+    folder: `uploads/${userId}/${GENERATED_FOLDER}`,
+    metadata: {
+      source: 'evolink-image-generate',
+      model,
+      originalUrl: imageUrl,
+    },
+  });
+  const signed = await storage.generateSignedUrl({
+    key: upload.key,
+    expiresIn: 3600,
+    operation: 'get',
+  });
+
+  return {
+    url: signed.url,
+    key: upload.key,
+    provider: config.storage.defaultProvider,
+    expiresAt: signed.expiresAt,
+    originalImageUrl: imageUrl,
+  };
+};
 
 const toOptionalSize = (value: unknown): EvolinkImageSize | undefined => {
   if (typeof value !== 'string') return undefined;
@@ -23,10 +81,17 @@ const toOptionalSize = (value: unknown): EvolinkImageSize | undefined => {
   return `${width}x${height}` as EvolinkImageSize;
 };
 
-const toImageUrls = (value: unknown): string[] | undefined => {
-  if (!Array.isArray(value)) return undefined;
+const resolveReferenceImageLimit = (model: string) => {
+  const limits = (config.aiImage.referenceImageLimits?.evolink ?? {}) as Record<string, number>;
+  const fallback = config.aiImage.referenceImageFallback ?? 1;
+  const limit = limits[model];
+  return typeof limit === 'number' ? limit : fallback;
+};
+
+const toImageUrls = (value: unknown, limit: number): string[] | undefined => {
+  if (!Array.isArray(value) || limit <= 0) return undefined;
   const urls = value.filter((item): item is string => typeof item === 'string' && item.length > 0);
-  const limited = urls.slice(0, 5);
+  const limited = urls.slice(0, limit);
   return limited.length ? limited : undefined;
 };
 
@@ -61,7 +126,8 @@ export async function POST(req: Request) {
         ? '1:1'
         : ((config.aiImage.defaults.size ?? 'auto') as EvolinkImageSize);
     const size = toOptionalSize(body?.size) ?? fallbackSize;
-    const imageUrls = toImageUrls(body?.image_urls ?? body?.imageUrls);
+    const referenceLimit = resolveReferenceImageLimit(model);
+    const imageUrls = toImageUrls(body?.image_urls ?? body?.imageUrls, referenceLimit);
     
     // Validate prompt
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -188,13 +254,26 @@ export async function POST(req: Request) {
       throw generationError;
     }
     
+    let persisted: Awaited<ReturnType<typeof persistGeneratedImage>> | null = null;
+    try {
+      persisted = await persistGeneratedImage(imageUrl, userId, model);
+    } catch (persistError) {
+      console.error('Failed to persist generated image:', persistError);
+    }
+
+    const resolvedImageUrl = persisted?.url ?? imageUrl;
+
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          imageUrl,
+          imageUrl: resolvedImageUrl,
+          key: persisted?.key,
+          provider: persisted?.provider,
+          expiresAt: persisted?.expiresAt,
+          originalImageUrl: persisted?.originalImageUrl ?? imageUrl,
           model,
-          provider: 'evolink',
+          aiProvider: 'evolink',
         },
         credits: {
           consumed: creditCost,
