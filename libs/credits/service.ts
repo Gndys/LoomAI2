@@ -40,27 +40,66 @@ export class CreditService {
   async addCredits(params: AddCreditsParams): Promise<CreditTransaction> {
     const { userId, amount, type, orderId, description, metadata } = params;
 
-    if (amount <= 0) {
-      throw new Error('Amount must be positive when adding credits');
+    if (!Number.isFinite(amount) || amount === 0) {
+      throw new Error('Amount must be a non-zero number');
+    }
+
+    if (amount < 0 && type !== 'adjustment') {
+      throw new Error('Negative amounts are only allowed for adjustments');
     }
 
     // Use transaction to ensure atomicity
     const result = await db.transaction(async (tx) => {
-      // Update user balance
-      const [updatedUser] = await tx
-        .update(user)
-        .set({
-          creditBalance: sql`${user.creditBalance} + ${amount}`,
-          updatedAt: new Date()
-        })
-        .where(eq(user.id, userId))
-        .returning({ creditBalance: user.creditBalance });
+      let newBalance = 0;
 
-      if (!updatedUser) {
-        throw new Error(`User not found: ${userId}`);
+      if (amount > 0) {
+        // Update user balance
+        const [updatedUser] = await tx
+          .update(user)
+          .set({
+            creditBalance: sql`${user.creditBalance} + ${amount}`,
+            updatedAt: new Date()
+          })
+          .where(eq(user.id, userId))
+          .returning({ creditBalance: user.creditBalance });
+
+        if (!updatedUser) {
+          throw new Error(`User not found: ${userId}`);
+        }
+
+        newBalance = parseFloat(updatedUser.creditBalance);
+      } else {
+        // Negative adjustment: only allow if balance stays >= 0
+        const [updatedUser] = await tx
+          .update(user)
+          .set({
+            creditBalance: sql`${user.creditBalance} + ${amount}`,
+            updatedAt: new Date()
+          })
+          .where(
+            and(
+              eq(user.id, userId),
+              sql`${user.creditBalance} >= ${-amount}`
+            )
+          )
+          .returning({ creditBalance: user.creditBalance });
+
+        if (!updatedUser) {
+          const [existingUser] = await tx
+            .select({ creditBalance: user.creditBalance })
+            .from(user)
+            .where(eq(user.id, userId))
+            .limit(1);
+
+          if (!existingUser) {
+            throw new Error(`User not found: ${userId}`);
+          }
+
+          throw new Error('Insufficient credits');
+        }
+
+        newBalance = parseFloat(updatedUser.creditBalance);
       }
-
-      const newBalance = parseFloat(updatedUser.creditBalance);
 
       // Create transaction record
       const transactionId = `txn_${crypto.randomUUID()}`;
@@ -424,4 +463,3 @@ export class CreditService {
 
 // Export singleton instance
 export const creditService = new CreditService();
-

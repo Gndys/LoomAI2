@@ -33,6 +33,7 @@ import { Search } from "./components/search"
 import { ColumnToggle } from "./components/column-toggle"
 import { useTranslation } from "@/hooks/use-translation"
 import { useCreditColumns } from "./columns"
+import { AdjustmentDialog } from "./components/adjustment-dialog"
 
 interface DataTableProps<TData, TValue> {
   columns?: ColumnDef<TData, TValue>[]
@@ -139,7 +140,10 @@ export function DataTable<TData, TValue>({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Search />
-        <ColumnToggle table={table} />
+        <div className="flex items-center gap-2">
+          <AdjustmentDialog />
+          <ColumnToggle table={table} />
+        </div>
       </div>
       
       <div className="rounded-md border bg-card">
@@ -245,4 +249,3 @@ export function DataTable<TData, TValue>({
     </div>
   )
 }
-

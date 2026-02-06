@@ -608,6 +608,23 @@ export const zhCN: Locale = {
       messages: {
         fetchError: "加载积分交易记录失败，请重试。"
       },
+      adjustment: {
+        action: "调整积分",
+        title: "调整积分",
+        description: "通过邮箱或用户ID为用户增加或扣减积分。",
+        emailLabel: "用户邮箱",
+        emailPlaceholder: "输入用户邮箱（可选）",
+        userIdLabel: "用户ID",
+        userIdPlaceholder: "输入用户ID（可选）",
+        amountLabel: "调整数量",
+        amountPlaceholder: "正数增加，负数扣减",
+        noteLabel: "备注",
+        notePlaceholder: "可选，填写本次调整说明",
+        submit: "确认调整",
+        success: "积分调整成功。",
+        validationUser: "请填写邮箱或用户ID。",
+        validationAmount: "请输入非零的调整数量。"
+      },
       table: {
         noResults: "未找到积分交易记录。",
         search: {

@@ -601,6 +601,23 @@ export const en: Locale = {
       messages: {
         fetchError: "Failed to load credit transactions. Please try again."
       },
+      adjustment: {
+        action: "Adjust Credits",
+        title: "Adjust Credits",
+        description: "Add or subtract credits for a user by email or user ID.",
+        emailLabel: "User Email",
+        emailPlaceholder: "Enter user email (optional)",
+        userIdLabel: "User ID",
+        userIdPlaceholder: "Enter user ID (optional)",
+        amountLabel: "Amount",
+        amountPlaceholder: "Positive to add, negative to subtract",
+        noteLabel: "Note",
+        notePlaceholder: "Optional description for this adjustment",
+        submit: "Apply Adjustment",
+        success: "Credits adjusted successfully.",
+        validationUser: "Please provide an email or user ID.",
+        validationAmount: "Please enter a non-zero amount."
+      },
       table: {
         noResults: "No credit transactions found.",
         search: {

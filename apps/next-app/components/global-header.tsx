@@ -109,6 +109,19 @@ export default function Header({ className }: HeaderProps) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="p-0">
+                    <Link href={`/${currentLocale}/clothes-original-sketch`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
+                        <Pencil className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm">线稿三视图</span>
+                        <span className="text-sm text-muted-foreground leading-snug mt-0.5">
+                          上传参考图，按张数生成工艺线稿三视图
+                        </span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="p-0">
                     <Link href={`/${currentLocale}/ai`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
                         <Bot className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -361,6 +374,13 @@ export default function Header({ className }: HeaderProps) {
                   <div>
                     <span className="block">AI 图片生成</span>
                     <span className="block text-xs text-muted-foreground">服装平铺图、线稿、宣传图等专业生成</span>
+                  </div>
+                </Link>
+                <Link href={`/${currentLocale}/clothes-original-sketch`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
+                  <Pencil className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="block">线稿三视图</span>
+                    <span className="block text-xs text-muted-foreground">上传参考图，按张数生成工艺线稿三视图</span>
                   </div>
                 </Link>
                 <Link href={`/${currentLocale}/ai`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
