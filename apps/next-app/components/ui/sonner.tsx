@@ -12,6 +12,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       toastOptions={{
         unstyled: true,
+        closeButton: true,
         style: {
           width: '356px', // sonner default width
           minWidth: '356px', // ensure minimum width

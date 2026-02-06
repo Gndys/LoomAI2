@@ -135,19 +135,6 @@ export default function Header({ className }: HeaderProps) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="p-0">
-                    <Link href={`/${currentLocale}/background-remover`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
-                        <Scissors className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-sm">{t.header.demos.backgroundRemover.title}</span>
-                        <span className="text-sm text-muted-foreground leading-snug mt-0.5">
-                          {t.header.demos.backgroundRemover.description}
-                        </span>
-                      </div>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="p-0">
                     <Link href={`/${currentLocale}/card-boundary-playground`} className="group flex items-start gap-4 rounded-lg p-3 hover:bg-muted/50 transition-colors">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/50 group-hover:bg-primary-foreground">
                         <Square className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -215,6 +202,18 @@ export default function Header({ className }: HeaderProps) {
                     <div className="flex flex-col">
                       <span className="font-medium">线稿三视图</span>
                       <span className="text-xs text-muted-foreground">上传参考图，按张数生成工艺线稿三视图</span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={`/${currentLocale}/background-remover`}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    <Scissors className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex flex-col">
+                      <span className="font-medium">{t.header.demos.backgroundRemover.title}</span>
+                      <span className="text-xs text-muted-foreground">{t.header.demos.backgroundRemover.description}</span>
                     </div>
                   </Link>
                 </DropdownMenuItem>
@@ -381,13 +380,6 @@ export default function Header({ className }: HeaderProps) {
                     <span className="block text-xs text-muted-foreground">{t.header.demos.upload.description}</span>
                   </div>
                 </Link>
-                <Link href={`/${currentLocale}/background-remover`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
-                  <Scissors className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <span className="block">{t.header.demos.backgroundRemover.title}</span>
-                    <span className="block text-xs text-muted-foreground">{t.header.demos.backgroundRemover.description}</span>
-                  </div>
-                </Link>
                 <Link href={`/${currentLocale}/card-boundary-playground`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
                   <Square className="h-5 w-5 text-muted-foreground" />
                   <div>
@@ -423,6 +415,13 @@ export default function Header({ className }: HeaderProps) {
                   <div>
                     <span className="block">线稿三视图</span>
                     <span className="block text-xs text-muted-foreground">上传参考图，按张数生成工艺线稿三视图</span>
+                  </div>
+                </Link>
+                <Link href={`/${currentLocale}/background-remover`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
+                  <Scissors className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="block">{t.header.demos.backgroundRemover.title}</span>
+                    <span className="block text-xs text-muted-foreground">{t.header.demos.backgroundRemover.description}</span>
                   </div>
                 </Link>
               </div>

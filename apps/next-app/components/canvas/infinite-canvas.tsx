@@ -546,6 +546,7 @@ export function InfiniteCanvas() {
   const [isCanvasPresetOpen, setIsCanvasPresetOpen] = useState(false)
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(true)
+  const [isDecomposeMenuOpen, setIsDecomposeMenuOpen] = useState(false)
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null)
   const [layerNameDraft, setLayerNameDraft] = useState('')
   const [layerContextMenu, setLayerContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
@@ -2144,7 +2145,7 @@ export function InfiniteCanvas() {
     try {
       const bounds = getExportBounds(exportItems)
       if (!bounds) {
-        toast.message('没有可导出的内容', { id: toastId })
+        toast.message('没有可导出的内容', { id: toastId, duration: 4000 })
         return
       }
 
@@ -2287,15 +2288,15 @@ export function InfiniteCanvas() {
       URL.revokeObjectURL(link.href)
 
       if (failedImages.length > 0) {
-        toast.message(`已导出，但有 ${failedImages.length} 张图片无法导出`, { id: toastId })
+        toast.message(`已导出，但有 ${failedImages.length} 张图片无法导出`, { id: toastId, duration: 5000 })
       } else if (exportScale < 1) {
-        toast.success(`导出完成（已按最大边 ${MAX_EXPORT_SIZE}px 缩放）`, { id: toastId })
+        toast.success(`导出完成（已按最大边 ${MAX_EXPORT_SIZE}px 缩放）`, { id: toastId, duration: 4000 })
       } else {
-        toast.success('导出完成', { id: toastId })
+        toast.success('导出完成', { id: toastId, duration: 3000 })
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : '导出失败'
-      toast.error(message, { id: toastId })
+      toast.error(message, { id: toastId, duration: 5000 })
     } finally {
       setIsExporting(false)
     }
@@ -3638,6 +3639,14 @@ export function InfiniteCanvas() {
               </DropdownMenuSub>
             </DropdownMenuContent>
           </DropdownMenu>
+          <button
+            type="button"
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted/70"
+            aria-label={theme === 'light' ? '切换为深色' : '切换为浅色'}
+          >
+            {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </button>
 
         </div>
       </div>
@@ -3649,6 +3658,58 @@ export function InfiniteCanvas() {
         )}
       >
         <div className="pointer-events-auto flex flex-col items-center gap-2 rounded-2xl border border-border bg-background/85 p-2 shadow-md backdrop-blur">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground"
+                aria-label="账户菜单"
+              >
+                <Avatar className="h-7 w-7">
+                  <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
+                  <AvatarFallback className="text-[10px]">{userInitials}</AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64 p-2">
+              <div className="rounded-2xl border border-border bg-background/80 p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
+                    <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-foreground">{userDisplayName}</div>
+                    <div className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-7 rounded-full px-3 text-xs font-semibold text-primary-foreground"
+                  >
+                    升级
+                  </Button>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>积分</span>
+                  <span className="text-foreground">{creditsDisplay}</span>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2" disabled>
+                <MessageSquare className="h-4 w-4" />
+                账户管理
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" disabled>
+                <Megaphone className="h-4 w-4" />
+                使用教程
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" disabled>
+                <ArrowUpRight className="h-4 w-4" />
+                退出登录
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <div className="my-1 h-px w-6 bg-border" />
           {toolOrder.map((item) => {
             if (item === 'upload') {
               return (
@@ -3785,7 +3846,7 @@ export function InfiniteCanvas() {
 
       <div className="pointer-events-none absolute bottom-3 left-2 top-4 z-20">
         <div className="relative h-full w-[280px]">
-          <div className="pointer-events-auto absolute bottom-0 left-0 z-30 flex items-center gap-2">
+          <div className="pointer-events-auto absolute bottom-0 left-0 z-30">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -3806,66 +3867,8 @@ export function InfiniteCanvas() {
                 {isLayerPanelOpen ? '隐藏图层' : '显示图层'}
               </TooltipContent>
             </Tooltip>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground"
-                  aria-label="账户菜单"
-                >
-                  <Avatar className="h-7 w-7">
-                    <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
-                    <AvatarFallback className="text-[10px]">{userInitials}</AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64 p-2">
-                <div className="rounded-2xl border border-border bg-background/80 p-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
-                      <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-foreground">{userDisplayName}</div>
-                      <div className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</div>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="h-7 rounded-full px-3 text-xs font-semibold text-primary-foreground"
-                    >
-                      升级
-                    </Button>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>积分</span>
-                    <span className="text-foreground">{creditsDisplay}</span>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="gap-2"
-                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                >
-                  {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                  {theme === 'light' ? '切换为深色' : '切换为浅色'}
-                </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2" disabled>
-                  <MessageSquare className="h-4 w-4" />
-                  账户管理
-                </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2" disabled>
-                  <Megaphone className="h-4 w-4" />
-                  使用教程
-                </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2" disabled>
-                  <ArrowUpRight className="h-4 w-4" />
-                  退出登录
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
-          <div
+        <div
             className={cn(
               'flex h-full w-full flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur transition-transform duration-300 ease-out',
               isLayerPanelOpen ? 'pointer-events-auto translate-x-0' : 'pointer-events-none -translate-x-[calc(100%+1.25rem)]'
@@ -4055,6 +4058,7 @@ export function InfiniteCanvas() {
           </div>
         </div>
       </div>
+
 
       {layerContextMenu && (() => {
         const contextItem = items.find((item) => item.id === layerContextMenu.id)
@@ -5038,10 +5042,6 @@ export function InfiniteCanvas() {
                     <Wand2 className="h-3.5 w-3.5" />
                     编辑
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 gap-1 rounded-full px-2 text-xs">
-                    <Layers className="h-3.5 w-3.5" />
-                    变体
-                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -5092,28 +5092,20 @@ export function InfiniteCanvas() {
                     )}
                     {isRemovingBackground ? '处理中' : '去背'}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 gap-1 rounded-full px-2 text-xs"
-                    onClick={() => handleDecomposeLayers(selectedItem as CanvasImageItem)}
-                    disabled={isLayerDecomposing}
-                  >
-                    {isLayerDecomposing ? (
-                      <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Layers className="h-3.5 w-3.5" />
-                    )}
-                    {isLayerDecomposing ? '处理中' : '拆解图层'}
-                  </Button>
-                  <DropdownMenu>
+                  <DropdownMenu open={isDecomposeMenuOpen} onOpenChange={setIsDecomposeMenuOpen}>
                     <DropdownMenuTrigger asChild>
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-7 gap-1 rounded-full px-2 text-xs"
+                        disabled={isLayerDecomposing}
                       >
-                        参数
+                        {isLayerDecomposing ? (
+                          <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Layers className="h-3.5 w-3.5" />
+                        )}
+                        {isLayerDecomposing ? '处理中' : '拆解图层'}
                         <ChevronDown className="h-3.5 w-3.5" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -5155,6 +5147,17 @@ export function InfiniteCanvas() {
                             className="w-16 rounded-full border border-border bg-background px-2 py-1 text-center text-xs text-foreground focus:outline-none"
                           />
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsDecomposeMenuOpen(false)
+                            handleDecomposeLayers(selectedItem as CanvasImageItem)
+                          }}
+                          disabled={isLayerDecomposing}
+                          className="mt-1 rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isLayerDecomposing ? '处理中...' : '开始拆解'}
+                        </button>
                       </div>
                     </DropdownMenuContent>
                   </DropdownMenu>

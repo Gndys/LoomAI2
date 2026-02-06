@@ -1687,7 +1687,7 @@ export const zhCN: Locale = {
       },
       backgroundRemover: {
         title: "移除背景",
-        description: "上传图片后一键去除背景，支持透明 PNG 下载，需要登录访问"
+        description: "一键去背景，导出透明 PNG"
       },
       cardBoundary: {
         title: "卡片边界对比",
@@ -2111,7 +2111,7 @@ export const zhCN: Locale = {
   },
   backgroundRemover: {
     title: "移除背景",
-    description: "上传人像、商品或服装图片，自动生成透明背景 PNG，适合电商和设计场景。",
+    description: "上传图片，快速生成透明 PNG。",
     badge: "背景移除",
     upload: {
       title: "上传图片",

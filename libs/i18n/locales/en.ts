@@ -1679,7 +1679,7 @@ export const en: Locale = {
       },
       backgroundRemover: {
         title: "Background Remover",
-        description: "Upload an image and remove the background with one click. Login required."
+        description: "One-click background removal"
       },
       cardBoundary: {
         title: "Card Boundary Playground",
@@ -2103,7 +2103,7 @@ export const en: Locale = {
   },
   backgroundRemover: {
     title: "Remove Background",
-    description: "Upload portraits, products, or apparel photos and generate transparent PNG cutouts automatically.",
+    description: "Upload an image and get a transparent PNG quickly.",
     badge: "Background Remover",
     upload: {
       title: "Upload Image",
