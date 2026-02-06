@@ -3639,65 +3639,6 @@ export function InfiniteCanvas() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-full border border-border bg-background/90 px-2 py-1 shadow-sm backdrop-blur transition hover:bg-muted/70"
-                aria-label="账户菜单"
-              >
-                <Avatar className="h-7 w-7">
-                  <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
-                  <AvatarFallback className="text-[10px]">{userInitials}</AvatarFallback>
-                </Avatar>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-64 p-2">
-              <div className="rounded-2xl border border-border bg-background/80 p-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
-                    <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-foreground">{userDisplayName}</div>
-                    <div className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</div>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="h-7 rounded-full px-3 text-xs font-semibold text-primary-foreground"
-                  >
-                    升级
-                  </Button>
-                </div>
-                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>积分</span>
-                  <span className="text-foreground">{creditsDisplay}</span>
-                </div>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="gap-2"
-                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-              >
-                {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                {theme === 'light' ? '切换为深色' : '切换为浅色'}
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2" disabled>
-                <MessageSquare className="h-4 w-4" />
-                账户管理
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2" disabled>
-                <Megaphone className="h-4 w-4" />
-                使用教程
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2" disabled>
-                <ArrowUpRight className="h-4 w-4" />
-                退出登录
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
 
@@ -3844,7 +3785,7 @@ export function InfiniteCanvas() {
 
       <div className="pointer-events-none absolute bottom-3 left-2 top-4 z-20">
         <div className="relative h-full w-[280px]">
-          <div className="pointer-events-auto absolute bottom-0 left-0 z-30">
+          <div className="pointer-events-auto absolute bottom-0 left-0 z-30 flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -3865,6 +3806,64 @@ export function InfiniteCanvas() {
                 {isLayerPanelOpen ? '隐藏图层' : '显示图层'}
               </TooltipContent>
             </Tooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground"
+                  aria-label="账户菜单"
+                >
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
+                    <AvatarFallback className="text-[10px]">{userInitials}</AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64 p-2">
+                <div className="rounded-2xl border border-border bg-background/80 p-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
+                      <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-foreground">{userDisplayName}</div>
+                      <div className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</div>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="h-7 rounded-full px-3 text-xs font-semibold text-primary-foreground"
+                    >
+                      升级
+                    </Button>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>积分</span>
+                    <span className="text-foreground">{creditsDisplay}</span>
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="gap-2"
+                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                >
+                  {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  {theme === 'light' ? '切换为深色' : '切换为浅色'}
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2" disabled>
+                  <MessageSquare className="h-4 w-4" />
+                  账户管理
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2" disabled>
+                  <Megaphone className="h-4 w-4" />
+                  使用教程
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2" disabled>
+                  <ArrowUpRight className="h-4 w-4" />
+                  退出登录
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div
             className={cn(
@@ -4394,7 +4393,7 @@ export function InfiniteCanvas() {
 
       <div className="pointer-events-none absolute bottom-3 right-2 top-4 z-20">
         <div className="relative h-full w-[360px]">
-          <div className="pointer-events-auto absolute right-0 top-0 z-30">
+          <div className="pointer-events-auto absolute right-3 top-3 z-30">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -4403,12 +4402,7 @@ export function InfiniteCanvas() {
                     setIsChatOpen(true)
                     setIsChatMinimized((prev) => !prev)
                   }}
-                  className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground',
-                    isChatPanelOpen
-                      ? 'border-primary/40 bg-primary/10 text-primary shadow-none'
-                      : 'shadow-sm'
-                  )}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground"
                   aria-label={isChatPanelOpen ? '隐藏 AI 对话' : '展开 AI 对话'}
                 >
                   {isChatPanelOpen ? <ArrowRight className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
@@ -4689,291 +4683,308 @@ export function InfiniteCanvas() {
 
       {isCanvasPromptOpen && (
         <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 w-[min(720px,calc(100%-3rem))] -translate-x-1/2">
-          <div className="pointer-events-auto rounded-3xl border border-border bg-background/90 px-4 py-3 shadow-lg backdrop-blur">
-            <div className="flex flex-col gap-3">
-              {showCanvasPromptAdvanced && (
-                <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-muted/30 px-3 py-2">
-                  <Select value={imageSizeMode} onValueChange={setImageSizeMode} disabled={isImageGenerating}>
-                    <SelectTrigger
-                      size="sm"
-                      className="h-7 rounded-full border border-border bg-background/80 px-2.5 text-[11px] text-muted-foreground hover:bg-muted"
-                    >
-                      <span className="text-muted-foreground">Aspect</span>
-                      <SelectValue placeholder="Auto" />
-                    </SelectTrigger>
-                    <SelectContent
-                      side="top"
-                      className="w-[180px] rounded-2xl border border-border/80 bg-popover/95 p-2 text-xs shadow-lg backdrop-blur"
-                    >
-                      {imageSizeSelectOptions.map((option) => (
-                        <SelectItem
-                          key={option.value}
-                          value={option.value}
-                          className="text-xs"
-                          disabled={Boolean(option.disabled)}
-                        >
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {imageSizeMode === 'custom' && (
-                    <div className="flex items-center gap-1 rounded-full border border-border/70 bg-background/80 px-2 py-1 text-[11px] text-muted-foreground">
-                      <input
-                        inputMode="numeric"
-                        value={customSizeWidth}
-                        onChange={(event) => setCustomSizeWidth(event.target.value.replace(/\D/g, '').slice(0, 4))}
-                        placeholder="宽"
-                        className="w-12 bg-transparent text-center text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
-                        disabled={isImageGenerating}
-                      />
-                      <span className="text-muted-foreground">x</span>
-                      <input
-                        inputMode="numeric"
-                        value={customSizeHeight}
-                        onChange={(event) => setCustomSizeHeight(event.target.value.replace(/\D/g, '').slice(0, 4))}
-                        placeholder="高"
-                        className="w-12 bg-transparent text-center text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
-                        disabled={isImageGenerating}
-                      />
-                    </div>
-                  )}
-                  <Select value={imageModel} onValueChange={setImageModel} disabled={isImageGenerating}>
-                    <SelectTrigger
-                      size="sm"
-                      className="h-7 rounded-full border border-border bg-background/80 px-2.5 text-[11px] text-muted-foreground hover:bg-muted"
-                    >
-                      <span className="text-muted-foreground">Model</span>
-                      <SelectValue placeholder="选择模型" />
-                    </SelectTrigger>
-                    <SelectContent
-                      side="top"
-                      className="w-[260px] rounded-2xl border border-border/80 bg-popover/95 p-2 text-xs shadow-lg backdrop-blur"
-                    >
-                      {imageModelOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value} className="text-xs">
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <DropdownMenu open={isCanvasPresetOpen} onOpenChange={setIsCanvasPresetOpen}>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="构图"
-                        aria-pressed={isCanvasPresetOpen}
-                        className={cn(
-                          'inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground',
-                          (isCanvasPresetOpen || selectedPresetId) && 'border-primary/40 text-primary'
-                        )}
+        <div className="pointer-events-auto relative">
+          <div className="flex flex-col gap-3 rounded-3xl border border-border bg-background/90 px-4 py-3 shadow-lg backdrop-blur">
+            {showCanvasPromptAdvanced && (
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-muted/30 px-3 py-2">
+                <Select value={imageSizeMode} onValueChange={setImageSizeMode} disabled={isImageGenerating}>
+                  <SelectTrigger
+                    size="sm"
+                    className="h-7 rounded-full border border-border bg-background/80 px-2.5 text-[11px] text-muted-foreground hover:bg-muted"
+                  >
+                    <span className="text-muted-foreground">Aspect</span>
+                    <SelectValue placeholder="Auto" />
+                  </SelectTrigger>
+                  <SelectContent
+                    side="top"
+                    className="w-[180px] rounded-2xl border border-border/80 bg-popover/95 p-2 text-xs shadow-lg backdrop-blur"
+                  >
+                    {imageSizeSelectOptions.map((option) => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                        className="text-xs"
+                        disabled={Boolean(option.disabled)}
                       >
-                        <span className="text-muted-foreground">Comp</span>
-                        <span className="max-w-[80px] truncate text-foreground">
-                          {selectedPreset ? selectedPreset.name : 'None'}
-                        </span>
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="start"
-                      side="top"
-                      className="w-[320px] rounded-2xl border border-border/80 bg-popover/95 p-3 shadow-lg backdrop-blur"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-                          <Sparkles className="h-3.5 w-3.5 text-primary" />
-                          <span>快速功能</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                          <span>{selectedPreset ? `已选：${selectedPreset.name}` : '未选择'}</span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPresetId(null)}
-                            className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                          >
-                            清空选择
-                          </button>
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        {CANVAS_PRESET_ACTIONS.map((preset) => (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            onClick={() => handleCanvasPresetSelect(preset.id)}
-                            className={cn(
-                              'flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition',
-                              selectedPresetId === preset.id
-                                ? 'border-primary/60 bg-primary/10 text-primary'
-                                : 'border-border bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground'
-                            )}
-                          >
-                            <preset.Icon className="h-3.5 w-3.5" />
-                            <span className="truncate">{preset.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                      {selectedPreset && (
-                        <div className="mt-2 text-[11px] text-muted-foreground">{selectedPreset.description}</div>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
-              {selectedImageItems.length > 0 && (
-                <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/80 px-3 py-2">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex items-center -space-x-2">
-                      {selectedImageItems.slice(0, 3).map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm"
-                        >
-                          <img
-                            src={item.data.src}
-                            alt={item.data?.name?.trim() || 'reference'}
-                            className="h-full w-full object-cover"
-                            draggable={false}
-                          />
-                        </div>
-                      ))}
-                      {selectedImageItems.length > 3 && (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background text-[11px] text-muted-foreground">
-                          +{selectedImageItems.length - 3}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex min-w-0 flex-col">
-                      <span className="text-[11px] text-muted-foreground">参考图</span>
-                      <span className="truncate text-sm text-foreground">
-                        {selectedImageItems.length === 1 ? primaryReferenceLabel : `已选 ${selectedImageItems.length} 张`}
-                      </span>
-                      {isImagePromptMode && (
-                        <span className="text-[11px] text-muted-foreground">
-                          {referenceImageLimit === 0
-                            ? '当前模型不支持参考图'
-                            : `最多支持 ${referenceImageLimit} 张参考图`}
-                        </span>
-                      )}
-                    </div>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {imageSizeMode === 'custom' && (
+                  <div className="flex items-center gap-1 rounded-full border border-border/70 bg-background/80 px-2 py-1 text-[11px] text-muted-foreground">
+                    <input
+                      inputMode="numeric"
+                      value={customSizeWidth}
+                      onChange={(event) => setCustomSizeWidth(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="宽"
+                      className="w-12 bg-transparent text-center text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                      disabled={isImageGenerating}
+                    />
+                    <span className="text-muted-foreground">x</span>
+                    <input
+                      inputMode="numeric"
+                      value={customSizeHeight}
+                      onChange={(event) => setCustomSizeHeight(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="高"
+                      className="w-12 bg-transparent text-center text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                      disabled={isImageGenerating}
+                    />
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                )}
+                <Select value={imageModel} onValueChange={setImageModel} disabled={isImageGenerating}>
+                  <SelectTrigger
+                    size="sm"
+                    className="h-7 rounded-full border border-border bg-background/80 px-2.5 text-[11px] text-muted-foreground hover:bg-muted"
+                  >
+                    <span className="text-muted-foreground">Model</span>
+                    <SelectValue placeholder="选择模型" />
+                  </SelectTrigger>
+                  <SelectContent
+                    side="top"
+                    className="w-[260px] rounded-2xl border border-border/80 bg-popover/95 p-2 text-xs shadow-lg backdrop-blur"
+                  >
+                    {imageModelOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value} className="text-xs">
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <DropdownMenu open={isCanvasPresetOpen} onOpenChange={setIsCanvasPresetOpen}>
+                  <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      onClick={() => {
-                        clearSelection()
-                        setEditingId(null)
-                      }}
-                      className="rounded-full border border-border bg-background/70 px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      aria-label="构图"
+                      aria-pressed={isCanvasPresetOpen}
+                      className={cn(
+                        'inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground',
+                        (isCanvasPresetOpen || selectedPresetId) && 'border-primary/40 text-primary'
+                      )}
                     >
-                      清空选择
+                      <span className="text-muted-foreground">Comp</span>
+                      <span className="max-w-[80px] truncate text-foreground">
+                        {selectedPreset ? selectedPreset.name : 'None'}
+                      </span>
+                      <ChevronDown className="h-3.5 w-3.5" />
                     </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    side="top"
+                    className="w-[320px] rounded-2xl border border-border/80 bg-popover/95 p-3 shadow-lg backdrop-blur"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                        <span>快速功能</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span>{selectedPreset ? `已选：${selectedPreset.name}` : '未选择'}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPresetId(null)}
+                          className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        >
+                          清空选择
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {CANVAS_PRESET_ACTIONS.map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => handleCanvasPresetSelect(preset.id)}
+                          className={cn(
+                            'flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition',
+                            selectedPresetId === preset.id
+                              ? 'border-primary/60 bg-primary/10 text-primary'
+                              : 'border-border bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground'
+                          )}
+                        >
+                          <preset.Icon className="h-3.5 w-3.5" />
+                          <span className="truncate">{preset.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {selectedPreset && (
+                      <div className="mt-2 text-[11px] text-muted-foreground">{selectedPreset.description}</div>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+            {selectedImageItems.length > 0 && (
+              <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/20 px-3 py-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex items-center -space-x-2">
+                    {selectedImageItems.slice(0, 3).map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm"
+                      >
+                        <img
+                          src={item.data.src}
+                          alt={item.data?.name?.trim() || 'reference'}
+                          className="h-full w-full object-cover"
+                          draggable={false}
+                        />
+                      </div>
+                    ))}
+                    {selectedImageItems.length > 3 && (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background text-[11px] text-muted-foreground">
+                        +{selectedImageItems.length - 3}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-[11px] text-muted-foreground">参考图</span>
+                    <span className="truncate text-sm text-foreground">
+                      {selectedImageItems.length === 1 ? primaryReferenceLabel : `已选 ${selectedImageItems.length} 张`}
+                    </span>
+                    {isImagePromptMode && (
+                      <span className="text-[11px] text-muted-foreground">
+                        {referenceImageLimit === 0
+                          ? '当前模型不支持参考图'
+                          : `最多支持 ${referenceImageLimit} 张参考图`}
+                      </span>
+                    )}
                   </div>
                 </div>
-              )}
-              <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-background px-3 py-2 shadow-sm">
-                {isImagePromptMode ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          if (isCanvasPromptAdvanced) {
-                            setIsCanvasPresetOpen(false)
-                          }
-                          setIsCanvasPromptAdvanced((prev) => !prev)
-                        }}
-                        aria-label={isCanvasPromptAdvanced ? '收起高级' : '高级'}
-                        aria-pressed={isCanvasPromptAdvanced}
-                        className={cn(
-                          'h-8 w-8 rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground',
-                          isCanvasPromptAdvanced && 'border-primary/40 bg-primary/10 text-primary'
-                        )}
-                      >
-                        {isCanvasPromptAdvanced ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <Sparkles className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      {isCanvasPromptAdvanced ? '收起高级' : '高级'}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setIsCanvasPromptOpen(false)}
-                        aria-label="收起"
-                        className="h-8 w-8 rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      收起
-                    </TooltipContent>
-                  </Tooltip>
-                )}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearSelection()
+                      setEditingId(null)
+                    }}
+                    className="rounded-full border border-border bg-background/70 px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  >
+                    清空选择
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-2 rounded-2xl bg-transparent px-1 py-1">
+              {isImagePromptMode ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       size="icon"
                       variant="ghost"
-                      onClick={handleUploadClick}
-                      aria-label="添加参考图"
-                      className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={() => {
+                        if (isCanvasPromptAdvanced) {
+                          setIsCanvasPresetOpen(false)
+                        }
+                        setIsCanvasPromptAdvanced((prev) => !prev)
+                      }}
+                      aria-label={isCanvasPromptAdvanced ? '收起高级' : '高级'}
+                      aria-pressed={isCanvasPromptAdvanced}
+                      className={cn(
+                        'h-8 w-8 rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground',
+                        isCanvasPromptAdvanced && 'border-primary/40 bg-primary/10 text-primary'
+                      )}
                     >
-                      <ImagePlus className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    添加参考图
-                  </TooltipContent>
-                </Tooltip>
-                <input
-                  ref={canvasInputRef}
-                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                  placeholder={canvasPlaceholder}
-                  value={canvasInput}
-                  onChange={(event) => setCanvasInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter' || event.shiftKey) return
-                    event.preventDefault()
-                    if (isImagePromptMode && isImageGenerating) return
-                    handleCanvasSubmit()
-                  }}
-                  disabled={isImagePromptMode && isImageGenerating}
-                />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      className="h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
-                      aria-label={isImagePromptMode ? '生成图片' : '发送'}
-                      onClick={handleCanvasSubmit}
-                      disabled={resolvedCanvasPrompt.trim().length === 0 || (isImagePromptMode && isImageGenerating)}
-                    >
-                      {isImagePromptMode && isImageGenerating ? (
-                        <RefreshCcw className="h-4 w-4 animate-spin" />
+                      {isCanvasPromptAdvanced ? (
+                        <ChevronDown className="h-4 w-4" />
                       ) : (
-                        <ArrowUpRight className="h-4 w-4" />
+                        <Sparkles className="h-4 w-4" />
                       )}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs">
-                    {isImagePromptMode ? (isImageGenerating ? '生成中...' : '生成图片') : '发送'}
+                    {isCanvasPromptAdvanced ? '收起高级' : '高级'}
                   </TooltipContent>
                 </Tooltip>
-              </div>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setIsCanvasPromptOpen(false)}
+                      aria-label="收起"
+                      className="h-8 w-8 rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    收起
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={handleUploadClick}
+                    aria-label="添加参考图"
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  添加参考图
+                </TooltipContent>
+              </Tooltip>
+              <input
+                ref={canvasInputRef}
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                placeholder={canvasPlaceholder}
+                value={canvasInput}
+                onChange={(event) => setCanvasInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' || event.shiftKey) return
+                  event.preventDefault()
+                  if (isImagePromptMode && isImageGenerating) return
+                  handleCanvasSubmit()
+                }}
+                disabled={isImagePromptMode && isImageGenerating}
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    className="h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
+                    aria-label={isImagePromptMode ? '生成图片' : '发送'}
+                    onClick={handleCanvasSubmit}
+                    disabled={resolvedCanvasPrompt.trim().length === 0 || (isImagePromptMode && isImageGenerating)}
+                  >
+                    {isImagePromptMode && isImageGenerating ? (
+                      <RefreshCcw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ArrowUpRight className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {isImagePromptMode ? (isImageGenerating ? '生成中...' : '生成图片') : '发送'}
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
+          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setIsCanvasPromptOpen(false)}
+                  className="flex h-7 w-10 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
+                  aria-label="收起面板"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                收起
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
         </div>
       )}
 
