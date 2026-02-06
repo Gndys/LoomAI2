@@ -4394,7 +4394,7 @@ export function InfiniteCanvas() {
 
       <div className="pointer-events-none absolute bottom-3 right-2 top-4 z-20">
         <div className="relative h-full w-[360px]">
-          <div className="pointer-events-auto absolute bottom-0 right-0 z-30">
+          <div className="pointer-events-auto absolute right-0 top-0 z-30">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
