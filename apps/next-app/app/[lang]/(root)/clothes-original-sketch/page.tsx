@@ -8,7 +8,7 @@ import {
   type ChangeEvent,
   type DragEvent as ReactDragEvent,
 } from 'react'
-import { CheckCircle2, Download, Loader2, Sparkles, Upload, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Download, Loader2, Sparkles, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { config } from '@config'
 import { FeatureCard, FeaturePageShell } from '@/components/feature-page-shell'
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-type GenerationMode = 'single' | 'three-view'
+type GenerationMode = 'single' | 'multi'
 type SketchView = 'front' | 'side' | 'back'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -30,14 +30,23 @@ const OUTPUT_COUNT_OPTIONS = ['1', '2', '3', '4', '5', '6']
 const PROVIDER_LABELS: Record<string, string> = {
   evolink: 'Evolink',
 }
-const MODE_OPTIONS: { value: GenerationMode; label: string }[] = [
-  { value: 'single', label: '普通线稿' },
-  { value: 'three-view', label: '三视图线稿' },
-]
 const VIEW_OPTIONS: { value: SketchView; label: string }[] = [
   { value: 'front', label: '正视图' },
   { value: 'side', label: '侧视图' },
   { value: 'back', label: '背视图' },
+]
+
+const MODE_BUTTONS: { value: GenerationMode; title: string; description: string }[] = [
+  {
+    value: 'single',
+    title: '单视图',
+    description: '每次仅选择一个视图生成',
+  },
+  {
+    value: 'multi',
+    title: '多视图',
+    description: '可同时选择多个视图生成',
+  },
 ]
 
 const HOW_IT_WORKS = [
@@ -47,7 +56,7 @@ const HOW_IT_WORKS = [
   },
   {
     title: '选择模式与参数',
-    description: '可选普通线稿或三视图，并设置视图、尺寸、输出张数。',
+    description: '可选单视图或多视图，并设置视图、尺寸、输出张数。',
   },
   {
     title: '生成并下载',
@@ -65,8 +74,8 @@ const FAQ_ITEMS = [
     a: '有，单张图片最大 10MB。超过大小会提示重新上传。',
   },
   {
-    q: '普通线稿和三视图的区别是什么？',
-    a: '普通线稿可按你选择的单个或多个视图生成，三视图模式更强调结构化多视角表达。',
+    q: '单视图和多视图的区别是什么？',
+    a: '单视图模式下每次只生成一个视图；多视图模式下可一次选择多个视图。',
   },
   {
     q: '提示词会暴露给用户吗？',
@@ -116,7 +125,7 @@ export default function ClothesOriginalSketchPage() {
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
   const [model, setModel] = useState<string>(config.aiImage.defaultModels.evolink)
   const [size, setSize] = useState<string>(config.aiImage.defaults.size ?? 'auto')
-  const [mode, setMode] = useState<GenerationMode>('three-view')
+  const [mode, setMode] = useState<GenerationMode>('multi')
   const [views, setViews] = useState<SketchView[]>(['front', 'side', 'back'])
   const [outputCount, setOutputCount] = useState('3')
   const [isDragActive, setIsDragActive] = useState(false)
@@ -124,6 +133,7 @@ export default function ClothesOriginalSketchPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [progressText, setProgressText] = useState('')
   const [results, setResults] = useState<string[]>([])
+  const [activeResultIndex, setActiveResultIndex] = useState(0)
 
   const modelOptions = useMemo(() => {
     const providers = Object.entries(config.aiImage.availableModels) as Array<[string, readonly string[]]>
@@ -170,6 +180,12 @@ export default function ClothesOriginalSketchPage() {
       setSize(sizeOptions[0]?.value ?? '1:1')
     }
   }, [size, sizeOptions])
+
+  useEffect(() => {
+    if (results.length > 0) {
+      setActiveResultIndex(0)
+    }
+  }, [results])
 
   useEffect(() => {
     return () => {
@@ -258,16 +274,27 @@ export default function ClothesOriginalSketchPage() {
   const handleModeChange = (value: string) => {
     const nextMode = value as GenerationMode
     setMode(nextMode)
-    if (nextMode === 'three-view' && views.length < 2) {
-      setViews(['front', 'side', 'back'])
+    if (nextMode === 'single') {
+      setViews([views[0] ?? 'front'])
       return
     }
-    if (nextMode === 'single' && views.length === 0) {
-      setViews(['front'])
+    if (nextMode === 'multi' && views.length === 0) {
+      setViews(['front', 'side', 'back'])
     }
   }
 
+  const setPresetViews = (nextViews: SketchView[]) => {
+    const deduped = Array.from(new Set(nextViews))
+    if (deduped.length === 0) return
+    setViews(deduped)
+  }
+
   const toggleView = (view: SketchView) => {
+    if (mode === 'single') {
+      setViews([view])
+      return
+    }
+
     setViews((prev) => {
       const has = prev.includes(view)
       if (has) {
@@ -357,7 +384,7 @@ export default function ClothesOriginalSketchPage() {
       }
 
       const nextResults: string[] = []
-      const modeLabel = mode === 'three-view' ? '三视图' : '普通线稿'
+      const modeLabel = mode === 'single' ? '单视图' : '多视图'
       for (let index = 0; index < total; index += 1) {
         setProgressText(`正在生成 ${modeLabel} ${index + 1}/${total}...`)
         const imageUrl = await generateSingleSketch(sourceUrl)
@@ -391,8 +418,8 @@ export default function ClothesOriginalSketchPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <FeaturePageShell
-        title="使用 AI 生成线稿三视图"
-        description="上传图片后可选普通线稿或三视图，并设置视图、尺寸和输出张数。"
+        title="使用 AI 生成服装线稿"
+        description="上传图片后可选单视图或多视图，并设置视图、尺寸和输出张数。"
         badge={{ icon: <Sparkles className="size-3.5" />, label: 'Line Sketch Views' }}
         className="max-w-6xl"
         badgeClassName="border-border/60 bg-background/70 text-muted-foreground"
@@ -469,44 +496,94 @@ export default function ClothesOriginalSketchPage() {
                         </div>
 
                         <div className="space-y-4 p-5">
-                          <div className="space-y-1.5">
+                          <div className="space-y-2">
                             <div className="text-xs text-muted-foreground">生成模式</div>
-                            <Select value={mode} onValueChange={handleModeChange}>
-                              <SelectTrigger className="h-9 rounded-full border-border/60 bg-background/70 text-xs">
-                                <SelectValue placeholder="选择生成模式" />
-                              </SelectTrigger>
-                              <SelectContent className="border-border/60 bg-background text-foreground">
-                                {MODE_OPTIONS.map((option) => (
-                                  <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <div className="text-xs text-muted-foreground">视图选择</div>
-                            <div className="flex flex-wrap gap-2">
-                              {VIEW_OPTIONS.map((item) => {
-                                const active = views.includes(item.value)
+                            <div className="grid grid-cols-2 gap-2">
+                              {MODE_BUTTONS.map((item) => {
+                                const active = mode === item.value
                                 return (
                                   <button
                                     key={item.value}
                                     type="button"
-                                    onClick={() => toggleView(item.value)}
-                                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                                    onClick={() => handleModeChange(item.value)}
+                                    className={`rounded-xl border px-3 py-2 text-left transition-colors ${
                                       active
                                         ? 'border-primary/45 bg-primary/10 text-primary'
-                                        : 'border-border/60 bg-background/70 text-foreground/80 hover:bg-muted/40'
+                                        : 'border-border/60 bg-background/70 text-foreground/85 hover:bg-muted/40'
                                     }`}
                                   >
-                                    {item.label}
+                                    <div className="text-xs font-medium">{item.title}</div>
+                                    <div className="mt-0.5 text-[10px] opacity-80">{item.description}</div>
                                   </button>
                                 )
                               })}
                             </div>
                           </div>
+
+                          {mode === 'single' ? (
+                            <div className="space-y-1.5 rounded-xl border border-border/60 bg-background/60 p-3">
+                              <div className="text-xs text-muted-foreground">单视图 · 视图选项（单选）</div>
+                              <div className="flex flex-wrap gap-2">
+                                {VIEW_OPTIONS.map((item) => {
+                                  const active = views.includes(item.value)
+                                  return (
+                                    <button
+                                      key={item.value}
+                                      type="button"
+                                      onClick={() => toggleView(item.value)}
+                                      className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                                        active
+                                          ? 'border-primary/45 bg-primary/10 text-primary'
+                                          : 'border-border/60 bg-background/70 text-foreground/80 hover:bg-muted/40'
+                                      }`}
+                                    >
+                                      {item.label}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2 rounded-xl border border-border/60 bg-background/60 p-3">
+                              <div className="text-xs text-muted-foreground">多视图 · 视图选项（可多选）</div>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setPresetViews(['front', 'back'])}
+                                  className="rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs text-foreground/80 hover:bg-muted/40"
+                                >
+                                  正背双视图
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setPresetViews(['front', 'side', 'back'])}
+                                  className="rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs text-foreground/80 hover:bg-muted/40"
+                                >
+                                  全视图
+                                </button>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                {VIEW_OPTIONS.map((item) => {
+                                  const active = views.includes(item.value)
+                                  return (
+                                    <button
+                                      key={item.value}
+                                      type="button"
+                                      onClick={() => toggleView(item.value)}
+                                      className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                                        active
+                                          ? 'border-primary/45 bg-primary/10 text-primary'
+                                          : 'border-border/60 bg-background/70 text-foreground/80 hover:bg-muted/40'
+                                      }`}
+                                    >
+                                      {item.label}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
 
                           <div className="space-y-1.5">
                             <div className="text-xs text-muted-foreground">模型</div>
@@ -639,25 +716,94 @@ export default function ClothesOriginalSketchPage() {
                     <p className="mt-3 text-sm text-foreground">正在生成线稿，请稍候...</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {results.map((url, index) => (
-                      <div key={`${url}-${index}`} className="rounded-2xl border border-border/60 bg-background/60 p-3">
-                        <div className="mb-2 text-xs text-muted-foreground">线稿 #{index + 1}</div>
-                        <div className="relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-muted/20">
-                          <img src={url} alt={`线稿 ${index + 1}`} className="h-full w-full object-contain" />
+                  <div className="rounded-3xl border border-border/60 bg-[radial-gradient(120%_120%_at_10%_10%,hsl(var(--primary)/0.08),hsl(var(--background)))] p-5 text-foreground shadow-[0_30px_80px_-60px_hsl(var(--primary)/0.25)]">
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+                      <div className="rounded-3xl border border-border/60 bg-background/70 p-4 shadow-sm">
+                        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium text-foreground">
+                          原始
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadImage(url, `line-sketch-view-${index + 1}.png`)}
-                          className="mt-3 h-8 w-full rounded-full border-border/50 bg-background/60 text-xs"
-                        >
-                          <Download className="mr-1.5 h-3.5 w-3.5" />
-                          下载此图
-                        </Button>
+                        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/60 bg-muted/20">
+                          {previewUrl ? (
+                            <img src={previewUrl} alt="参考图" className="h-full w-full object-contain" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                              未选择参考图
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    ))}
+
+                      <div className="hidden lg:flex">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground shadow-sm">
+                          <ArrowRight className="h-5 w-5" />
+                        </div>
+                      </div>
+
+                      <div className="rounded-3xl border border-border/60 bg-background/70 p-4 shadow-sm">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                            已编辑
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              downloadImage(
+                                results[activeResultIndex],
+                                `line-sketch-view-${activeResultIndex + 1}.png`
+                              )
+                            }
+                            className="h-8 rounded-full border-border/60 bg-background/70 text-xs"
+                          >
+                            <Download className="mr-1.5 h-3.5 w-3.5" />
+                            下载当前
+                          </Button>
+                        </div>
+
+                        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/60 bg-muted/20">
+                          <img
+                            src={results[activeResultIndex]}
+                            alt={`线稿 ${activeResultIndex + 1}`}
+                            className="h-full w-full object-contain"
+                          />
+                        </div>
+
+                        {results.length > 1 && (
+                          <div className="mt-4">
+                            <div className="mb-2 text-xs text-muted-foreground">
+                              多图结果 · 选择查看 ({activeResultIndex + 1}/{results.length})
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                              {results.map((url, index) => {
+                                const isActive = index === activeResultIndex
+                                return (
+                                  <button
+                                    key={`${url}-${index}`}
+                                    type="button"
+                                    onClick={() => setActiveResultIndex(index)}
+                                    className={`relative overflow-hidden rounded-xl border ${
+                                      isActive ? 'border-primary/60' : 'border-border/60'
+                                    } bg-background/70`}
+                                  >
+                                    <img
+                                      src={url}
+                                      alt={`线稿缩略图 ${index + 1}`}
+                                      className="h-20 w-full object-contain"
+                                    />
+                                    {isActive && (
+                                      <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                                        当前
+                                      </span>
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardContent>

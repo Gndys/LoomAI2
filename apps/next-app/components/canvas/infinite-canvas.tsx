@@ -41,6 +41,7 @@ import {
   Scissors,
   Copy,
   Layers,
+  SlidersHorizontal,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -536,6 +537,7 @@ export function InfiniteCanvas() {
   const [isCreditsLoading, setIsCreditsLoading] = useState(false)
   const [canvasInput, setCanvasInput] = useState('')
   const [isCanvasPromptOpen, setIsCanvasPromptOpen] = useState(false)
+  const [isCanvasPromptAdvanced, setIsCanvasPromptAdvanced] = useState(false)
   const [isCanvasPresetOpen, setIsCanvasPresetOpen] = useState(false)
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(true)
@@ -1126,6 +1128,7 @@ export function InfiniteCanvas() {
   useEffect(() => {
     if (isCanvasPromptOpen) return
     setIsCanvasPresetOpen(false)
+    setIsCanvasPromptAdvanced(false)
   }, [isCanvasPromptOpen])
 
   useEffect(() => {
@@ -3268,6 +3271,7 @@ export function InfiniteCanvas() {
   )
   const isImagePromptMode =
     isCanvasPromptOpen && (activeTool === 'image' || selectedItem?.type === 'image')
+  const showCanvasPromptAdvanced = isImagePromptMode && isCanvasPromptAdvanced
   const resolvedCanvasPrompt = useMemo(() => {
     const userText = canvasInput.trim()
     if (!isImagePromptMode) return userText
@@ -3293,6 +3297,14 @@ export function InfiniteCanvas() {
     const focusPrompt = selectedItem ? '总结当前选中对象' : '总结当前画布'
     return [focusPrompt, ...basePrompts].slice(0, 5)
   }, [selectedItem])
+
+  useEffect(() => {
+    if (isImagePromptMode) return
+    if (isCanvasPromptAdvanced) {
+      setIsCanvasPromptAdvanced(false)
+      setIsCanvasPresetOpen(false)
+    }
+  }, [isCanvasPromptAdvanced, isImagePromptMode])
 
   useEffect(() => {
     if (isImagePromptMode) return
@@ -4632,7 +4644,7 @@ export function InfiniteCanvas() {
         <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 w-[min(720px,calc(100%-3rem))] -translate-x-1/2">
           <div className="pointer-events-auto rounded-3xl border border-border bg-background/90 px-4 py-3 shadow-lg backdrop-blur">
             <div className="flex flex-col gap-3">
-              {isImagePromptMode && (
+              {showCanvasPromptAdvanced && (
                 <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-muted/30 px-3 py-2">
                   <Select value={imageSizeMode} onValueChange={setImageSizeMode} disabled={isImageGenerating}>
                     <SelectTrigger
@@ -4760,11 +4772,6 @@ export function InfiniteCanvas() {
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <div className="hidden items-center gap-2 text-[11px] text-muted-foreground sm:flex">
-                    <span className="rounded-full border border-border/60 bg-background/80 px-2 py-1">Style: None</span>
-                    <span className="rounded-full border border-border/60 bg-background/80 px-2 py-1">Light: None</span>
-                    <span className="rounded-full border border-border/60 bg-background/80 px-2 py-1">Color: None</span>
-                  </div>
                 </div>
               )}
               {selectedImageItems.length > 0 && (
@@ -4819,36 +4826,54 @@ export function InfiniteCanvas() {
                 </div>
               )}
               <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-background px-3 py-2 shadow-sm">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => setIsCanvasPromptOpen(false)}
-                      aria-label="收起"
-                      className="h-8 w-8 rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    收起
-                  </TooltipContent>
-                </Tooltip>
-                <input
-                  ref={canvasInputRef}
-                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                  placeholder={canvasPlaceholder}
-                  value={canvasInput}
-                  onChange={(event) => setCanvasInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter' || event.shiftKey) return
-                    event.preventDefault()
-                    if (isImagePromptMode && isImageGenerating) return
-                    handleCanvasSubmit()
-                  }}
-                  disabled={isImagePromptMode && isImageGenerating}
-                />
+                {isImagePromptMode ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          if (isCanvasPromptAdvanced) {
+                            setIsCanvasPresetOpen(false)
+                          }
+                          setIsCanvasPromptAdvanced((prev) => !prev)
+                        }}
+                        aria-label={isCanvasPromptAdvanced ? '收起高级' : '高级'}
+                        aria-pressed={isCanvasPromptAdvanced}
+                        className={cn(
+                          'h-8 w-8 rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground',
+                          isCanvasPromptAdvanced && 'border-primary/40 bg-primary/10 text-primary'
+                        )}
+                      >
+                        {isCanvasPromptAdvanced ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <SlidersHorizontal className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      {isCanvasPromptAdvanced ? '收起高级' : '高级'}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setIsCanvasPromptOpen(false)}
+                        aria-label="收起"
+                        className="h-8 w-8 rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      收起
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -4865,6 +4890,20 @@ export function InfiniteCanvas() {
                     添加参考图
                   </TooltipContent>
                 </Tooltip>
+                <input
+                  ref={canvasInputRef}
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  placeholder={canvasPlaceholder}
+                  value={canvasInput}
+                  onChange={(event) => setCanvasInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' || event.shiftKey) return
+                    event.preventDefault()
+                    if (isImagePromptMode && isImageGenerating) return
+                    handleCanvasSubmit()
+                  }}
+                  disabled={isImagePromptMode && isImageGenerating}
+                />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

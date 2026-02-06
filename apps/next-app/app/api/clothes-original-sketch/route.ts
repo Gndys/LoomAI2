@@ -9,7 +9,7 @@ import { createStorageProvider } from '@libs/storage'
 
 export const maxDuration = 120
 
-type GenerationMode = 'single' | 'three-view'
+type GenerationMode = 'single' | 'multi'
 type SketchView = 'front' | 'side' | 'back'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -32,23 +32,23 @@ const toAllowedSize = (value: unknown): EvolinkImageSize => {
 }
 
 const toGenerationMode = (value: unknown): GenerationMode => {
-  return value === 'single' ? 'single' : 'three-view'
+  return value === 'single' ? 'single' : 'multi'
 }
 
 const toViews = (value: unknown, mode: GenerationMode): SketchView[] => {
   if (!Array.isArray(value)) {
-    return mode === 'three-view' ? ['front', 'side', 'back'] : ['front']
+    return mode === 'multi' ? ['front', 'side', 'back'] : ['front']
   }
 
   const normalized = value.filter((item): item is SketchView => item === 'front' || item === 'side' || item === 'back')
 
   if (normalized.length === 0) {
-    return mode === 'three-view' ? ['front', 'side', 'back'] : ['front']
+    return mode === 'multi' ? ['front', 'side', 'back'] : ['front']
   }
 
   const deduped = Array.from(new Set(normalized))
-  if (mode === 'three-view' && deduped.length < 2) {
-    return ['front', 'side', 'back']
+  if (mode === 'single') {
+    return [deduped[0]]
   }
 
   return deduped
