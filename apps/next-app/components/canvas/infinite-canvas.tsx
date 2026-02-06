@@ -7,6 +7,7 @@ import { nanoid } from 'nanoid'
 import {
   ArrowDown,
   ArrowLeft,
+  ArrowRight,
   ArrowUp,
   ArrowUpRight,
   AlignCenter,
@@ -20,6 +21,7 @@ import {
   Hand,
   ImagePlus,
   Italic,
+  Moon,
   Eye,
   EyeOff,
   MessageSquare,
@@ -33,6 +35,7 @@ import {
   RefreshCcw,
   Share2,
   Sparkles,
+  Sun,
   Trash2,
   Type,
   Upload,
@@ -62,7 +65,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 import { Message, MessageContent } from '@/components/ai-elements/message'
 import type { FileUIPart, UIMessage } from 'ai'
@@ -567,7 +569,7 @@ export function InfiniteCanvas() {
 
   const { data: session } = authClientReact.useSession()
   const user = session?.user
-  const { colorScheme, setColorScheme } = useTheme()
+  const { colorScheme, setColorScheme, theme, setTheme } = useTheme()
   const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; width: number; height: number } | null>(
     null
   )
@@ -3162,9 +3164,9 @@ export function InfiniteCanvas() {
 
   const zoomPercent = Math.round(camera.scale * 100)
   const isChatBusy = status === 'streaming' || status === 'submitted'
-  const layerPanelShiftClass = isLayerPanelOpen
-    ? 'translate-x-[300px] translate-y-1'
-    : 'translate-x-0 translate-y-0'
+  const isChatPanelOpen = isChatOpen && !isChatMinimized
+  const layerPanelShiftClass = isLayerPanelOpen ? 'translate-x-[296px]' : 'translate-x-0'
+  const chatPanelShiftClass = isChatPanelOpen ? '-translate-x-[376px]' : 'translate-x-0'
   const resolveTextLabel = (text: string) => {
     const trimmed = text.trim()
     if (!trimmed) return '未命名文本'
@@ -3544,141 +3546,158 @@ export function InfiniteCanvas() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
-      <div className="pointer-events-none absolute left-1/2 top-4 z-30 w-[min(1200px,calc(100%-2.5rem))] -translate-x-1/2">
-        <div className="pointer-events-auto flex items-center justify-between rounded-full border border-border bg-background/80 px-4 py-2 shadow-sm backdrop-blur">
-          <div className="flex items-center gap-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex items-center gap-3 rounded-full px-2 py-1 text-left transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                    LA
+      <div
+        className={cn(
+          'pointer-events-none absolute left-5 top-4 z-30 transition-transform duration-300 ease-out',
+          layerPanelShiftClass
+        )}
+      >
+        <div className="pointer-events-auto flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-full border border-border bg-background/90 px-3 py-1.5 text-left text-xs shadow-sm backdrop-blur transition hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <AlignJustify className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">未命名</span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64 p-2">
+              <DropdownMenuItem
+                className="gap-2"
+                onClick={handleExportCanvas}
+                disabled={isExporting}
+              >
+                <Download className="h-4 w-4" />
+                {isExporting ? '导出中...' : '导出画布'}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" disabled>
+                <Share2 className="h-4 w-4" />
+                分享
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="px-2 text-xs font-semibold text-muted-foreground">
+                画布设置
+              </DropdownMenuLabel>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="text-sm">主题色</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-56 p-2">
+                  <DropdownMenuRadioGroup
+                    value={colorScheme}
+                    onValueChange={(value) => setColorScheme(value as ColorScheme)}
+                  >
+                    {Object.entries(THEME_CONFIG).map(([key, config]) => (
+                      <DropdownMenuRadioItem key={key} value={key} className="gap-2">
+                        <span
+                          className="h-3.5 w-3.5 rounded-full"
+                          style={{ backgroundColor: config.color }}
+                        />
+                        <span>{config.name}</span>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="text-sm">背景样式</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-56 p-2">
+                  <DropdownMenuRadioGroup
+                    value={backgroundMode}
+                    onValueChange={(value) => setBackgroundMode(value as 'solid' | 'transparent')}
+                  >
+                    <DropdownMenuRadioItem value="solid">纯色</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="transparent">点阵</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  {backgroundMode === 'transparent' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">点阵间距</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={backgroundSpacing}
+                        onValueChange={(value) => setBackgroundSpacing(value as 'tight' | 'medium' | 'loose')}
+                      >
+                        <DropdownMenuRadioItem value="tight">紧密</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="medium">标准</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="loose">稀疏</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">点阵强度</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={backgroundIntensity}
+                        onValueChange={(value) => setBackgroundIntensity(value as 'low' | 'medium' | 'high')}
+                      >
+                        <DropdownMenuRadioItem value="low">弱</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="medium">中</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="high">强</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </>
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-full border border-border bg-background/90 px-2 py-1 shadow-sm backdrop-blur transition hover:bg-muted/70"
+                aria-label="账户菜单"
+              >
+                <Avatar className="h-7 w-7">
+                  <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
+                  <AvatarFallback className="text-[10px]">{userInitials}</AvatarFallback>
+                </Avatar>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64 p-2">
+              <div className="rounded-2xl border border-border bg-background/80 p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
+                    <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-foreground">{userDisplayName}</div>
+                    <div className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</div>
                   </div>
-                  <div className="flex flex-col leading-tight">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                      无限画布
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">Phase 0 · LoomAI</span>
-                  </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64 p-2">
-                <DropdownMenuLabel className="px-2 text-sm font-semibold">画布设置</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="text-sm">主题色</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-56 p-2">
-                    <DropdownMenuRadioGroup
-                      value={colorScheme}
-                      onValueChange={(value) => setColorScheme(value as ColorScheme)}
-                    >
-                      {Object.entries(THEME_CONFIG).map(([key, config]) => (
-                        <DropdownMenuRadioItem key={key} value={key} className="gap-2">
-                          <span
-                            className="h-3.5 w-3.5 rounded-full"
-                            style={{ backgroundColor: config.color }}
-                          />
-                          <span>{config.name}</span>
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="text-sm">背景样式</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-56 p-2">
-                    <DropdownMenuRadioGroup
-                      value={backgroundMode}
-                      onValueChange={(value) => setBackgroundMode(value as 'solid' | 'transparent')}
-                    >
-                      <DropdownMenuRadioItem value="solid">纯色</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="transparent">点阵</DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                    {backgroundMode === 'transparent' && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel className="text-xs text-muted-foreground">点阵间距</DropdownMenuLabel>
-                        <DropdownMenuRadioGroup
-                          value={backgroundSpacing}
-                          onValueChange={(value) => setBackgroundSpacing(value as 'tight' | 'medium' | 'loose')}
-                        >
-                          <DropdownMenuRadioItem value="tight">紧密</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="medium">标准</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="loose">稀疏</DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel className="text-xs text-muted-foreground">点阵强度</DropdownMenuLabel>
-                        <DropdownMenuRadioGroup
-                          value={backgroundIntensity}
-                          onValueChange={(value) => setBackgroundIntensity(value as 'low' | 'medium' | 'high')}
-                        >
-                          <DropdownMenuRadioItem value="low">弱</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="medium">中</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="high">强</DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                      </>
-                    )}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 rounded-full border border-border bg-background/70 px-2 py-1 text-xs font-medium text-muted-foreground">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={user?.image ?? ''} alt={userDisplayName} />
-                <AvatarFallback className="text-[10px]">{userInitials}</AvatarFallback>
-              </Avatar>
-              <span className="max-w-[120px] truncate text-foreground">{userDisplayName}</span>
-            </div>
-            <ThemeToggle />
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleExportCanvas}
-              disabled={isExporting}
-              className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Download className="h-3.5 w-3.5" />
-              {isExporting ? '导出中...' : '导出'}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  <MoreHorizontal className="h-3.5 w-3.5" />
-                  更多
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem className="gap-2">
-                  <Share2 className="h-4 w-4" />
-                  分享
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-muted-foreground">积分</DropdownMenuLabel>
-                <DropdownMenuItem disabled className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    余额
-                  </span>
-                  <span>{creditsDisplay}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              size="sm"
-              className="h-8 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.55)] hover:bg-primary/90"
-            >
-              升级
-            </Button>
-          </div>
+                  <Button
+                    size="sm"
+                    className="h-7 rounded-full px-3 text-xs font-semibold text-primary-foreground"
+                  >
+                    升级
+                  </Button>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>积分</span>
+                  <span className="text-foreground">{creditsDisplay}</span>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="gap-2"
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              >
+                {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                {theme === 'light' ? '切换为深色' : '切换为浅色'}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" disabled>
+                <MessageSquare className="h-4 w-4" />
+                账户管理
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" disabled>
+                <Megaphone className="h-4 w-4" />
+                使用教程
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" disabled>
+                <ArrowUpRight className="h-4 w-4" />
+                退出登录
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -3810,33 +3829,20 @@ export function InfiniteCanvas() {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute right-5 top-24 z-20">
+      <div
+        className={cn(
+          'pointer-events-none absolute right-5 top-24 z-20 transition-transform duration-300 ease-out',
+          chatPanelShiftClass
+        )}
+      >
         <div className="pointer-events-auto flex items-center gap-2">
           <div className="rounded-full border border-border bg-background/85 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
             缩放 {zoomPercent}%
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsChatOpen(true)
-                  setIsChatMinimized((prev) => !prev)
-                }}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground"
-                aria-label={isChatMinimized ? '展开 AI 对话' : '收起 AI 对话'}
-              >
-                <Sparkles className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="text-xs">
-              {isChatMinimized ? '智能设计师' : '收起对话'}
-            </TooltipContent>
-          </Tooltip>
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-6 left-2 top-24 z-20">
+      <div className="pointer-events-none absolute bottom-3 left-2 top-4 z-20">
         <div className="relative h-full w-[280px]">
           <div className="pointer-events-auto absolute bottom-0 left-0 z-30">
             <Tooltip>
@@ -4046,6 +4052,7 @@ export function InfiniteCanvas() {
                   })}
                 </div>
               )}
+            </div>
           </div>
         </div>
       </div>
@@ -4385,9 +4392,41 @@ export function InfiniteCanvas() {
         </div>
       )}
 
-      {isChatOpen && !isChatMinimized && (
-        <div className="pointer-events-none absolute bottom-6 right-5 top-32 z-20">
-          <div className="pointer-events-auto flex h-full w-[360px] flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur">
+      <div className="pointer-events-none absolute bottom-3 right-2 top-4 z-20">
+        <div className="relative h-full w-[360px]">
+          <div className="pointer-events-auto absolute bottom-0 right-0 z-30">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsChatOpen(true)
+                    setIsChatMinimized((prev) => !prev)
+                  }}
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground',
+                    isChatPanelOpen
+                      ? 'border-primary/40 bg-primary/10 text-primary shadow-none'
+                      : 'shadow-sm'
+                  )}
+                  aria-label={isChatPanelOpen ? '隐藏 AI 对话' : '展开 AI 对话'}
+                >
+                  {isChatPanelOpen ? <ArrowRight className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="text-xs">
+                {isChatPanelOpen ? '隐藏对话' : '智能设计师'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div
+            className={cn(
+              'pointer-events-auto flex h-full w-full flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur transition-transform duration-300 ease-out',
+              isChatPanelOpen
+                ? 'translate-x-0'
+                : 'pointer-events-none translate-x-[calc(100%+1.25rem)]'
+            )}
+          >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-xs font-semibold text-primary">
@@ -4646,7 +4685,7 @@ export function InfiniteCanvas() {
             `}</style>
           </div>
         </div>
-      )}
+      </div>
 
       {isCanvasPromptOpen && (
         <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 w-[min(720px,calc(100%-3rem))] -translate-x-1/2">

@@ -2122,13 +2122,27 @@ export const zhCN: Locale = {
       samplesTitle: "试试示例图",
       samplesHint: "无需上传本地文件即可体验",
       sampleApplied: "已载入示例",
+      sampleLabels: {
+        portrait: "人像",
+        product: "商品",
+        fashion: "服装"
+      },
+      fileLabel: "已选文件",
+      sizeLabel: "文件大小",
+      tipsTitle: "使用建议",
       select: "选择图片",
       replace: "替换图片",
       clear: "清空"
     },
     actions: {
       remove: "开始移除背景",
+      retry: "重新处理",
       processing: "处理中..."
+    },
+    pipeline: {
+      upload: "1. 上传图片",
+      remove: "2. 智能去背",
+      download: "3. 下载结果"
     },
     status: {
       uploading: "正在上传图片...",
@@ -2140,6 +2154,8 @@ export const zhCN: Locale = {
       description: "查看前后对比并下载透明 PNG。",
       before: "处理前",
       after: "处理后",
+      originalTag: "原图",
+      cutoutTag: "去背结果",
       waiting: "处理完成后将在这里显示结果",
       emptyTitle: "暂无结果",
       emptyDescription: "请先上传图片并点击移除背景。",
@@ -2148,6 +2164,7 @@ export const zhCN: Locale = {
     },
     howItWorks: {
       title: "使用流程",
+      description: "整个去背流程只需 3 步，快速完成出图。",
       steps: [
         {
           title: "上传图片",
@@ -2165,6 +2182,7 @@ export const zhCN: Locale = {
     },
     faq: {
       title: "常见问题",
+      description: "这里整理了最常见的使用问题。",
       items: [
         {
           q: "支持哪些图片格式？",

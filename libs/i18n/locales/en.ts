@@ -2114,13 +2114,27 @@ export const en: Locale = {
       samplesTitle: "Try sample images",
       samplesHint: "Quick test without uploading your own file",
       sampleApplied: "Sample loaded",
+      sampleLabels: {
+        portrait: "Portrait",
+        product: "Product",
+        fashion: "Fashion"
+      },
+      fileLabel: "Selected file",
+      sizeLabel: "File size",
+      tipsTitle: "Tips",
       select: "Select image",
       replace: "Replace image",
       clear: "Clear"
     },
     actions: {
       remove: "Remove background",
+      retry: "Reprocess",
       processing: "Processing..."
+    },
+    pipeline: {
+      upload: "1. Upload image",
+      remove: "2. Remove background",
+      download: "3. Download result"
     },
     status: {
       uploading: "Uploading image...",
@@ -2132,6 +2146,8 @@ export const en: Locale = {
       description: "View before/after comparison and download transparent PNG.",
       before: "Before",
       after: "After",
+      originalTag: "Original",
+      cutoutTag: "Background removed",
       waiting: "The result will appear here after processing",
       emptyTitle: "No result yet",
       emptyDescription: "Upload an image and click remove background to start.",
@@ -2140,6 +2156,7 @@ export const en: Locale = {
     },
     howItWorks: {
       title: "How it works",
+      description: "Use the background remover in three quick steps.",
       steps: [
         {
           title: "Upload an image",
@@ -2157,6 +2174,7 @@ export const en: Locale = {
     },
     faq: {
       title: "FAQ",
+      description: "Here are the most common usage questions.",
       items: [
         {
           q: "Which formats are supported?",
