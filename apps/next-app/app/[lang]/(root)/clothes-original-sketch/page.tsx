@@ -26,7 +26,6 @@ type GenerationMode = 'single' | 'multi'
 type SketchView = 'front' | 'side' | 'back'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
-const OUTPUT_COUNT_OPTIONS = ['1', '2', '3', '4', '5', '6']
 const PROVIDER_LABELS: Record<string, string> = {
   evolink: 'Evolink',
 }
@@ -35,6 +34,11 @@ const VIEW_OPTIONS: { value: SketchView; label: string }[] = [
   { value: 'side', label: '侧视图' },
   { value: 'back', label: '背视图' },
 ]
+const VIEW_LABEL_MAP: Record<SketchView, string> = {
+  front: '正视图',
+  side: '侧视图',
+  back: '背视图',
+}
 
 const MODE_BUTTONS: { value: GenerationMode; title: string; description: string }[] = [
   {
@@ -56,11 +60,11 @@ const HOW_IT_WORKS = [
   },
   {
     title: '选择模式与参数',
-    description: '可选单视图或多视图，并设置视图、尺寸、输出张数。',
+    description: '可选单视图或多视图，并设置视图与尺寸。',
   },
   {
     title: '生成并下载',
-    description: '点击生成后系统自动出图，支持单张下载与一键下载全部结果。',
+    description: '点击生成后系统自动出图，支持单张结果下载。',
   },
 ]
 
@@ -127,13 +131,12 @@ export default function ClothesOriginalSketchPage() {
   const [size, setSize] = useState<string>(config.aiImage.defaults.size ?? 'auto')
   const [mode, setMode] = useState<GenerationMode>('multi')
   const [views, setViews] = useState<SketchView[]>(['front', 'side', 'back'])
-  const [outputCount, setOutputCount] = useState('3')
   const [isDragActive, setIsDragActive] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [progressText, setProgressText] = useState('')
   const [results, setResults] = useState<string[]>([])
-  const [activeResultIndex, setActiveResultIndex] = useState(0)
+  const [resultViewLabel, setResultViewLabel] = useState<string>('')
 
   const modelOptions = useMemo(() => {
     const providers = Object.entries(config.aiImage.availableModels) as Array<[string, readonly string[]]>
@@ -182,12 +185,6 @@ export default function ClothesOriginalSketchPage() {
   }, [size, sizeOptions])
 
   useEffect(() => {
-    if (results.length > 0) {
-      setActiveResultIndex(0)
-    }
-  }, [results])
-
-  useEffect(() => {
     return () => {
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl)
@@ -203,6 +200,7 @@ export default function ClothesOriginalSketchPage() {
     setPreviewUrl(null)
     setUploadedImageUrl(null)
     setResults([])
+    setResultViewLabel('')
     setProgressText('')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -228,6 +226,7 @@ export default function ClothesOriginalSketchPage() {
     setPreviewUrl(URL.createObjectURL(file))
     setUploadedImageUrl(null)
     setResults([])
+    setResultViewLabel('')
     setProgressText('')
   }
 
@@ -325,7 +324,11 @@ export default function ClothesOriginalSketchPage() {
     return data.data.url as string
   }
 
-  const generateSingleSketch = async (sourceUrl: string) => {
+  const generateSingleSketch = async (
+    sourceUrl: string,
+    requestMode: GenerationMode,
+    requestViews: SketchView[]
+  ) => {
     const response = await fetch('/api/clothes-original-sketch', {
       method: 'POST',
       headers: {
@@ -335,8 +338,8 @@ export default function ClothesOriginalSketchPage() {
         imageUrl: sourceUrl,
         model,
         size,
-        mode,
-        views,
+        mode: requestMode,
+        views: requestViews,
       }),
     })
 
@@ -364,15 +367,10 @@ export default function ClothesOriginalSketchPage() {
       return
     }
 
-    const total = Number.parseInt(outputCount, 10)
-    if (!Number.isFinite(total) || total < 1) {
-      toast.error('输出张数设置无效')
-      return
-    }
-
     setIsGenerating(true)
     setProgressText('准备中...')
     setResults([])
+    setResultViewLabel('')
 
     try {
       let sourceUrl = uploadedImageUrl
@@ -383,17 +381,21 @@ export default function ClothesOriginalSketchPage() {
         toast.success('参考图上传成功')
       }
 
-      const nextResults: string[] = []
-      const modeLabel = mode === 'single' ? '单视图' : '多视图'
-      for (let index = 0; index < total; index += 1) {
-        setProgressText(`正在生成 ${modeLabel} ${index + 1}/${total}...`)
-        const imageUrl = await generateSingleSketch(sourceUrl)
-        nextResults.push(imageUrl)
-        setResults([...nextResults])
-      }
+      const requestViews =
+        mode === 'single'
+          ? ([views[0] ?? 'front'] as SketchView[])
+          : views
 
-      setProgressText(`完成：已生成 ${nextResults.length} 张线稿`)
-      toast.success(`线稿生成完成（${nextResults.length} 张）`)
+      const imageUrl = await generateSingleSketch(sourceUrl, mode, requestViews)
+      const label =
+        mode === 'single'
+          ? VIEW_LABEL_MAP[requestViews[0]]
+          : requestViews.map((item) => VIEW_LABEL_MAP[item]).join(' + ')
+
+      setResults([imageUrl])
+      setResultViewLabel(label)
+      setProgressText('完成：已生成 1 张线稿')
+      toast.success('线稿生成完成')
     } catch (error) {
       console.error('Generate sketch failed:', error)
       const message = error instanceof Error ? error.message : '生成失败'
@@ -405,13 +407,6 @@ export default function ClothesOriginalSketchPage() {
     }
   }
 
-  const handleDownloadAll = () => {
-    if (results.length === 0) return
-    results.forEach((url, index) => {
-      downloadImage(url, `line-sketch-view-${index + 1}.png`)
-    })
-  }
-
   const panelClass =
     'border-border/60 bg-card/40 shadow-[0_30px_80px_-60px_hsl(var(--primary)/0.25)] backdrop-blur-xl'
 
@@ -419,7 +414,7 @@ export default function ClothesOriginalSketchPage() {
     <div className="min-h-screen bg-background text-foreground">
       <FeaturePageShell
         title="使用 AI 生成服装线稿"
-        description="上传图片后可选单视图或多视图，并设置视图、尺寸和输出张数。"
+        description="上传图片后可选单视图或多视图，并设置视图与尺寸。"
         badge={{ icon: <Sparkles className="size-3.5" />, label: 'Line Sketch Views' }}
         className="max-w-6xl"
         badgeClassName="border-border/60 bg-background/70 text-muted-foreground"
@@ -601,38 +596,20 @@ export default function ClothesOriginalSketchPage() {
                             </Select>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1.5">
-                              <div className="text-xs text-muted-foreground">生成尺寸</div>
-                              <Select value={size} onValueChange={setSize}>
-                                <SelectTrigger className="h-9 rounded-full border-border/60 bg-background/70 text-xs">
-                                  <SelectValue placeholder="尺寸" />
-                                </SelectTrigger>
-                                <SelectContent className="border-border/60 bg-background text-foreground">
-                                  {sizeOptions.map((option) => (
-                                    <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <div className="text-xs text-muted-foreground">输出张数</div>
-                              <Select value={outputCount} onValueChange={setOutputCount}>
-                                <SelectTrigger className="h-9 rounded-full border-border/60 bg-background/70 text-xs">
-                                  <SelectValue placeholder="张数" />
-                                </SelectTrigger>
-                                <SelectContent className="border-border/60 bg-background text-foreground">
-                                  {OUTPUT_COUNT_OPTIONS.map((count) => (
-                                    <SelectItem key={count} value={count} className="focus:bg-muted/40">
-                                      {count} 张
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                          <div className="space-y-1.5">
+                            <div className="text-xs text-muted-foreground">生成尺寸</div>
+                            <Select value={size} onValueChange={setSize}>
+                              <SelectTrigger className="h-9 rounded-full border-border/60 bg-background/70 text-xs">
+                                <SelectValue placeholder="尺寸" />
+                              </SelectTrigger>
+                              <SelectContent className="border-border/60 bg-background text-foreground">
+                                {sizeOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           <div className="space-y-2 pt-1">
@@ -694,20 +671,8 @@ export default function ClothesOriginalSketchPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">生成结果</h3>
-                    <p className="text-xs text-muted-foreground">支持逐张下载，也可一键下载全部。</p>
+                    <p className="text-xs text-muted-foreground">已生成单张结果，可直接下载。</p>
                   </div>
-                  {results.length > 0 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDownloadAll}
-                      className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs"
-                    >
-                      <Download className="mr-1.5 h-3.5 w-3.5" />
-                      下载全部
-                    </Button>
-                  )}
                 </div>
 
                 {results.length === 0 ? (
@@ -742,66 +707,27 @@ export default function ClothesOriginalSketchPage() {
                       <div className="rounded-3xl border border-border/60 bg-background/70 p-4 shadow-sm">
                         <div className="mb-3 flex items-center justify-between gap-3">
                           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                            已编辑
+                            已编辑 · {resultViewLabel || '线稿'}
                           </div>
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() =>
-                              downloadImage(
-                                results[activeResultIndex],
-                                `line-sketch-view-${activeResultIndex + 1}.png`
-                              )
-                            }
+                            onClick={() => downloadImage(results[0], 'line-sketch-view.png')}
                             className="h-8 rounded-full border-border/60 bg-background/70 text-xs"
                           >
                             <Download className="mr-1.5 h-3.5 w-3.5" />
-                            下载当前
+                            下载结果
                           </Button>
                         </div>
 
                         <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/60 bg-muted/20">
                           <img
-                            src={results[activeResultIndex]}
-                            alt={`线稿 ${activeResultIndex + 1}`}
+                            src={results[0]}
+                            alt={resultViewLabel || '线稿'}
                             className="h-full w-full object-contain"
                           />
                         </div>
-
-                        {results.length > 1 && (
-                          <div className="mt-4">
-                            <div className="mb-2 text-xs text-muted-foreground">
-                              多图结果 · 选择查看 ({activeResultIndex + 1}/{results.length})
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                              {results.map((url, index) => {
-                                const isActive = index === activeResultIndex
-                                return (
-                                  <button
-                                    key={`${url}-${index}`}
-                                    type="button"
-                                    onClick={() => setActiveResultIndex(index)}
-                                    className={`relative overflow-hidden rounded-xl border ${
-                                      isActive ? 'border-primary/60' : 'border-border/60'
-                                    } bg-background/70`}
-                                  >
-                                    <img
-                                      src={url}
-                                      alt={`线稿缩略图 ${index + 1}`}
-                                      className="h-20 w-full object-contain"
-                                    />
-                                    {isActive && (
-                                      <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
-                                        当前
-                                      </span>
-                                    )}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>

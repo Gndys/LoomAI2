@@ -1685,6 +1685,10 @@ export const zhCN: Locale = {
         title: "文件上传",
         description: "文件上传实现，可扩展设计，支持多个 Provider，需要登录访问"
       },
+      backgroundRemover: {
+        title: "移除背景",
+        description: "上传图片后一键去除背景，支持透明 PNG 下载，需要登录访问"
+      },
       cardBoundary: {
         title: "卡片边界对比",
         description: "对比卡片边框与阴影清晰度，确定最终视觉方案"
@@ -2103,6 +2107,96 @@ export const zhCN: Locale = {
       maxFiles: "只能上传 1 个文件",
       imageOnly: "只允许上传图片文件",
       fileTooLarge: "文件大小必须小于 1MB"
+    }
+  },
+  backgroundRemover: {
+    title: "移除背景",
+    description: "上传人像、商品或服装图片，自动生成透明背景 PNG，适合电商和设计场景。",
+    badge: "背景移除",
+    upload: {
+      title: "上传图片",
+      description: "支持 JPG、PNG、WEBP，单张最大 10MB。",
+      dropTitle: "将图片拖拽到这里",
+      dropHint: "或点击区域选择文件",
+      fileHint: "建议：主体清晰、背景简洁，效果更好",
+      samplesTitle: "试试示例图",
+      samplesHint: "无需上传本地文件即可体验",
+      sampleApplied: "已载入示例",
+      select: "选择图片",
+      replace: "替换图片",
+      clear: "清空"
+    },
+    actions: {
+      remove: "开始移除背景",
+      processing: "处理中..."
+    },
+    status: {
+      uploading: "正在上传图片...",
+      removing: "正在移除背景...",
+      done: "处理完成"
+    },
+    result: {
+      title: "预览与下载",
+      description: "查看前后对比并下载透明 PNG。",
+      before: "处理前",
+      after: "处理后",
+      waiting: "处理完成后将在这里显示结果",
+      emptyTitle: "暂无结果",
+      emptyDescription: "请先上传图片并点击移除背景。",
+      download: "下载 PNG",
+      ready: "透明图已生成"
+    },
+    howItWorks: {
+      title: "使用流程",
+      steps: [
+        {
+          title: "上传图片",
+          description: "上传人像、商品或服装图，主体越清晰效果越稳定。"
+        },
+        {
+          title: "AI 自动去背",
+          description: "点击按钮后系统自动识别主体并移除背景。"
+        },
+        {
+          title: "预览并下载",
+          description: "在线查看效果，确认后下载透明 PNG 用于设计或上架。"
+        }
+      ]
+    },
+    faq: {
+      title: "常见问题",
+      items: [
+        {
+          q: "支持哪些图片格式？",
+          a: "目前支持 JPG、PNG、WEBP 格式。"
+        },
+        {
+          q: "上传大小有限制吗？",
+          a: "有，单张图片最大 10MB。"
+        },
+        {
+          q: "导出结果是透明背景吗？",
+          a: "是的，结果会以透明 PNG 输出，方便二次设计。"
+        },
+        {
+          q: "这个功能需要登录吗？",
+          a: "需要登录后才能上传并处理图片。"
+        }
+      ],
+      note: "如果边缘较复杂，建议上传更高清原图。"
+    },
+    toasts: {
+      success: "背景移除成功"
+    },
+    errors: {
+      imageOnly: "只允许上传图片文件",
+      fileTooLarge: "图片大小必须小于 10MB",
+      sampleLoadFailed: "示例图加载失败，请稍后重试",
+      selectImage: "请先上传图片",
+      unauthorized: "请先登录后再使用",
+      uploadFailed: "上传失败，请稍后重试",
+      removeFailed: "移除背景失败，请稍后重试",
+      timeout: "处理超时，请稍后再试"
     }
   }
 } as const; 

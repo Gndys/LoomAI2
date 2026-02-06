@@ -1677,6 +1677,10 @@ export const en: Locale = {
         title: "File Upload",
         description: "File upload with extensible design, multi-provider support. Login required."
       },
+      backgroundRemover: {
+        title: "Background Remover",
+        description: "Upload an image and remove the background with one click. Login required."
+      },
       cardBoundary: {
         title: "Card Boundary Playground",
         description: "Compare card border and shadow clarity."
@@ -2095,6 +2099,96 @@ export const en: Locale = {
       maxFiles: "You can only upload 1 file",
       imageOnly: "Only image files are allowed",
       fileTooLarge: "File size must be less than 1MB"
+    }
+  },
+  backgroundRemover: {
+    title: "Remove Background",
+    description: "Upload portraits, products, or apparel photos and generate transparent PNG cutouts automatically.",
+    badge: "Background Remover",
+    upload: {
+      title: "Upload Image",
+      description: "Supports JPG, PNG, WEBP. Maximum 10MB per image.",
+      dropTitle: "Drag your image here",
+      dropHint: "or click this area to browse files",
+      fileHint: "Recommended: clear subject and simple background",
+      samplesTitle: "Try sample images",
+      samplesHint: "Quick test without uploading your own file",
+      sampleApplied: "Sample loaded",
+      select: "Select image",
+      replace: "Replace image",
+      clear: "Clear"
+    },
+    actions: {
+      remove: "Remove background",
+      processing: "Processing..."
+    },
+    status: {
+      uploading: "Uploading image...",
+      removing: "Removing background...",
+      done: "Done"
+    },
+    result: {
+      title: "Preview & Download",
+      description: "View before/after comparison and download transparent PNG.",
+      before: "Before",
+      after: "After",
+      waiting: "The result will appear here after processing",
+      emptyTitle: "No result yet",
+      emptyDescription: "Upload an image and click remove background to start.",
+      download: "Download PNG",
+      ready: "Transparent image is ready"
+    },
+    howItWorks: {
+      title: "How it works",
+      steps: [
+        {
+          title: "Upload an image",
+          description: "Add a portrait, product, or apparel image. Best results come from clear subjects."
+        },
+        {
+          title: "Run AI removal",
+          description: "Click remove background to detect the subject and generate a transparent result."
+        },
+        {
+          title: "Download instantly",
+          description: "Preview the cutout and download PNG for e-commerce, design, or social posts."
+        }
+      ]
+    },
+    faq: {
+      title: "FAQ",
+      items: [
+        {
+          q: "Which formats are supported?",
+          a: "You can upload JPG, PNG, and WEBP images."
+        },
+        {
+          q: "Is there a file size limit?",
+          a: "Yes. Maximum upload size is 10MB per image."
+        },
+        {
+          q: "Will output keep transparency?",
+          a: "Yes. The output is provided as a transparent PNG for easy reuse."
+        },
+        {
+          q: "Do I need to log in?",
+          a: "Yes. This feature requires login to upload and process images."
+        }
+      ],
+      note: "If edges are complex, try a higher-quality source image."
+    },
+    toasts: {
+      success: "Background removed successfully"
+    },
+    errors: {
+      imageOnly: "Only image files are allowed",
+      fileTooLarge: "Image size must be under 10MB",
+      sampleLoadFailed: "Failed to load sample image",
+      selectImage: "Please upload an image first",
+      unauthorized: "Please sign in first",
+      uploadFailed: "Upload failed, please try again",
+      removeFailed: "Background removal failed, please try again",
+      timeout: "Processing timed out, please try again later"
     }
   }
 } as const; 

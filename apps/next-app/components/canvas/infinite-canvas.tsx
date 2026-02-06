@@ -6,6 +6,7 @@ import { DefaultChatTransport } from 'ai'
 import { nanoid } from 'nanoid'
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   ArrowUpRight,
   AlignCenter,
@@ -41,7 +42,6 @@ import {
   Scissors,
   Copy,
   Layers,
-  SlidersHorizontal,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -55,6 +55,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -3159,6 +3162,9 @@ export function InfiniteCanvas() {
 
   const zoomPercent = Math.round(camera.scale * 100)
   const isChatBusy = status === 'streaming' || status === 'submitted'
+  const layerPanelShiftClass = isLayerPanelOpen
+    ? 'translate-x-[300px] translate-y-1'
+    : 'translate-x-0 translate-y-0'
   const resolveTextLabel = (text: string) => {
     const trimmed = text.trim()
     if (!trimmed) return '未命名文本'
@@ -3559,57 +3565,64 @@ export function InfiniteCanvas() {
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-72 p-2">
+              <DropdownMenuContent align="start" className="w-64 p-2">
                 <DropdownMenuLabel className="px-2 text-sm font-semibold">画布设置</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-muted-foreground">主题色</DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={colorScheme}
-                  onValueChange={(value) => setColorScheme(value as ColorScheme)}
-                >
-                  {Object.entries(THEME_CONFIG).map(([key, config]) => (
-                    <DropdownMenuRadioItem key={key} value={key} className="gap-2">
-                      <span
-                        className="h-3.5 w-3.5 rounded-full"
-                        style={{ backgroundColor: config.color }}
-                      />
-                      <span>{config.name}</span>
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-muted-foreground">背景样式</DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={backgroundMode}
-                  onValueChange={(value) => setBackgroundMode(value as 'solid' | 'transparent')}
-                >
-                  <DropdownMenuRadioItem value="solid">纯色</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="transparent">点阵</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-                {backgroundMode === 'transparent' && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">点阵间距</DropdownMenuLabel>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="text-sm">主题色</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-56 p-2">
                     <DropdownMenuRadioGroup
-                      value={backgroundSpacing}
-                      onValueChange={(value) => setBackgroundSpacing(value as 'tight' | 'medium' | 'loose')}
+                      value={colorScheme}
+                      onValueChange={(value) => setColorScheme(value as ColorScheme)}
                     >
-                      <DropdownMenuRadioItem value="tight">紧密</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="medium">标准</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="loose">稀疏</DropdownMenuRadioItem>
+                      {Object.entries(THEME_CONFIG).map(([key, config]) => (
+                        <DropdownMenuRadioItem key={key} value={key} className="gap-2">
+                          <span
+                            className="h-3.5 w-3.5 rounded-full"
+                            style={{ backgroundColor: config.color }}
+                          />
+                          <span>{config.name}</span>
+                        </DropdownMenuRadioItem>
+                      ))}
                     </DropdownMenuRadioGroup>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">点阵强度</DropdownMenuLabel>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="text-sm">背景样式</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-56 p-2">
                     <DropdownMenuRadioGroup
-                      value={backgroundIntensity}
-                      onValueChange={(value) => setBackgroundIntensity(value as 'low' | 'medium' | 'high')}
+                      value={backgroundMode}
+                      onValueChange={(value) => setBackgroundMode(value as 'solid' | 'transparent')}
                     >
-                      <DropdownMenuRadioItem value="low">弱</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="medium">中</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="high">强</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="solid">纯色</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="transparent">点阵</DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
-                  </>
-                )}
+                    {backgroundMode === 'transparent' && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">点阵间距</DropdownMenuLabel>
+                        <DropdownMenuRadioGroup
+                          value={backgroundSpacing}
+                          onValueChange={(value) => setBackgroundSpacing(value as 'tight' | 'medium' | 'loose')}
+                        >
+                          <DropdownMenuRadioItem value="tight">紧密</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="medium">标准</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="loose">稀疏</DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">点阵强度</DropdownMenuLabel>
+                        <DropdownMenuRadioGroup
+                          value={backgroundIntensity}
+                          onValueChange={(value) => setBackgroundIntensity(value as 'low' | 'medium' | 'high')}
+                        >
+                          <DropdownMenuRadioItem value="low">弱</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="medium">中</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="high">强</DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -3669,31 +3682,12 @@ export function InfiniteCanvas() {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute left-5 top-4 z-30">
-        <div className="pointer-events-auto">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setIsLayerPanelOpen((prev) => !prev)}
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground',
-                  isLayerPanelOpen &&
-                    'border-primary/40 bg-primary/10 text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.2)]'
-                )}
-                aria-label={isLayerPanelOpen ? '隐藏图层面板' : '显示图层面板'}
-              >
-                <Layers className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
-              {isLayerPanelOpen ? '隐藏图层' : '显示图层'}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-
-      <div className="pointer-events-none absolute left-5 top-24 z-20">
+      <div
+        className={cn(
+          'pointer-events-none absolute left-5 top-24 z-20 transition-transform duration-300 ease-out',
+          layerPanelShiftClass
+        )}
+      >
         <div className="pointer-events-auto flex flex-col items-center gap-2 rounded-2xl border border-border bg-background/85 p-2 shadow-md backdrop-blur">
           {toolOrder.map((item) => {
             if (item === 'upload') {
@@ -3842,38 +3836,61 @@ export function InfiniteCanvas() {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-6 left-5 top-32 z-20">
-        <div
-          className={cn(
-            'flex h-full w-[280px] flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur transition-transform duration-300 ease-out',
-            isLayerPanelOpen ? 'pointer-events-auto translate-x-0' : 'pointer-events-none -translate-x-[calc(100%+1.25rem)]'
-          )}
-          onContextMenuCapture={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            const target = event.target as HTMLElement | null
-            const row = target?.closest('[data-layer-item]') as HTMLElement | null
-            const layerId = row?.dataset?.layerId
-            if (!layerId) {
-              setLayerContextMenu(null)
-              setLayerDetailPopover(null)
-              return
-            }
-            const item = items.find((entry) => entry.id === layerId)
-            if (!item) {
-              setLayerContextMenu(null)
-              setLayerDetailPopover(null)
-              return
-            }
-            if (!item.hidden && !item.locked) {
-              if (!isItemInViewport(item)) {
-                focusItem(item)
+      <div className="pointer-events-none absolute bottom-6 left-2 top-24 z-20">
+        <div className="relative h-full w-[280px]">
+          <div className="pointer-events-auto absolute bottom-0 left-0 z-30">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setIsLayerPanelOpen((prev) => !prev)}
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground',
+                    isLayerPanelOpen
+                      ? 'border-primary/40 bg-primary/10 text-primary shadow-none'
+                      : 'shadow-sm'
+                  )}
+                  aria-label={isLayerPanelOpen ? '隐藏图层面板' : '显示图层面板'}
+                >
+                  {isLayerPanelOpen ? <ArrowLeft className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">
+                {isLayerPanelOpen ? '隐藏图层' : '显示图层'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div
+            className={cn(
+              'flex h-full w-full flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur transition-transform duration-300 ease-out',
+              isLayerPanelOpen ? 'pointer-events-auto translate-x-0' : 'pointer-events-none -translate-x-[calc(100%+1.25rem)]'
+            )}
+            onContextMenuCapture={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              const target = event.target as HTMLElement | null
+              const row = target?.closest('[data-layer-item]') as HTMLElement | null
+              const layerId = row?.dataset?.layerId
+              if (!layerId) {
+                setLayerContextMenu(null)
+                setLayerDetailPopover(null)
+                return
               }
-              syncSelection([item.id], item.id)
-            }
-            openLayerContextMenu(event, item)
-          }}
-        >
+              const item = items.find((entry) => entry.id === layerId)
+              if (!item) {
+                setLayerContextMenu(null)
+                setLayerDetailPopover(null)
+                return
+              }
+              if (!item.hidden && !item.locked) {
+                if (!isItemInViewport(item)) {
+                  focusItem(item)
+                }
+                syncSelection([item.id], item.id)
+              }
+              openLayerContextMenu(event, item)
+            }}
+          >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-xs font-semibold text-primary">
@@ -3884,15 +3901,6 @@ export function InfiniteCanvas() {
                   <span className="text-xs text-muted-foreground">{items.length} 项</span>
                 </div>
               </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => setIsLayerPanelOpen(false)}
-                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label="关闭图层面板"
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-3">
               {layerItems.length === 0 ? (
@@ -4848,7 +4856,7 @@ export function InfiniteCanvas() {
                         {isCanvasPromptAdvanced ? (
                           <ChevronDown className="h-4 w-4" />
                         ) : (
-                          <SlidersHorizontal className="h-4 w-4" />
+                          <Sparkles className="h-4 w-4" />
                         )}
                       </Button>
                     </TooltipTrigger>

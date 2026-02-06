@@ -90,6 +90,11 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     requiresAuth: true
   },
   {
+    pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/background-remover(\\/.*)?$`),
+    type: 'page',
+    requiresAuth: true,
+  },
+  {
     pattern: new RegExp(`^\\/(${i18n.locales.join('|')})\\/clothes-split(\\/.*)?$`),
     type: 'page',
     requiresAuth: true,
