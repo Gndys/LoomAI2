@@ -21,23 +21,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 
-const DEFAULT_PROMPT = `
-将输入服装图转换为工艺线稿三视图。
-要求：
-- 输出干净的黑色线稿，白色背景。
-- 无颜色、无阴影、无纹理、无填充。
-- 优先包含正面、侧面、背面视图，比例准确。
-- 保留轮廓线、分割线、缝线、褶皱与关键结构细节。
-- 不要文字、logo、水印、边框。
-`.trim()
+type GenerationMode = 'single' | 'three-view'
+type SketchView = 'front' | 'side' | 'back'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const OUTPUT_COUNT_OPTIONS = ['1', '2', '3', '4', '5', '6']
 const PROVIDER_LABELS: Record<string, string> = {
   evolink: 'Evolink',
 }
+const MODE_OPTIONS: { value: GenerationMode; label: string }[] = [
+  { value: 'single', label: '普通线稿' },
+  { value: 'three-view', label: '三视图线稿' },
+]
+const VIEW_OPTIONS: { value: SketchView; label: string }[] = [
+  { value: 'front', label: '正视图' },
+  { value: 'side', label: '侧视图' },
+  { value: 'back', label: '背视图' },
+]
 
 const HOW_IT_WORKS = [
   {
@@ -45,8 +46,8 @@ const HOW_IT_WORKS = [
     description: '支持 JPG、PNG、WEBP。建议上传正面清晰、无遮挡的原图或平铺图。',
   },
   {
-    title: '设置模型与输出张数',
-    description: '模型选项与无限画布保持一致，可按需求输出 1~6 张线稿结果。',
+    title: '选择模式与参数',
+    description: '可选普通线稿或三视图，并设置视图、尺寸、输出张数。',
   },
   {
     title: '生成并下载',
@@ -64,31 +65,19 @@ const FAQ_ITEMS = [
     a: '有，单张图片最大 10MB。超过大小会提示重新上传。',
   },
   {
-    q: '为什么我设置了 3 张却风格相似？',
-    a: '同一提示词和模型下结果可能趋同。建议在提示词中加入“角度/细节差异”描述。',
+    q: '普通线稿和三视图的区别是什么？',
+    a: '普通线稿可按你选择的单个或多个视图生成，三视图模式更强调结构化多视角表达。',
   },
   {
-    q: '生成失败会怎样？',
-    a: '页面会保留当前上传图与参数设置，你可以直接调整模型或提示词后重试。',
+    q: '提示词会暴露给用户吗？',
+    a: '不会。提示词模板仅在服务端按你选择的模式和视图自动组装。',
   },
 ]
 
 const SAMPLE_PRESETS = [
-  {
-    id: 'sample-1',
-    title: '基础 T 恤',
-    prompt: `${DEFAULT_PROMPT}\n重点表现领口、肩线和袖口结构。`,
-  },
-  {
-    id: 'sample-2',
-    title: '连帽卫衣',
-    prompt: `${DEFAULT_PROMPT}\n重点表现帽型、袋口和罗纹下摆。`,
-  },
-  {
-    id: 'sample-3',
-    title: '工装夹克',
-    prompt: `${DEFAULT_PROMPT}\n重点表现拼接、口袋翻盖与车线层次。`,
-  },
+  { id: 'sample-1', title: '基础 T 恤' },
+  { id: 'sample-2', title: '连帽卫衣' },
+  { id: 'sample-3', title: '工装夹克' },
 ]
 
 function createSampleImageDataUri(label: string, accent: string) {
@@ -125,8 +114,10 @@ export default function ClothesOriginalSketchPage() {
   const [sourceFile, setSourceFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT)
   const [model, setModel] = useState<string>(config.aiImage.defaultModels.evolink)
+  const [size, setSize] = useState<string>(config.aiImage.defaults.size ?? 'auto')
+  const [mode, setMode] = useState<GenerationMode>('three-view')
+  const [views, setViews] = useState<SketchView[]>(['front', 'side', 'back'])
   const [outputCount, setOutputCount] = useState('3')
   const [isDragActive, setIsDragActive] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -144,6 +135,14 @@ export default function ClothesOriginalSketchPage() {
       }))
     })
   }, [])
+
+  const sizeOptions = useMemo(() => {
+    const base = config.aiImage.evolinkSizes
+    if (model === 'z-image-turbo') {
+      return base.filter((item) => item.value !== 'auto')
+    }
+    return base
+  }, [model])
 
   const sampleCards = useMemo(
     () => [
@@ -163,7 +162,14 @@ export default function ClothesOriginalSketchPage() {
     []
   )
 
-  const canGenerate = Boolean(sourceFile) && prompt.trim().length > 0 && !isUploading && !isGenerating
+  const canGenerate = Boolean(sourceFile) && !isUploading && !isGenerating
+
+  useEffect(() => {
+    const allowed = new Set<string>(sizeOptions.map((item) => item.value))
+    if (!allowed.has(size)) {
+      setSize(sizeOptions[0]?.value ?? '1:1')
+    }
+  }, [size, sizeOptions])
 
   useEffect(() => {
     return () => {
@@ -243,11 +249,36 @@ export default function ClothesOriginalSketchPage() {
       const blob = await response.blob()
       const file = new File([blob], `${sample.id}.png`, { type: 'image/png' })
       handleFileSelect(file)
-      setPrompt(sample.prompt)
       toast.success(`已载入示例：${sample.title}`)
     } catch {
       toast.error('示例图加载失败，请稍后重试')
     }
+  }
+
+  const handleModeChange = (value: string) => {
+    const nextMode = value as GenerationMode
+    setMode(nextMode)
+    if (nextMode === 'three-view' && views.length < 2) {
+      setViews(['front', 'side', 'back'])
+      return
+    }
+    if (nextMode === 'single' && views.length === 0) {
+      setViews(['front'])
+    }
+  }
+
+  const toggleView = (view: SketchView) => {
+    setViews((prev) => {
+      const has = prev.includes(view)
+      if (has) {
+        if (prev.length === 1) {
+          toast.info('至少保留一个视图')
+          return prev
+        }
+        return prev.filter((item) => item !== view)
+      }
+      return [...prev, view]
+    })
   }
 
   const uploadSourceImage = async (file: File) => {
@@ -268,16 +299,17 @@ export default function ClothesOriginalSketchPage() {
   }
 
   const generateSingleSketch = async (sourceUrl: string) => {
-    const response = await fetch('/api/image-generate', {
+    const response = await fetch('/api/clothes-original-sketch', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        prompt: prompt.trim(),
+        imageUrl: sourceUrl,
         model,
-        size: 'auto',
-        image_urls: [sourceUrl],
+        size,
+        mode,
+        views,
       }),
     })
 
@@ -300,8 +332,8 @@ export default function ClothesOriginalSketchPage() {
       return
     }
 
-    if (!prompt.trim()) {
-      toast.error('提示词不能为空')
+    if (views.length === 0) {
+      toast.error('请至少选择一个视图')
       return
     }
 
@@ -325,8 +357,9 @@ export default function ClothesOriginalSketchPage() {
       }
 
       const nextResults: string[] = []
+      const modeLabel = mode === 'three-view' ? '三视图' : '普通线稿'
       for (let index = 0; index < total; index += 1) {
-        setProgressText(`正在生成 ${index + 1}/${total} 张线稿...`)
+        setProgressText(`正在生成 ${modeLabel} ${index + 1}/${total}...`)
         const imageUrl = await generateSingleSketch(sourceUrl)
         nextResults.push(imageUrl)
         setResults([...nextResults])
@@ -338,7 +371,7 @@ export default function ClothesOriginalSketchPage() {
       console.error('Generate sketch failed:', error)
       const message = error instanceof Error ? error.message : '生成失败'
       toast.error(message)
-      setProgressText('生成失败，请调整参数后重试')
+      setProgressText('生成失败，请重试')
     } finally {
       setIsUploading(false)
       setIsGenerating(false)
@@ -359,7 +392,7 @@ export default function ClothesOriginalSketchPage() {
     <div className="min-h-screen bg-background text-foreground">
       <FeaturePageShell
         title="使用 AI 生成线稿三视图"
-        description="100% 自动，支持上传原图并按你设置的张数生成工艺线稿。"
+        description="上传图片后可选普通线稿或三视图，并设置视图、尺寸和输出张数。"
         badge={{ icon: <Sparkles className="size-3.5" />, label: 'Line Sketch Views' }}
         className="max-w-6xl"
         badgeClassName="border-border/60 bg-background/70 text-muted-foreground"
@@ -418,93 +451,146 @@ export default function ClothesOriginalSketchPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-                    <div className="space-y-3">
-                      <div className="relative aspect-square overflow-hidden rounded-2xl border border-border/60 bg-muted/20">
-                        <img src={previewUrl} alt="参考图" className="h-full w-full object-contain" />
-                        <button
-                          type="button"
-                          onClick={clearImageState}
-                          className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:text-foreground"
-                          aria-label="清除上传"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="h-9 w-full rounded-full border-border/50 bg-background/60 text-xs"
-                      >
-                        重新上传图片
-                      </Button>
-                    </div>
-
-                    <div className="space-y-4 rounded-2xl border border-border/60 bg-background/65 p-4">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <div className="text-xs text-muted-foreground">模型</div>
-                          <Select value={model} onValueChange={setModel}>
-                            <SelectTrigger className="h-9 rounded-full border-border/60 bg-background/70 text-xs">
-                              <SelectValue placeholder="选择模型" />
-                            </SelectTrigger>
-                            <SelectContent className="border-border/60 bg-background text-foreground">
-                              {modelOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <div className="text-xs text-muted-foreground">输出张数</div>
-                          <Select value={outputCount} onValueChange={setOutputCount}>
-                            <SelectTrigger className="h-9 rounded-full border-border/60 bg-background/70 text-xs">
-                              <SelectValue placeholder="选择输出张数" />
-                            </SelectTrigger>
-                            <SelectContent className="border-border/60 bg-background text-foreground">
-                              {OUTPUT_COUNT_OPTIONS.map((count) => (
-                                <SelectItem key={count} value={count} className="focus:bg-muted/40">
-                                  {count} 张
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <div className="text-xs text-muted-foreground">提示词</div>
-                        <Textarea
-                          value={prompt}
-                          onChange={(event) => setPrompt(event.target.value)}
-                          className="min-h-[180px] resize-none rounded-2xl border-border/60 bg-background/70"
-                          placeholder="输入线稿生成提示词"
-                        />
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Button
-                          type="button"
-                          onClick={handleGenerate}
-                          disabled={!canGenerate}
-                          className="h-9 rounded-full px-5 text-xs font-medium text-background disabled:opacity-50"
-                        >
-                          {isGenerating ? '生成中...' : '生成线稿'}
-                        </Button>
-                        {isUploading && (
-                          <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            正在上传参考图...
+                  <div className="space-y-5">
+                    <div className="overflow-hidden rounded-3xl border border-border/60 bg-background/70">
+                      <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_0.75fr]">
+                        <div className="relative border-b border-border/60 bg-muted/20 lg:border-b-0 lg:border-r">
+                          <div className="relative h-[320px] sm:h-[380px] lg:h-[440px]">
+                            <img src={previewUrl} alt="参考图" className="h-full w-full object-contain p-4" />
                           </div>
-                        )}
-                      </div>
+                          <button
+                            type="button"
+                            onClick={clearImageState}
+                            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/60 bg-background/85 text-muted-foreground hover:text-foreground"
+                            aria-label="清除上传"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
 
-                      {progressText && <p className="text-xs text-muted-foreground">{progressText}</p>}
+                        <div className="space-y-4 p-5">
+                          <div className="space-y-1.5">
+                            <div className="text-xs text-muted-foreground">生成模式</div>
+                            <Select value={mode} onValueChange={handleModeChange}>
+                              <SelectTrigger className="h-9 rounded-full border-border/60 bg-background/70 text-xs">
+                                <SelectValue placeholder="选择生成模式" />
+                              </SelectTrigger>
+                              <SelectContent className="border-border/60 bg-background text-foreground">
+                                {MODE_OPTIONS.map((option) => (
+                                  <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="text-xs text-muted-foreground">视图选择</div>
+                            <div className="flex flex-wrap gap-2">
+                              {VIEW_OPTIONS.map((item) => {
+                                const active = views.includes(item.value)
+                                return (
+                                  <button
+                                    key={item.value}
+                                    type="button"
+                                    onClick={() => toggleView(item.value)}
+                                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                                      active
+                                        ? 'border-primary/45 bg-primary/10 text-primary'
+                                        : 'border-border/60 bg-background/70 text-foreground/80 hover:bg-muted/40'
+                                    }`}
+                                  >
+                                    {item.label}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="text-xs text-muted-foreground">模型</div>
+                            <Select value={model} onValueChange={setModel}>
+                              <SelectTrigger className="h-9 rounded-full border-border/60 bg-background/70 text-xs">
+                                <SelectValue placeholder="选择模型" />
+                              </SelectTrigger>
+                              <SelectContent className="border-border/60 bg-background text-foreground">
+                                {modelOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1.5">
+                              <div className="text-xs text-muted-foreground">生成尺寸</div>
+                              <Select value={size} onValueChange={setSize}>
+                                <SelectTrigger className="h-9 rounded-full border-border/60 bg-background/70 text-xs">
+                                  <SelectValue placeholder="尺寸" />
+                                </SelectTrigger>
+                                <SelectContent className="border-border/60 bg-background text-foreground">
+                                  {sizeOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="text-xs text-muted-foreground">输出张数</div>
+                              <Select value={outputCount} onValueChange={setOutputCount}>
+                                <SelectTrigger className="h-9 rounded-full border-border/60 bg-background/70 text-xs">
+                                  <SelectValue placeholder="张数" />
+                                </SelectTrigger>
+                                <SelectContent className="border-border/60 bg-background text-foreground">
+                                  {OUTPUT_COUNT_OPTIONS.map((count) => (
+                                    <SelectItem key={count} value={count} className="focus:bg-muted/40">
+                                      {count} 张
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 pt-1">
+                            <Button
+                              type="button"
+                              onClick={handleGenerate}
+                              disabled={!canGenerate}
+                              className="h-10 w-full rounded-full text-sm font-medium text-background disabled:opacity-50"
+                            >
+                              {isGenerating ? '生成中...' : '生成线稿'}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="h-9 w-full rounded-full border-border/50 bg-background/60 text-xs"
+                            >
+                              更换图片
+                            </Button>
+                          </div>
+
+                          {(isUploading || progressText) && (
+                            <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
+                              {isUploading ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  正在上传参考图...
+                                </span>
+                              ) : (
+                                progressText
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

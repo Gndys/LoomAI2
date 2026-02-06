@@ -259,6 +259,11 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     requiresAuth: true,
   },
   {
+    pattern: new RegExp('^/api/clothes-original-sketch(\\/.*)?$'),
+    type: 'api',
+    requiresAuth: true,
+  },
+  {
     pattern: new RegExp('^/api/clothes-nano-retouch(\\/.*)?$'),
     type: 'api',
     requiresAuth: true,
