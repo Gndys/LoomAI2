@@ -27,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Check, Globe, ChevronDown, Bot, Crown, Upload, ImageIcon, Scissors, Pencil, Paintbrush, History, Grid2x2, Grid3x3, Megaphone, DraftingCompass, Shirt, Square, Sparkles } from "lucide-react";
+import { Check, Globe, ChevronDown, Bot, Crown, Upload, ImageIcon, Scissors, Pencil, Paintbrush, History, Grid2x2, Grid3x3, Megaphone, DraftingCompass, Shirt, Square, Sparkles, Video } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { type SupportedLocale, locales } from "@libs/i18n";
 import { useTranslation } from "@/hooks/use-translation";
@@ -226,6 +226,18 @@ export default function Header({ className }: HeaderProps) {
                     <div className="flex flex-col">
                       <span className="font-medium">模特氛围图</span>
                       <span className="text-xs text-muted-foreground">一键生成朋友圈/种草场景模特图</span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={`/${currentLocale}/ecommerce-video`}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    <Video className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex flex-col">
+                      <span className="font-medium">简短电商视频</span>
+                      <span className="text-xs text-muted-foreground">1张商品图快速生成可发短视频</span>
                     </div>
                   </Link>
                 </DropdownMenuItem>
@@ -453,6 +465,13 @@ export default function Header({ className }: HeaderProps) {
                   <div>
                     <span className="block">模特氛围图</span>
                     <span className="block text-xs text-muted-foreground">一键生成朋友圈/种草场景模特图</span>
+                  </div>
+                </Link>
+                <Link href={`/${currentLocale}/ecommerce-video`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
+                  <Video className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="block">简短电商视频</span>
+                    <span className="block text-xs text-muted-foreground">1张商品图快速生成可发短视频</span>
                   </div>
                 </Link>
                 <Link href={`/${currentLocale}/background-remover`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>

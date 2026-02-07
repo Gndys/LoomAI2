@@ -14,6 +14,7 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
+  Bot,
   Bold,
   ChevronDown,
   Download,
@@ -45,6 +46,7 @@ import {
   Scissors,
   Copy,
   Layers,
+  Plus,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -67,6 +69,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { Message, MessageContent } from '@/components/ai-elements/message'
+import { Response } from '@/components/ai-elements/response'
 import type { FileUIPart, UIMessage } from 'ai'
 import { authClientReact } from '@libs/auth/authClient'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -1217,11 +1220,20 @@ export function InfiniteCanvas() {
     (text: string, role: 'user' | 'assistant') => {
       const value = text.trim()
       if (!value) return
-      const center = getViewportCenterWorld()
-      createChatBubbleItem(center.x, center.y, value, role, 'center')
+      const selectedItemsNow = items.filter((item) => selectedIds.includes(item.id))
+      const primaryItem = selectedItemsNow.find((item) => item.id === selectedId) ?? selectedItemsNow[0] ?? null
+      if (primaryItem) {
+        const offset = 24
+        const x = primaryItem.x + primaryItem.width + offset
+        const y = primaryItem.y
+        createChatBubbleItem(x, y, value, role, 'top-left')
+      } else {
+        const center = getViewportCenterWorld()
+        createChatBubbleItem(center.x, center.y, value, role, 'center')
+      }
       toast.success('已插入到画布')
     },
-    [createChatBubbleItem, getViewportCenterWorld]
+    [createChatBubbleItem, getViewportCenterWorld, items, selectedId, selectedIds]
   )
 
   const handleDeleteItems = useCallback(
@@ -5217,30 +5229,6 @@ export function InfiniteCanvas() {
                     </span>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 rounded-full px-3 text-xs"
-                  onClick={() => setIsChatAgentComposerOpen((prev) => !prev)}
-                >
-                  {isChatAgentComposerOpen ? '收起' : '新建智能体'}
-                </Button>
-              </div>
-              <div className="px-4 pb-3">
-                <Select value={activeChatAgent?.id ?? selectedChatAgentId} onValueChange={handleChatAgentSwitch}>
-                  <SelectTrigger className="h-9 w-full rounded-xl text-xs">
-                    <SelectValue placeholder="选择智能体" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={CHAT_AGENT_NONE_VALUE}>关闭智能体 · 普通对话</SelectItem>
-                    {chatAgents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        {agent.name}{agent.source === 'custom' ? ' · 自建' : ' · 内置'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               {isChatAgentComposerOpen && (
                 <div className="space-y-2 border-t border-border px-4 py-3">
@@ -5388,7 +5376,9 @@ export function InfiniteCanvas() {
                                 </div>
                               )}
                               {hasDisplayText && (
-                                <div className="whitespace-pre-wrap break-words">{mainText}</div>
+                                <Response className="text-sm leading-relaxed text-foreground">
+                                  {mainText}
+                                </Response>
                               )}
                               {promptText && (
                                 <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2 text-xs">
@@ -5453,7 +5443,9 @@ export function InfiniteCanvas() {
                                 </div>
                               )}
                               {hasDisplayText && (
-                                <div className="whitespace-pre-wrap break-words">{mainText}</div>
+                                <Response className="text-sm leading-relaxed text-foreground">
+                                  {mainText}
+                                </Response>
                               )}
                             </div>
                           )}
@@ -5575,21 +5567,71 @@ export function InfiniteCanvas() {
                   placeholder={activeChatAgent ? `向${activeChatAgent.name}描述你的需求` : '可直接发送选中图片，或输入你的需求'}
                   className="max-h-32 flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      type="submit"
-                      disabled={isChatBusy}
-                      className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
-                      <ArrowUpRight className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left" className="text-xs">
-                    发送
-                  </TooltipContent>
-                </Tooltip>
+                <div className="flex items-center gap-1">
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                          >
+                            <Bot className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">
+                        切换智能体
+                      </TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent side="top" align="end" className="w-56 p-2">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">选择智能体</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioGroup
+                        value={activeChatAgent?.id ?? selectedChatAgentId}
+                        onValueChange={handleChatAgentSwitch}
+                      >
+                        <DropdownMenuRadioItem value={CHAT_AGENT_NONE_VALUE}>
+                          普通对话
+                        </DropdownMenuRadioItem>
+                        {chatAgents.map((agent) => (
+                          <DropdownMenuRadioItem key={agent.id} value={agent.id}>
+                            {agent.name}{agent.source === 'custom' ? ' · 自建' : ' · 内置'}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setIsChatAgentComposerOpen((prev) => !prev)}
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      {isChatAgentComposerOpen ? '收起创建' : '新建智能体'}
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        type="submit"
+                        disabled={isChatBusy}
+                        className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        <ArrowUpRight className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      发送
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
               <div className="mt-2 text-[11px] text-muted-foreground">Enter 发送，Shift+Enter 换行（可仅发送选中图片）</div>
             </form>
