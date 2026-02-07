@@ -185,8 +185,21 @@ type LassoState = {
   closed: boolean
 }
 
+type CanvasChatAgentSource = 'builtin' | 'custom'
+
+type CanvasChatAgent = {
+  id: string
+  name: string
+  source: CanvasChatAgentSource
+  systemPrompt: string
+  starterPrompts: string[]
+}
+
 const STORAGE_KEY = 'loomai:canvas:phase0'
 const SEED_STORAGE_KEY = 'loomai:canvas:seed'
+const CHAT_AGENT_STORAGE_KEY = 'loomai:canvas:chat-agents:v1'
+const CHAT_AGENT_SELECTED_KEY = 'loomai:canvas:chat-agent-selected:v1'
+const CHAT_AGENT_NONE_VALUE = '__none__'
 const MIN_SCALE = 0.2
 const MAX_SCALE = 4
 const ZOOM_SPEED = 0.0015
@@ -226,9 +239,81 @@ const NOTE_STICKY_BORDER_COLOR = '#fde68a'
 const NOTE_NEUTRAL_TEXT_COLOR = '#0f172a'
 const NOTE_NEUTRAL_BACKGROUND_COLOR = '#f1f5f9'
 const NOTE_NEUTRAL_BORDER_COLOR = '#e2e8f0'
+const MAX_CHAT_AGENT_NAME_LENGTH = 20
+const MAX_CHAT_AGENT_PROMPT_LENGTH = 1200
+const MAX_CUSTOM_CHAT_AGENT_COUNT = 20
 const EXPORT_PADDING = 48
 const MAX_EXPORT_SIZE = 8192
 const DEBUG_CANVAS = false
+
+const BUILTIN_CHAT_AGENTS: CanvasChatAgent[] = [
+  {
+    id: 'designer',
+    name: '智能设计师',
+    source: 'builtin',
+    systemPrompt:
+      '你是服装设计场景里的智能设计师。回答时先给结论，再给3条可执行建议；语言简洁，避免空泛表达；若信息不足先提最多2个澄清问题。',
+    starterPrompts: ['给我 3 个构图方案', '把当前思路整理成步骤', '总结当前画布并给改进建议'],
+  },
+  {
+    id: 'color',
+    name: '配色顾问',
+    source: 'builtin',
+    systemPrompt:
+      '你是配色顾问，专注服装配色与系列化建议。优先输出主色/辅色/点缀色与比例，并补充场景适配和避坑建议。',
+    starterPrompts: ['给我配色建议', '给我 2 套春夏配色方案', '按通勤场景优化当前配色'],
+  },
+  {
+    id: 'pattern',
+    name: '版型顾问',
+    source: 'builtin',
+    systemPrompt:
+      '你是版型顾问，擅长结构拆解和工艺表达。回答时尽量用“版型要点/工艺要点/风险点”三段式，便于直接执行。',
+    starterPrompts: ['总结当前选中对象', '给我版型优化建议', '把这个需求拆成打版步骤'],
+  },
+]
+
+const normalizeAgentName = (value: string) => value.trim().slice(0, MAX_CHAT_AGENT_NAME_LENGTH)
+const normalizeAgentPrompt = (value: string) => value.trim().slice(0, MAX_CHAT_AGENT_PROMPT_LENGTH)
+
+const buildChatWelcomeMessage = (agentName?: string): UIMessage => ({
+  id: `canvas-assistant-welcome-${nanoid(8)}`,
+  role: 'assistant',
+  parts: [
+    {
+      type: 'text',
+      text: agentName
+        ? `你好！我是${agentName}，把需求告诉我，我会给你可执行的建议。`
+        : '你好！把需求告诉我，我可以帮你分析图片、给出建议或总结。',
+    },
+  ],
+})
+
+const normalizeAgentStarterPrompts = (value: unknown) => {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+    .filter(Boolean)
+    .slice(0, 5)
+}
+
+const toCustomChatAgent = (value: unknown): CanvasChatAgent | null => {
+  if (!value || typeof value !== 'object') return null
+  const source = (value as { source?: unknown }).source
+  if (source !== 'custom') return null
+  const name = normalizeAgentName(String((value as { name?: unknown }).name ?? ''))
+  const systemPrompt = normalizeAgentPrompt(String((value as { systemPrompt?: unknown }).systemPrompt ?? ''))
+  if (!name || !systemPrompt) return null
+  const rawId = (value as { id?: unknown }).id
+  const id = typeof rawId === 'string' && rawId.trim() ? rawId.trim() : `custom-${nanoid(10)}`
+  return {
+    id,
+    name,
+    source: 'custom',
+    systemPrompt,
+    starterPrompts: normalizeAgentStarterPrompts((value as { starterPrompts?: unknown }).starterPrompts),
+  }
+}
 
 type SignedUrlPayload = {
   url: string
@@ -535,6 +620,13 @@ export function InfiniteCanvas() {
   const [isChatOpen, setIsChatOpen] = useState(true)
   const [isChatMinimized, setIsChatMinimized] = useState(true)
   const [chatInput, setChatInput] = useState('')
+  const [customChatAgents, setCustomChatAgents] = useState<CanvasChatAgent[]>([])
+  const [selectedChatAgentId, setSelectedChatAgentId] = useState<string>(
+    BUILTIN_CHAT_AGENTS[0]?.id ?? CHAT_AGENT_NONE_VALUE
+  )
+  const [isChatAgentComposerOpen, setIsChatAgentComposerOpen] = useState(false)
+  const [newChatAgentName, setNewChatAgentName] = useState('')
+  const [newChatAgentPrompt, setNewChatAgentPrompt] = useState('')
   const [isChatPinnedToBottom, setIsChatPinnedToBottom] = useState(true)
   const [showChatJumpToLatest, setShowChatJumpToLatest] = useState(false)
   const chatProvider = 'devdove'
@@ -577,13 +669,9 @@ export function InfiniteCanvas() {
   )
   const isSpacePanningActive = isSpaceDown && isPointerInViewport
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, setMessages, status, error } = useChat({
     messages: [
-      {
-        id: 'canvas-assistant-welcome',
-        role: 'assistant',
-        content: '你好！把需求告诉我，我可以帮你生成设计建议或总结。',
-      },
+      buildChatWelcomeMessage(BUILTIN_CHAT_AGENTS[0]?.name),
     ],
     transport: new DefaultChatTransport({
       api: '/api/chat',
@@ -1095,6 +1183,47 @@ export function InfiniteCanvas() {
       console.error('Failed to restore canvas seed', error)
     }
   }, [hasHydrated])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const rawAgents = window.localStorage.getItem(CHAT_AGENT_STORAGE_KEY)
+      if (rawAgents) {
+        const parsed = JSON.parse(rawAgents) as unknown
+        if (Array.isArray(parsed)) {
+          const restored = parsed
+            .map((item) => toCustomChatAgent(item))
+            .filter((item): item is CanvasChatAgent => Boolean(item))
+            .slice(0, MAX_CUSTOM_CHAT_AGENT_COUNT)
+          setCustomChatAgents(restored)
+        }
+      }
+      const rawSelectedId = window.localStorage.getItem(CHAT_AGENT_SELECTED_KEY)
+      if (rawSelectedId?.trim()) {
+        setSelectedChatAgentId(rawSelectedId.trim())
+      }
+    } catch (chatAgentError) {
+      console.error('Failed to restore chat agents', chatAgentError)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.localStorage.setItem(CHAT_AGENT_STORAGE_KEY, JSON.stringify(customChatAgents))
+    } catch (chatAgentError) {
+      console.error('Failed to persist chat agents', chatAgentError)
+    }
+  }, [customChatAgents])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.localStorage.setItem(CHAT_AGENT_SELECTED_KEY, selectedChatAgentId)
+    } catch (chatAgentError) {
+      console.error('Failed to persist selected chat agent', chatAgentError)
+    }
+  }, [selectedChatAgentId])
 
   useEffect(() => {
     if (!hasHydrated) return
@@ -3031,9 +3160,66 @@ export function InfiniteCanvas() {
     return `selected-image.${fallbackExt}`
   }
 
+  const handleChatAgentSwitch = (nextAgentId: string) => {
+    if (nextAgentId === selectedChatAgentId) return
+    if (nextAgentId === CHAT_AGENT_NONE_VALUE) {
+      setSelectedChatAgentId(CHAT_AGENT_NONE_VALUE)
+      setMessages([buildChatWelcomeMessage()])
+      setChatInput('')
+      setIsChatPinnedToBottom(true)
+      setShowChatJumpToLatest(false)
+      requestAnimationFrame(() => {
+        chatInputRef.current?.focus()
+        scrollChatToBottom('auto')
+      })
+      return
+    }
+    const nextAgent = chatAgents.find((agent) => agent.id === nextAgentId)
+    if (!nextAgent) return
+    setSelectedChatAgentId(nextAgentId)
+    setMessages([buildChatWelcomeMessage(nextAgent.name)])
+    setChatInput('')
+    setIsChatPinnedToBottom(true)
+    setShowChatJumpToLatest(false)
+    requestAnimationFrame(() => {
+      chatInputRef.current?.focus()
+      scrollChatToBottom('auto')
+    })
+  }
+
+  const handleCreateChatAgent = () => {
+    const normalizedName = normalizeAgentName(newChatAgentName)
+    const normalizedPrompt = normalizeAgentPrompt(newChatAgentPrompt)
+    if (!normalizedName || !normalizedPrompt) {
+      toast.error('请填写智能体名称和设定提示词')
+      return
+    }
+    if (customChatAgents.length >= MAX_CUSTOM_CHAT_AGENT_COUNT) {
+      toast.error(`最多创建 ${MAX_CUSTOM_CHAT_AGENT_COUNT} 个自定义智能体`)
+      return
+    }
+    const nextAgent: CanvasChatAgent = {
+      id: `custom-${nanoid(10)}`,
+      name: normalizedName,
+      source: 'custom',
+      systemPrompt: normalizedPrompt,
+      starterPrompts: [],
+    }
+    setCustomChatAgents((prev) => [...prev, nextAgent])
+    setSelectedChatAgentId(nextAgent.id)
+    setMessages([buildChatWelcomeMessage(nextAgent.name)])
+    setNewChatAgentName('')
+    setNewChatAgentPrompt('')
+    setIsChatAgentComposerOpen(false)
+    toast.success('已创建智能体')
+    requestAnimationFrame(() => {
+      chatInputRef.current?.focus()
+      scrollChatToBottom('auto')
+    })
+  }
+
   const sendChat = async () => {
     const text = chatInput.trim()
-    if (!text) return
     if (status === 'streaming' || status === 'submitted') return
     const selectedItemsNow = items.filter((item) => selectedIds.includes(item.id))
     const primaryItem = selectedItemsNow.find((item) => item.id === selectedId) ?? selectedItemsNow[0] ?? null
@@ -3063,13 +3249,25 @@ export function InfiniteCanvas() {
         toast.error(message)
       }
     }
+    if (!text && !files?.length) {
+      toast.error('请先输入内容，或选中一张图片再发送')
+      return
+    }
     setChatInput('')
     await sendMessage(
-      { text: attachmentHint ? `${attachmentHint}${text}` : text, files },
+      { text: attachmentHint ? `${attachmentHint}${text}` : text || '请根据附图给建议', files },
       {
         body: {
           provider: chatProvider,
           model: chatModel,
+          agent: selectedChatAgentId !== CHAT_AGENT_NONE_VALUE && activeChatAgent
+            ? {
+                id: activeChatAgent.id,
+                name: activeChatAgent.name,
+                source: activeChatAgent.source,
+                systemPrompt: activeChatAgent.systemPrompt,
+              }
+            : undefined,
         },
       }
     )
@@ -3347,6 +3545,19 @@ export function InfiniteCanvas() {
   const isLassoActive = selectedItem?.type === 'image' && lassoState?.itemId === selectedItem.id
   const isLassoReady = Boolean(isLassoActive && lassoState?.closed && lassoState.points.length >= 3)
   const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds])
+  const chatAgents = useMemo(
+    () => [...BUILTIN_CHAT_AGENTS, ...customChatAgents],
+    [customChatAgents]
+  )
+  const activeChatAgent = useMemo(
+    () =>
+      selectedChatAgentId === CHAT_AGENT_NONE_VALUE
+        ? null
+        : chatAgents.find((agent) => agent.id === selectedChatAgentId) ?? chatAgents[0] ?? BUILTIN_CHAT_AGENTS[0],
+    [chatAgents, selectedChatAgentId]
+  )
+  const canCreateChatAgent =
+    normalizeAgentName(newChatAgentName).length > 0 && normalizeAgentPrompt(newChatAgentPrompt).length > 0
   const selectedPreset = useMemo(
     () => CANVAS_PRESET_ACTIONS.find((item) => item.id === selectedPresetId) ?? null,
     [selectedPresetId]
@@ -3407,6 +3618,10 @@ export function InfiniteCanvas() {
         : '你想要创作什么？'
     : '输入文字...'
   const chatQuickPrompts = useMemo(() => {
+    const agentPrompts = (activeChatAgent?.starterPrompts ?? []).filter(Boolean)
+    if (agentPrompts.length > 0) {
+      return agentPrompts.slice(0, 5)
+    }
     const basePrompts = [
       '给我 3 个构图方案',
       '给我配色建议',
@@ -3415,7 +3630,16 @@ export function InfiniteCanvas() {
     ]
     const focusPrompt = selectedItem ? '总结当前选中对象' : '总结当前画布'
     return [focusPrompt, ...basePrompts].slice(0, 5)
-  }, [selectedItem])
+  }, [activeChatAgent, selectedItem])
+
+  useEffect(() => {
+    if (selectedChatAgentId === CHAT_AGENT_NONE_VALUE) return
+    if (chatAgents.length === 0) return
+    const exists = chatAgents.some((agent) => agent.id === selectedChatAgentId)
+    if (!exists) {
+      setSelectedChatAgentId(chatAgents[0]?.id ?? BUILTIN_CHAT_AGENTS[0]?.id ?? CHAT_AGENT_NONE_VALUE)
+    }
+  }, [chatAgents, selectedChatAgentId])
 
   useEffect(() => {
     if (isImagePromptMode) return
@@ -3537,14 +3761,24 @@ export function InfiniteCanvas() {
   )
 
   const insertChatTextToCanvas = useCallback(
-    (text: string, asNote = false, noteTone: 'neutral' | 'sticky' = 'sticky') => {
+    (
+      text: string,
+      options?: {
+        asNote?: boolean
+        noteTone?: 'neutral' | 'sticky'
+        split?: boolean
+      }
+    ) => {
       const value = text.trim()
       if (!value) return
+      const asNote = options?.asNote ?? false
+      const noteTone = options?.noteTone ?? 'sticky'
+      const shouldSplit = options?.split ?? false
       const targetFontSize = asNote ? NOTE_FONT_SIZE : DEFAULT_TEXT_SIZE
       const paddingX = asNote ? NOTE_PADDING_X : TEXT_PADDING_X
       const paddingY = asNote ? NOTE_PADDING_Y : TEXT_PADDING_Y
-      const chunks = splitChatTextToNotes(value)
-      const noteChunks = chunks.length > 0 ? chunks : [value]
+      const chunks = shouldSplit ? splitChatTextToNotes(value) : []
+      const noteChunks = shouldSplit && chunks.length > 0 ? chunks : [value]
       const rect = getViewportRect()
       const worldWidth = rect ? rect.width / camera.scale : DEFAULT_TEXT_BOX_WIDTH * 2
       const preferredColumns = noteChunks.length >= 6 ? 3 : noteChunks.length >= 3 ? 2 : 1
@@ -3614,7 +3848,7 @@ export function InfiniteCanvas() {
       }
 
       if (asNote) {
-        toast.success(noteTone === 'sticky' ? '已保存为便签' : '已插入便签')
+        toast.success(shouldSplit ? '已拆分为便签' : '已保存为便签')
         return
       }
       toast.success('已插入到画布')
@@ -4523,7 +4757,7 @@ export function InfiniteCanvas() {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="left" className="text-xs">
-                {isChatPanelOpen ? '隐藏对话' : '智能设计师'}
+                {isChatPanelOpen ? '隐藏对话' : activeChatAgent?.name ?? '普通对话'}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -4535,16 +4769,90 @@ export function InfiniteCanvas() {
                 : 'pointer-events-none translate-x-[calc(100%+1.25rem)]'
             )}
           >
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-xs font-semibold text-primary">
-                  AI
+            <div className="border-b border-border">
+              <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-xs font-semibold text-primary">
+                    AI
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-foreground">AI 对话</span>
+                    <span className="text-xs text-muted-foreground">当前模式：{activeChatAgent?.name ?? '普通对话（无智能体）'}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-foreground">AI 对话</span>
-                  <span className="text-xs text-muted-foreground">随时提问，获得建议</span>
-                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded-full px-3 text-xs"
+                  onClick={() => setIsChatAgentComposerOpen((prev) => !prev)}
+                >
+                  {isChatAgentComposerOpen ? '收起' : '新建智能体'}
+                </Button>
               </div>
+              <div className="px-4 pb-3">
+                <Select value={activeChatAgent?.id ?? selectedChatAgentId} onValueChange={handleChatAgentSwitch}>
+                  <SelectTrigger className="h-9 w-full rounded-xl text-xs">
+                    <SelectValue placeholder="选择智能体" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={CHAT_AGENT_NONE_VALUE}>关闭智能体 · 普通对话</SelectItem>
+                    {chatAgents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.name}{agent.source === 'custom' ? ' · 自建' : ' · 内置'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {isChatAgentComposerOpen && (
+                <div className="space-y-2 border-t border-border px-4 py-3">
+                  <input
+                    value={newChatAgentName}
+                    onChange={(event) => setNewChatAgentName(event.target.value.slice(0, MAX_CHAT_AGENT_NAME_LENGTH))}
+                    placeholder="智能体名称（例如：上新文案助手）"
+                    className="h-9 w-full rounded-xl border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  />
+                  <textarea
+                    value={newChatAgentPrompt}
+                    onChange={(event) =>
+                      setNewChatAgentPrompt(event.target.value.slice(0, MAX_CHAT_AGENT_PROMPT_LENGTH))
+                    }
+                    rows={4}
+                    placeholder="设定提示词：告诉智能体角色、目标、回答风格与限制"
+                    className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      {normalizeAgentPrompt(newChatAgentPrompt).length}/{MAX_CHAT_AGENT_PROMPT_LENGTH}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 rounded-full px-3 text-xs"
+                        onClick={() => {
+                          setNewChatAgentName('')
+                          setNewChatAgentPrompt('')
+                          setIsChatAgentComposerOpen(false)
+                        }}
+                      >
+                        取消
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-8 rounded-full px-3 text-xs"
+                        onClick={handleCreateChatAgent}
+                        disabled={!canCreateChatAgent}
+                      >
+                        创建
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <div
               ref={chatScrollRef}
@@ -4557,7 +4865,7 @@ export function InfiniteCanvas() {
                     <MessageSquare className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">欢迎来到 AI 对话</p>
+                    <p className="text-sm font-medium text-foreground">欢迎来到 {activeChatAgent?.name ?? 'AI 对话'}</p>
                     <p>从一个问题开始，我们会给你建议或可执行的步骤。</p>
                   </div>
                   <div className="mt-2 flex flex-wrap justify-center gap-2">
@@ -4649,23 +4957,25 @@ export function InfiniteCanvas() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => insertChatTextToCanvas(text, true, 'neutral')}
+                                onClick={() => insertChatTextToCanvas(text, { asNote: false, split: false })}
                                 className={cn(
                                   'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
                                   actionButtonClass
                                 )}
                               >
-                                插入到画布
+                                插入整段
                               </button>
                               <button
                                 type="button"
-                                onClick={() => insertChatTextToCanvas(text, true, 'sticky')}
+                                onClick={() =>
+                                  insertChatTextToCanvas(text, { asNote: true, noteTone: 'sticky', split: false })
+                                }
                                 className={cn(
                                   'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
                                   actionButtonClass
                                 )}
                               >
-                                保存为便签
+                                保存单张便签
                               </button>
                           </div>
                         </MessageContent>
@@ -4753,7 +5063,7 @@ export function InfiniteCanvas() {
                     void sendChat()
                   }}
                   rows={1}
-                  placeholder="描述你的需求，例如：生成服装平铺图"
+                  placeholder={activeChatAgent ? `向${activeChatAgent.name}描述你的需求` : '可直接发送选中图片，或输入你的需求'}
                   className="max-h-32 flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
                 <Tooltip>
@@ -4761,7 +5071,7 @@ export function InfiniteCanvas() {
                     <Button
                       size="icon"
                       type="submit"
-                      disabled={isChatBusy || chatInput.trim().length === 0}
+                      disabled={isChatBusy}
                       className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                     >
                       <ArrowUpRight className="h-4 w-4" />
@@ -4772,7 +5082,7 @@ export function InfiniteCanvas() {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <div className="mt-2 text-[11px] text-muted-foreground">Enter 发送，Shift+Enter 换行</div>
+              <div className="mt-2 text-[11px] text-muted-foreground">Enter 发送，Shift+Enter 换行（可仅发送选中图片）</div>
             </form>
             <style jsx>{`
               @keyframes canvas-think {

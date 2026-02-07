@@ -10,6 +10,35 @@ import {
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
+const MAX_AGENT_NAME_LENGTH = 20;
+const MAX_AGENT_PROMPT_LENGTH = 1200;
+
+type ChatAgentPayload = {
+  id?: string;
+  name?: string;
+  source?: 'builtin' | 'custom';
+  systemPrompt?: string;
+};
+
+const normalizeAgentValue = (value: string, maxLength: number) => value.trim().slice(0, maxLength);
+
+const resolveSystemPrompt = (agent: ChatAgentPayload | undefined): { system?: string; agentName?: string; agentId?: string } => {
+  if (!agent || typeof agent !== 'object') {
+    return {};
+  }
+  const prompt = normalizeAgentValue(String(agent.systemPrompt ?? ''), MAX_AGENT_PROMPT_LENGTH);
+  if (!prompt) {
+    return {};
+  }
+  const name = normalizeAgentValue(String(agent.name ?? ''), MAX_AGENT_NAME_LENGTH);
+  const id = normalizeAgentValue(String(agent.id ?? ''), 64);
+  return {
+    system: prompt,
+    agentName: name || undefined,
+    agentId: id || undefined,
+  };
+};
+
 export async function POST(req: Request) {
   try {
     // Get user session for credit tracking
@@ -26,7 +55,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log('Request body:', body);
     
-    const { messages, provider, model } = body;
+    const { messages, provider, model, agent } = body;
+    const resolvedAgent = resolveSystemPrompt(agent as ChatAgentPayload | undefined);
     
     // Validate messages
     if (!messages || !Array.isArray(messages)) {
@@ -54,6 +84,8 @@ export async function POST(req: Request) {
       messagesCount: messages.length, 
       provider: provider || 'openai', 
       model: model || 'default',
+      agentId: resolvedAgent.agentId,
+      agentName: resolvedAgent.agentName,
       userId,
       creditBalance
     });
@@ -62,7 +94,8 @@ export async function POST(req: Request) {
     const { response, usage, provider: usedProvider, model: usedModel } = await streamResponseWithUsage({
       messages,
       provider,
-      model
+      model,
+      system: resolvedAgent.system,
     });
     
     // Process credit consumption asynchronously (don't block response)
@@ -119,6 +152,8 @@ export async function POST(req: Request) {
           metadata: {
             provider: usedProvider,
             model: usedModel,
+            agentId: resolvedAgent.agentId,
+            agentName: resolvedAgent.agentName,
             inputTokens,
             outputTokens,
             totalTokens

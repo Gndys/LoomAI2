@@ -8,6 +8,7 @@ interface StreamOptions {
   messages: UIMessage[];
   provider?: ChatProviderName;
   model?: string;
+  system?: string;
 }
 
 interface UsageData {
@@ -28,7 +29,7 @@ interface StreamResponseWithUsage {
  * Returns both the response and a promise for usage data
  * Note: In AI SDK v6, convertToModelMessages is async
  */
-export async function streamResponseWithUsage({ messages, provider, model }: StreamOptions): Promise<StreamResponseWithUsage> {
+export async function streamResponseWithUsage({ messages, provider, model, system }: StreamOptions): Promise<StreamResponseWithUsage> {
   // Validate messages
   if (!messages || !Array.isArray(messages)) {
     throw new Error('Invalid messages: messages must be an array');
@@ -56,6 +57,7 @@ export async function streamResponseWithUsage({ messages, provider, model }: Str
   const result = streamText({
     model: aiProvider(model as string) as any,
     messages: modelMessages,
+    system,
   });
   
   const response = result.toUIMessageStreamResponse({
@@ -85,7 +87,7 @@ export async function streamResponseWithUsage({ messages, provider, model }: Str
  * Simple stream response (backwards compatible)
  * Use streamResponseWithUsage for credit consumption tracking
  */
-export async function streamResponse({ messages, provider, model }: StreamOptions): Promise<Response> {
-  const result = await streamResponseWithUsage({ messages, provider, model });
+export async function streamResponse({ messages, provider, model, system }: StreamOptions): Promise<Response> {
+  const result = await streamResponseWithUsage({ messages, provider, model, system });
   return result.response;
 }
