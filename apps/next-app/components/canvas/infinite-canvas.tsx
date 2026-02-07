@@ -239,12 +239,101 @@ const NOTE_STICKY_BORDER_COLOR = '#fde68a'
 const NOTE_NEUTRAL_TEXT_COLOR = '#0f172a'
 const NOTE_NEUTRAL_BACKGROUND_COLOR = '#f1f5f9'
 const NOTE_NEUTRAL_BORDER_COLOR = '#e2e8f0'
+const CHAT_BUBBLE_FONT_SIZE = 14
+const CHAT_BUBBLE_MAX_WIDTH = 280
+const CHAT_BUBBLE_FALLBACK_USER_BG = '#0f766e'
+const CHAT_BUBBLE_FALLBACK_USER_TEXT = '#f8fafc'
+const CHAT_BUBBLE_FALLBACK_ASSISTANT_BG = '#e2e8f0'
+const CHAT_BUBBLE_FALLBACK_ASSISTANT_TEXT = '#0f172a'
 const MAX_CHAT_AGENT_NAME_LENGTH = 20
-const MAX_CHAT_AGENT_PROMPT_LENGTH = 1200
+const MAX_CHAT_AGENT_PROMPT_LENGTH = 6000
 const MAX_CUSTOM_CHAT_AGENT_COUNT = 20
 const EXPORT_PADDING = 48
 const MAX_EXPORT_SIZE = 8192
 const DEBUG_CANVAS = false
+const FASHION_TREND_AGENT_ID = 'fashion-trend-expert'
+const FASHION_TREND_IMAGE_MODEL = 'z-image'
+
+const FASHION_TREND_AGENT_SYSTEM_PROMPT = `你是一个**爆款服装拆解与预测专家**，而我是一个完全不懂时尚、不懂市场、不懂设计的小白。
+
+我现在有一个非常贪婪的需求：我想通过分析一张服装图片，就能预测出下一个爆款，并且能直接生成图片。但我什么都不会，我需要你成为这个领域的绝对专家来帮我。
+
+## 我的具体需求：
+
+当我给你一张人物穿着服装的图片时，你需要：
+
+### 第一步：深度拆解爆火原因
+请像一个资深时尚买手+数据分析师+心理学家一样，从以下维度分析：
+- **视觉冲击力**：配色、衣服的整体形状、材质、细节设计有什么独特之处？
+- **情绪价值**：这套服装传递了什么情绪？（松弛感/高级感/叛逆感/少女感等）
+- **社交货币**：为什么人们愿意分享？（好看/有趣/有共鸣/显身份）
+- **流行趋势契合度**：符合当下哪些流行元素？（多巴胺穿搭/老钱风/Y2K/山系等）
+- **穿搭场景**：适合什么场景？目标人群是谁？
+- **价格带预判**：这个风格对应什么消费层级？
+
+### 第二步：爆款预测（这是最关键的！）
+基于第一步分析，给我 **3-5 个具体的爆款方向预测**，每个预测包括：
+- **预测方向**：例如“同色系但增加解构设计”“保留版型但换成更大胆的配色”
+- **爆火逻辑**：为什么这个方向会火？基于什么人群洞察或趋势判断？
+- **差异化亮点**：和原图相比，创新点在哪里？
+- **适用场景**：什么人会买？在哪里穿？
+
+### 第三步：生成可直接使用的 AI 绘图提示词
+针对每个爆款预测，给我**完整的、可直接复制使用的 Midjourney/Stable Diffusion 提示词**，格式如下：
+
+【预测方向名称】
+提示词（英文）：
+[示例格式如下]
+[详细的服装描述], [风格关键词], [材质细节], [配色方案], [拍摄角度], [光线氛围], [模特姿态], --ar 3:4 --style raw --v 6
+
+提示词（中文翻译）：
+[方便我理解的中文版本]
+
+关键参数说明：
+- 为什么用这个风格参数
+- 为什么选择这个比例
+- 其他重要参数的作用
+
+## 重要提醒：
+1. 别用专业术语糊弄我，要用大白话解释。
+2. 给我具体、可执行建议，不要空话。
+3. 提示词必须完整到可直接复制粘贴。
+4. 每个判断都要告诉我“为什么”。
+
+## 输出格式
+必须按下面结构输出：
+
+---
+## 📸 原图分析
+
+### 爆火原因拆解
+1. **视觉冲击力**：[具体分析]
+2. **情绪价值**：[具体分析]
+3. **社交货币**：[具体分析]
+4. **流行趋势**：[具体分析]
+5. **核心卖点总结**：[一句话概括]
+
+---
+## 🔥 爆款预测
+
+### 预测方向1：[名称]
+**爆火逻辑**：[为什么会火]
+**差异化亮点**：[创新点]
+**目标人群**：[谁会买]
+
+**AI生图提示词**：
+[完整英文提示词]
+中文翻译：[...]
+参数说明：[...]
+
+（方向2~方向5同格式）
+
+---
+## 💡 额外建议
+[告诉我哪个方向最容易起量、哪个方向利润空间大]
+
+最后必须单独询问我：“是否要我现在直接生成图片？回复‘同意生成方向1/2/3...’即可开始。”
+在我明确同意前，不要直接进入生图执行。`
 
 const BUILTIN_CHAT_AGENTS: CanvasChatAgent[] = [
   {
@@ -270,6 +359,17 @@ const BUILTIN_CHAT_AGENTS: CanvasChatAgent[] = [
     systemPrompt:
       '你是版型顾问，擅长结构拆解和工艺表达。回答时尽量用“版型要点/工艺要点/风险点”三段式，便于直接执行。',
     starterPrompts: ['总结当前选中对象', '给我版型优化建议', '把这个需求拆成打版步骤'],
+  },
+  {
+    id: FASHION_TREND_AGENT_ID,
+    name: '爆款服装拆解与预测专家',
+    source: 'builtin',
+    systemPrompt: FASHION_TREND_AGENT_SYSTEM_PROMPT,
+    starterPrompts: [
+      '分析这张穿搭图：拆解爆火原因并给我 3 个爆款方向',
+      '按小白能看懂的方式输出，并附上完整可复制提示词',
+      '给我方向 1~3，并告诉我是否要直接生成图片',
+    ],
   },
 ]
 
@@ -441,8 +541,18 @@ const IMAGE_PROVIDER_LABELS = {
   evolink: 'EvoLink',
 } as const
 
+const isSquareOnlyEvolinkModel = (model: string) => model === 'z-image-turbo' || model === 'z-image'
+
+const resolveCanvasReferenceImageLimit = (model: string) => {
+  if (model === 'z-image') return 0
+  const limits = (config.aiImage.referenceImageLimits?.evolink ?? {}) as Record<string, number>
+  const fallback = config.aiImage.referenceImageFallback ?? 1
+  const limit = limits[model]
+  return typeof limit === 'number' ? Math.max(0, limit) : fallback
+}
+
 const resolveDefaultEvolinkSize = (model: string) =>
-  model === 'z-image-turbo'
+  isSquareOnlyEvolinkModel(model)
     ? '1:1'
     : (config.aiImage.defaults.size ?? config.aiImage.evolinkSizes[0]?.value)
 
@@ -520,13 +630,78 @@ type PromptExtraction = {
   prompt?: string
 }
 
+type FashionPromptDraft = {
+  sourceMessageId: string
+  prompts: string[]
+}
+
 const PROMPT_SECTION_REGEX =
-  /^\s*(提示词|正向提示词|负向提示词|prompt|positive prompt|negative prompt)\s*(?:[:：]\s*(.*))?$/i
+  /^\s*(提示词(?:（英文）|（中文翻译）|\(英文\)|\(中文翻译\))?|英文提示词|中文提示词|正向提示词|负向提示词|prompt(?:\s*\(english\)|\s*\(chinese\))?|positive prompt|negative prompt)\s*(?:[:：]\s*(.*))?$/i
 
 const hasPromptLabel = (text: string) =>
   text.includes('提示词') || text.toLowerCase().includes('prompt')
 
 const isGenericPromptLabel = (label: string) => /^(提示词|prompt)$/i.test(label.trim())
+const ENGLISH_PROMPT_SECTION_REGEX =
+  /(?:提示词（英文）|提示词\(英文\)|英文提示词|english prompt|prompt\s*\(english\))\s*(?:[:：]\s*)?(?:```(?:[\w-]+)?\s*([\s\S]*?)```|([^\n]+))/gi
+const CODE_BLOCK_REGEX = /```(?:[\w-]+)?\s*([\s\S]*?)```/g
+const GENERATE_INTENT_REGEX = /(生成|生图|出图|画图|render|generate)/i
+const GENERATE_NEGATIVE_REGEX = /(不生成|先别生成|暂不生成|不要生成|not\s+generate|don't\s+generate|do\s+not\s+generate)/i
+const GENERATE_CONFIRM_SET = new Set([
+  '好',
+  '好的',
+  '同意',
+  '可以',
+  '行',
+  '确认',
+  '确定',
+  '开始',
+  'yes',
+  'ok',
+  'okay',
+  'go',
+])
+const CHINESE_NUMERAL_MAP: Record<string, number> = {
+  一: 1,
+  二: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+}
+
+const normalizeGenerationIntent = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[，。！？!?,.;；:："“”'‘’`~·（）()【】\[\]{}]/g, '')
+
+const shouldTriggerPromptGeneration = (text: string) => {
+  const value = text.trim()
+  if (!value) return false
+  if (GENERATE_NEGATIVE_REGEX.test(value)) return false
+  const normalized = normalizeGenerationIntent(value)
+  return GENERATE_CONFIRM_SET.has(normalized) || GENERATE_INTENT_REGEX.test(value)
+}
+
+const resolvePromptDirectionIndex = (text: string, total: number) => {
+  if (total <= 1) return 0
+  const match = text.match(/(?:方向|方案|第)\s*([1-5一二三四五])(?:\s*(?:个|条|种|款|版))?/i)
+  const raw = match?.[1]
+  if (!raw) return 0
+  const index = Number(raw)
+  if (Number.isFinite(index)) {
+    return clamp(index - 1, 0, total - 1)
+  }
+  const mapped = CHINESE_NUMERAL_MAP[raw]
+  if (!mapped) return 0
+  return clamp(mapped - 1, 0, total - 1)
+}
+
+const buildChatTextMessage = (role: 'user' | 'assistant', text: string): UIMessage => ({
+  id: `canvas-chat-${role}-${nanoid(8)}`,
+  role,
+  parts: [{ type: 'text', text }],
+})
 
 const extractPromptFromText = (text: string): PromptExtraction => {
   if (!hasPromptLabel(text)) return { body: text }
@@ -583,6 +758,53 @@ const extractPromptFromText = (text: string): PromptExtraction => {
     body,
     prompt: prompt || undefined,
   }
+}
+
+const resolveCanvasMessageText = (message: UIMessage) => {
+  const parts = (message as UIMessage & { parts?: { type: string; text?: string }[] }).parts
+  if (Array.isArray(parts) && parts.length > 0) {
+    return parts
+      .map((part) => (part.type === 'text' ? part.text ?? '' : ''))
+      .join('')
+      .trim()
+  }
+  return (message as UIMessage & { content?: string }).content ?? ''
+}
+
+const extractEnglishPromptCandidates = (text: string) => {
+  const value = text.trim()
+  if (!value) return []
+  const candidates: string[] = []
+  const seen = new Set<string>()
+  const pushCandidate = (candidate: string) => {
+    const normalized = candidate.replace(/\r\n/g, '\n').trim()
+    if (!normalized) return
+    if (normalized.length < 24) return
+    if (seen.has(normalized)) return
+    seen.add(normalized)
+    candidates.push(normalized)
+  }
+
+  for (const match of value.matchAll(ENGLISH_PROMPT_SECTION_REGEX)) {
+    pushCandidate((match[1] ?? match[2] ?? '').trim())
+  }
+
+  for (const match of value.matchAll(CODE_BLOCK_REGEX)) {
+    const block = (match[1] ?? '').trim()
+    if (!block) continue
+    if (/--ar\s*\d+:\d+|--v\s*\d+|--style\s+\w+/i.test(block)) {
+      pushCandidate(block)
+    }
+  }
+
+  if (candidates.length === 0) {
+    const fallbackPrompt = extractPromptFromText(value).prompt
+    if (fallbackPrompt) {
+      pushCandidate(fallbackPrompt)
+    }
+  }
+
+  return candidates.slice(0, 5)
 }
 
 export function InfiniteCanvas() {
@@ -660,6 +882,24 @@ export function InfiniteCanvas() {
   const canvasInputRef = useRef<HTMLInputElement | null>(null)
   const chatInputRef = useRef<HTMLTextAreaElement | null>(null)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
+  const chatDragPayloadRef = useRef<string | null>(null)
+  const isChatDraggingRef = useRef(false)
+  const chatDragRoleRef = useRef<'user' | 'assistant' | null>(null)
+  const chatPointerDragRef = useRef<{
+    text: string
+    role: 'user' | 'assistant'
+    startX: number
+    startY: number
+    dragging: boolean
+  } | null>(null)
+  const [chatDragGhost, setChatDragGhost] = useState<{
+    x: number
+    y: number
+    text: string
+    role: 'user' | 'assistant'
+  } | null>(null)
+  const [fashionPromptDraft, setFashionPromptDraft] = useState<FashionPromptDraft | null>(null)
+  const processedFashionAssistantIdsRef = useRef<Set<string>>(new Set())
 
   const { data: session } = authClientReact.useSession()
   const user = session?.user
@@ -682,6 +922,12 @@ export function InfiniteCanvas() {
   })
 
   const getViewportRect = () => viewportRef.current?.getBoundingClientRect()
+
+  const resolveThemeColor = useCallback((token: string, fallback: string) => {
+    if (typeof window === 'undefined') return fallback
+    const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim()
+    return value ? `hsl(${value})` : fallback
+  }, [])
 
   const screenToWorld = useCallback(
     (screenX: number, screenY: number) => {
@@ -923,6 +1169,59 @@ export function InfiniteCanvas() {
       return nextItem.id
     },
     [measureTextBox, syncSelection]
+  )
+
+  const createChatBubbleItem = useCallback(
+    (worldX: number, worldY: number, text: string, role: 'user' | 'assistant') => {
+      const value = text.trim()
+      if (!value) return null
+      const backgroundColor =
+        role === 'user'
+          ? resolveThemeColor('--primary', CHAT_BUBBLE_FALLBACK_USER_BG)
+          : resolveThemeColor('--secondary', CHAT_BUBBLE_FALLBACK_ASSISTANT_BG)
+      const textColor =
+        role === 'user'
+          ? resolveThemeColor('--primary-foreground', CHAT_BUBBLE_FALLBACK_USER_TEXT)
+          : resolveThemeColor('--foreground', CHAT_BUBBLE_FALLBACK_ASSISTANT_TEXT)
+      const { width, height } = measureTextBox(
+        value,
+        CHAT_BUBBLE_FONT_SIZE,
+        CHAT_BUBBLE_MAX_WIDTH,
+        MIN_TEXT_HEIGHT,
+        DEFAULT_TEXT_FONT_FAMILY,
+        DEFAULT_TEXT_FONT_WEIGHT,
+        'normal',
+        TEXT_PADDING_X,
+        TEXT_PADDING_Y
+      )
+      const nextItem: CanvasTextItem = {
+        id: nanoid(),
+        type: 'text',
+        x: worldX,
+        y: worldY,
+        width,
+        height,
+        data: {
+          text: value,
+          fontSize: CHAT_BUBBLE_FONT_SIZE,
+          color: textColor,
+          backgroundColor,
+          strokeColor: 'transparent',
+          strokeWidth: 0,
+          fontFamily: DEFAULT_TEXT_FONT_FAMILY,
+          fontWeight: DEFAULT_TEXT_FONT_WEIGHT,
+          fontStyle: 'normal',
+          textDecoration: 'none',
+          align: 'left',
+          noteStyle: false,
+          noteTone: 'neutral',
+        },
+      }
+      setItems((prev) => [...prev, nextItem])
+      syncSelection([nextItem.id], nextItem.id)
+      return nextItem.id
+    },
+    [measureTextBox, resolveThemeColor, syncSelection]
   )
 
   const handleDeleteItems = useCallback(
@@ -2198,6 +2497,25 @@ export function InfiniteCanvas() {
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
+    const textPayload =
+      event.dataTransfer.getData('application/loomai-chat-text') ||
+      event.dataTransfer.getData('text/plain')
+    const resolvedText = textPayload?.trim() || chatDragPayloadRef.current?.trim()
+    if (resolvedText) {
+      const rect = getViewportRect()
+      if (!rect) return
+      const worldPoint = screenToWorld(event.clientX - rect.left, event.clientY - rect.top)
+      const rolePayload = event.dataTransfer.getData('application/loomai-chat-role')
+      const resolvedRole = rolePayload === 'user' || rolePayload === 'assistant'
+        ? rolePayload
+        : chatDragRoleRef.current ?? 'assistant'
+      createChatBubbleItem(worldPoint.x, worldPoint.y, resolvedText, resolvedRole)
+      toast.success('已插入到画布')
+      chatDragPayloadRef.current = null
+      isChatDraggingRef.current = false
+      chatDragRoleRef.current = null
+      return
+    }
     handleFiles(event.dataTransfer.files)
   }
 
@@ -3162,6 +3480,8 @@ export function InfiniteCanvas() {
 
   const handleChatAgentSwitch = (nextAgentId: string) => {
     if (nextAgentId === selectedChatAgentId) return
+    setFashionPromptDraft(null)
+    processedFashionAssistantIdsRef.current.clear()
     if (nextAgentId === CHAT_AGENT_NONE_VALUE) {
       setSelectedChatAgentId(CHAT_AGENT_NONE_VALUE)
       setMessages([buildChatWelcomeMessage()])
@@ -3221,6 +3541,45 @@ export function InfiniteCanvas() {
   const sendChat = async () => {
     const text = chatInput.trim()
     if (status === 'streaming' || status === 'submitted') return
+
+    if (
+      selectedChatAgentId === FASHION_TREND_AGENT_ID &&
+      text &&
+      fashionPromptDraft?.prompts?.length &&
+      shouldTriggerPromptGeneration(text)
+    ) {
+      const index = resolvePromptDirectionIndex(text, fashionPromptDraft.prompts.length)
+      const selectedPrompt = fashionPromptDraft.prompts[index]
+      if (selectedPrompt) {
+        setChatInput('')
+        const generationStartMessages: UIMessage[] = [
+          ...messages,
+          buildChatTextMessage('user', text),
+          buildChatTextMessage(
+            'assistant',
+            `收到，开始生成方向 ${index + 1} 的效果图（模型：${FASHION_TREND_IMAGE_MODEL}）...`
+          ),
+        ]
+        setMessages(generationStartMessages)
+        const result = await handleGenerateCanvasImage({
+          promptOverride: selectedPrompt,
+          modelOverride: FASHION_TREND_IMAGE_MODEL,
+          sizeOverride: '1:1',
+          skipReferenceImages: true,
+        })
+        setMessages([
+          ...generationStartMessages,
+          buildChatTextMessage(
+            'assistant',
+            result.success
+              ? `已生成方向 ${index + 1} 的图片并加入画布。要继续生成其他方向吗？你可以回复“同意生成方向2”。`
+              : `方向 ${index + 1} 生成失败：${result.error ?? '未知错误'}，你可以重试。`
+          ),
+        ])
+        return
+      }
+    }
+
     const selectedItemsNow = items.filter((item) => selectedIds.includes(item.id))
     const primaryItem = selectedItemsNow.find((item) => item.id === selectedId) ?? selectedItemsNow[0] ?? null
     const hasMultiSelectionNow = selectedItemsNow.length > 1
@@ -3253,6 +3612,9 @@ export function InfiniteCanvas() {
       toast.error('请先输入内容，或选中一张图片再发送')
       return
     }
+    if (selectedChatAgentId === FASHION_TREND_AGENT_ID) {
+      setFashionPromptDraft(null)
+    }
     setChatInput('')
     await sendMessage(
       { text: attachmentHint ? `${attachmentHint}${text}` : text || '请根据附图给建议', files },
@@ -3273,48 +3635,63 @@ export function InfiniteCanvas() {
     )
   }
 
-  const handleGenerateCanvasImage = async () => {
-    const prompt = resolvedCanvasPrompt.trim()
-    if (!prompt || isImageGenerating) return
+  const handleGenerateCanvasImage = async (options?: {
+    promptOverride?: string
+    modelOverride?: string
+    sizeOverride?: string
+    skipReferenceImages?: boolean
+  }) => {
+    const prompt = (options?.promptOverride ?? resolvedCanvasPrompt).trim()
+    if (!prompt || isImageGenerating) {
+      return { success: false as const, error: '提示词为空或任务进行中' }
+    }
     const toastId = toast.loading('正在生成图片...')
     setIsImageGenerating(true)
 
     try {
-      const modelOption = imageModelOptions.find((option) => option.value === imageModel)
+      const model = options?.modelOverride?.trim() || imageModel
+      const isSquareOnlyModel = isSquareOnlyEvolinkModel(model)
+      const modelOption = imageModelOptions.find((option) => option.value === model)
       const providerLabel = modelOption?.provider
       const isLassoEdit = isLassoActive && isLassoReady && selectedItem?.type === 'image'
+      const shouldSkipReferences = options?.skipReferenceImages ?? false
+      const referenceImageLimit = shouldSkipReferences ? 0 : resolveCanvasReferenceImageLimit(model)
       if (isLassoActive && !isLassoReady) {
         toast.error('请先闭合套索选区', { id: toastId })
-        return
+        return { success: false as const, error: '请先闭合套索选区' }
       }
       let resolvedSize: string | undefined
-      if (imageSizeMode === 'custom') {
+      if (options?.sizeOverride) {
+        resolvedSize = options.sizeOverride
+      } else if (isSquareOnlyModel) {
+        resolvedSize = '1:1'
+      } else if (imageSizeMode === 'custom') {
         const width = Number(customSizeWidth)
         const height = Number(customSizeHeight)
         if (!Number.isFinite(width) || !Number.isFinite(height)) {
           toast.error('请输入有效的自定义尺寸', { id: toastId })
-          return
+          return { success: false as const, error: '请输入有效的自定义尺寸' }
         }
         if (width < 376 || width > 1536 || height < 376 || height > 1536) {
           toast.error('自定义尺寸需在 376-1536 之间', { id: toastId })
-          return
+          return { success: false as const, error: '自定义尺寸需在 376-1536 之间' }
         }
         resolvedSize = `${Math.round(width)}x${Math.round(height)}`
       } else {
         resolvedSize = imageSizeMode
       }
 
-      if (isTurboImageModel && resolvedSize === 'auto') {
+      if (isSquareOnlyModel && resolvedSize === 'auto') {
         resolvedSize = '1:1'
       }
 
       if (!resolvedSize) {
-        resolvedSize = resolveDefaultEvolinkSize(imageModel)
+        resolvedSize = resolveDefaultEvolinkSize(model)
       }
 
       const payload: Record<string, unknown> = {
         prompt,
-        model: imageModel,
+        model,
       }
 
       if (isLassoEdit) {
@@ -3328,7 +3705,7 @@ export function InfiniteCanvas() {
       } else {
         if (referenceImageLimit > 0 && selectedImageItems.length > referenceImageLimit) {
           toast.error(`当前模型最多支持 ${referenceImageLimit} 张参考图`, { id: toastId })
-          return
+          return { success: false as const, error: `当前模型最多支持 ${referenceImageLimit} 张参考图` }
         }
 
         if (referenceImageLimit > 0 && selectedImageItems.length > 0) {
@@ -3366,7 +3743,7 @@ export function InfiniteCanvas() {
         } else {
           toast.error(message, { id: toastId })
         }
-        return
+        return { success: false as const, error: message }
       }
 
       const imageUrl = data?.data?.imageUrl
@@ -3378,13 +3755,13 @@ export function InfiniteCanvas() {
       const storageProvider = typeof data?.data?.provider === 'string' ? data.data.provider : undefined
       const expiresAt = typeof data?.data?.expiresAt === 'string' ? data.data.expiresAt : undefined
 
-      addImageItem(imageUrl, `AI-${imageModel}`, {
+      addImageItem(imageUrl, `AI-${model}`, {
         key: storageKey,
         provider: storageProvider,
         expiresAt,
         meta: {
           source: isLassoEdit ? 'lasso-edit' : 'generate',
-          model: imageModel,
+          model,
           provider: providerLabel,
           prompt,
           size: resolvedSize,
@@ -3396,9 +3773,11 @@ export function InfiniteCanvas() {
         setCreditBalance(data.credits.remaining)
       }
       toast.success('已生成并添加到画布', { id: toastId })
+      return { success: true as const }
     } catch (error) {
       const message = error instanceof Error ? error.message : '生成失败，请稍后重试'
       toast.error(message, { id: toastId })
+      return { success: false as const, error: message }
     } finally {
       setIsImageGenerating(false)
     }
@@ -3458,15 +3837,57 @@ export function InfiniteCanvas() {
     await sendChat()
   }
 
-  const resolveMessageText = (message: UIMessage) => {
-    const parts = (message as UIMessage & { parts?: { type: string; text?: string }[] }).parts
-    if (Array.isArray(parts) && parts.length > 0) {
-      return parts
-        .map((part) => (part.type === 'text' ? part.text ?? '' : ''))
-        .join('')
-        .trim()
+  const resolveMessageText = (message: UIMessage) => resolveCanvasMessageText(message)
+  const resolveMessageFiles = (message: UIMessage) => {
+    const parts = (message as UIMessage & { parts?: Array<Partial<FileUIPart> & { type?: string }> }).parts
+    const partFiles = Array.isArray(parts)
+      ? parts.flatMap((part) => {
+          if (part.type === 'file' && typeof part.url === 'string') {
+            return [part as FileUIPart]
+          }
+          if (part.type === 'image' && typeof part.url === 'string') {
+            return [
+              {
+                type: 'file',
+                url: part.url,
+                mediaType: part.mediaType ?? 'image/*',
+                filename: part.filename ?? 'image',
+              } as FileUIPart,
+            ]
+          }
+          return []
+        })
+      : []
+    const legacyFiles = (message as UIMessage & { files?: FileUIPart[] }).files
+    const attachmentFiles = (message as UIMessage & { attachments?: FileUIPart[] }).attachments
+    const experimentalFiles = (message as UIMessage & { experimental_attachments?: FileUIPart[] }).experimental_attachments
+    const all = [
+      ...partFiles,
+      ...(Array.isArray(legacyFiles) ? legacyFiles : []),
+      ...(Array.isArray(attachmentFiles) ? attachmentFiles : []),
+      ...(Array.isArray(experimentalFiles) ? experimentalFiles : []),
+    ].filter((file): file is FileUIPart => Boolean(file && typeof file.url === 'string'))
+    const seen = new Set<string>()
+    return all.filter((file) => {
+      const key = `${file.url ?? ''}|${file.filename ?? ''}`
+      if (!key || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }
+  const stripAttachmentHint = (text: string, hasFiles: boolean) => {
+    if (!hasFiles) return text
+    const lines = text.split('\n')
+    if (lines[0]?.startsWith('【已附加图片')) {
+      return lines.slice(1).join('\n').trim()
     }
-    return (message as UIMessage & { content?: string }).content ?? ''
+    return text
+  }
+  const resolveFileBadge = (filename?: string) => {
+    if (!filename) return 'FILE'
+    const ext = filename.split('.').pop()
+    if (!ext) return 'FILE'
+    return ext.slice(0, 4).toUpperCase()
   }
 
   const zoomPercent = Math.round(camera.scale * 100)
@@ -3579,19 +4000,17 @@ export function InfiniteCanvas() {
     })
   }, [imageProviderModels])
   const isTurboImageModel = imageModel === 'z-image-turbo'
+  const isSquareOnlyImageModel = isSquareOnlyEvolinkModel(imageModel)
   const referenceImageLimit = useMemo(() => {
-    const limits = (config.aiImage.referenceImageLimits?.evolink ?? {}) as Record<string, number>
-    const fallback = config.aiImage.referenceImageFallback ?? 1
-    const limit = limits[imageModel]
-    return typeof limit === 'number' ? Math.max(0, limit) : fallback
+    return resolveCanvasReferenceImageLimit(imageModel)
   }, [imageModel])
   const imageSizeOptions = useMemo(() => {
     const base = config.aiImage.evolinkSizes
-    if (isTurboImageModel) {
+    if (isSquareOnlyImageModel) {
       return base.filter((option) => option.value !== 'auto')
     }
     return base.filter((option) => option.value !== '1:2' && option.value !== '2:1')
-  }, [isTurboImageModel])
+  }, [isSquareOnlyImageModel])
   const imageSizeSelectOptions = useMemo(
     () => [
       ...imageSizeOptions,
@@ -3640,6 +4059,38 @@ export function InfiniteCanvas() {
       setSelectedChatAgentId(chatAgents[0]?.id ?? BUILTIN_CHAT_AGENTS[0]?.id ?? CHAT_AGENT_NONE_VALUE)
     }
   }, [chatAgents, selectedChatAgentId])
+
+  useEffect(() => {
+    if (selectedChatAgentId === FASHION_TREND_AGENT_ID) return
+    setFashionPromptDraft(null)
+    processedFashionAssistantIdsRef.current.clear()
+  }, [selectedChatAgentId])
+
+  useEffect(() => {
+    if (selectedChatAgentId !== FASHION_TREND_AGENT_ID) return
+    const processed = processedFashionAssistantIdsRef.current
+    let nextDraft: FashionPromptDraft | null = fashionPromptDraft
+    let hasDraftUpdate = false
+
+    messages.forEach((message) => {
+      if (message.role !== 'assistant') return
+      if (processed.has(message.id)) return
+      processed.add(message.id)
+      const text = resolveCanvasMessageText(message)
+      if (!text) return
+      const prompts = extractEnglishPromptCandidates(text)
+      if (prompts.length === 0) return
+      nextDraft = {
+        sourceMessageId: message.id,
+        prompts,
+      }
+      hasDraftUpdate = true
+    })
+
+    if (hasDraftUpdate && nextDraft) {
+      setFashionPromptDraft(nextDraft)
+    }
+  }, [messages, selectedChatAgentId, fashionPromptDraft])
 
   useEffect(() => {
     if (isImagePromptMode) return
@@ -3888,6 +4339,110 @@ export function InfiniteCanvas() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [layerContextMenu, layerDetailPopover])
+
+  useEffect(() => {
+    const handleGlobalDragOver = (event: DragEvent) => {
+      if (!isChatDraggingRef.current) return
+      event.preventDefault()
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'copy'
+      }
+    }
+
+    const handleGlobalDrop = (event: DragEvent) => {
+      if (!isChatDraggingRef.current) return
+      const textPayload =
+        event.dataTransfer?.getData('application/loomai-chat-text') ||
+        event.dataTransfer?.getData('text/plain')
+      const resolvedText = textPayload?.trim() || chatDragPayloadRef.current?.trim()
+      if (!resolvedText) {
+        isChatDraggingRef.current = false
+        return
+      }
+      const rect = getViewportRect()
+      if (!rect) {
+        isChatDraggingRef.current = false
+        return
+      }
+      const withinX = event.clientX >= rect.left && event.clientX <= rect.right
+      const withinY = event.clientY >= rect.top && event.clientY <= rect.bottom
+      if (!withinX || !withinY) {
+        isChatDraggingRef.current = false
+        return
+      }
+      event.preventDefault()
+      const worldPoint = screenToWorld(event.clientX - rect.left, event.clientY - rect.top)
+      const rolePayload = event.dataTransfer?.getData('application/loomai-chat-role')
+      const resolvedRole =
+        rolePayload === 'user' || rolePayload === 'assistant'
+          ? rolePayload
+          : chatDragRoleRef.current ?? 'assistant'
+      createChatBubbleItem(worldPoint.x, worldPoint.y, resolvedText, resolvedRole)
+      toast.success('已插入到画布')
+      chatDragPayloadRef.current = null
+      isChatDraggingRef.current = false
+      chatDragRoleRef.current = null
+    }
+
+    window.addEventListener('dragover', handleGlobalDragOver)
+    window.addEventListener('drop', handleGlobalDrop)
+    return () => {
+      window.removeEventListener('dragover', handleGlobalDragOver)
+      window.removeEventListener('drop', handleGlobalDrop)
+    }
+  }, [createChatBubbleItem, screenToWorld])
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const state = chatPointerDragRef.current
+      if (!state) return
+      const dx = event.clientX - state.startX
+      const dy = event.clientY - state.startY
+      if (!state.dragging) {
+        if (Math.hypot(dx, dy) < 6) return
+        state.dragging = true
+        document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'grabbing'
+      }
+      if (!state.dragging) return
+      setChatDragGhost({
+        x: event.clientX,
+        y: event.clientY,
+        text: state.text,
+        role: state.role,
+      })
+    }
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const state = chatPointerDragRef.current
+      if (!state) return
+      if (state.dragging) {
+        const rect = getViewportRect()
+        if (rect) {
+          const withinX = event.clientX >= rect.left && event.clientX <= rect.right
+          const withinY = event.clientY >= rect.top && event.clientY <= rect.bottom
+          if (withinX && withinY) {
+            const worldPoint = screenToWorld(event.clientX - rect.left, event.clientY - rect.top)
+            createChatBubbleItem(worldPoint.x, worldPoint.y, state.text, state.role)
+            toast.success('已插入到画布')
+          }
+        }
+      }
+      chatPointerDragRef.current = null
+      setChatDragGhost(null)
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+    }
+  }, [createChatBubbleItem, screenToWorld])
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
@@ -4776,8 +5331,17 @@ export function InfiniteCanvas() {
                     AI
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-foreground">AI 对话</span>
-                    <span className="text-xs text-muted-foreground">当前模式：{activeChatAgent?.name ?? '普通对话（无智能体）'}</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {activeChatAgent?.name ?? '普通对话'}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {activeChatAgent ? '已启用智能体' : '未启用智能体'} · 支持画布选中图片
+                    </span>
+                    {activeChatAgent?.id === FASHION_TREND_AGENT_ID && fashionPromptDraft?.prompts?.length ? (
+                      <span className="text-[11px] text-primary">
+                        已解析 {fashionPromptDraft.prompts.length} 个方向提示词 · 可直接回复“同意生成方向1”
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <Button
@@ -4865,7 +5429,7 @@ export function InfiniteCanvas() {
                     <MessageSquare className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">欢迎来到 {activeChatAgent?.name ?? 'AI 对话'}</p>
+                    <p className="text-sm font-medium text-foreground">欢迎来到 {activeChatAgent?.name ?? '普通对话'}</p>
                     <p>从一个问题开始，我们会给你建议或可执行的步骤。</p>
                   </div>
                   <div className="mt-2 flex flex-wrap justify-center gap-2">
@@ -4888,26 +5452,82 @@ export function InfiniteCanvas() {
               ) : (
                 <div className="space-y-2">
                   {messages.map((message) => {
-                    const text = resolveMessageText(message)
-                    if (!text) return null
+                    const messageFiles = resolveMessageFiles(message)
+                    const rawText = resolveMessageText(message)
+                    const displayText = stripAttachmentHint(rawText, messageFiles.length > 0)
+                    const hasDisplayText = displayText.trim().length > 0
+                    const actionText = hasDisplayText ? displayText : ''
+                    if (!hasDisplayText && messageFiles.length === 0) return null
                     const isAssistant = message.role === 'assistant'
                     const { body: mainText, prompt: promptText } = isAssistant
-                      ? extractPromptFromText(text)
-                      : { body: text, prompt: undefined }
+                      ? extractPromptFromText(displayText)
+                      : { body: displayText, prompt: undefined }
+                    const messageRole: 'user' | 'assistant' = message.role === 'assistant' ? 'assistant' : 'user'
                     const actionPlacement = isAssistant ? 'left-2' : 'right-2'
-                    const actionPadding = isAssistant ? 'pl-14' : 'pr-14'
                     const actionButtonClass = isAssistant
                       ? 'border-border/70 bg-background/90 text-muted-foreground hover:border-primary/50 hover:text-foreground'
                       : 'border-primary/30 bg-primary/10 text-primary hover:border-primary/60 hover:text-primary'
                     return (
-                      <Message key={message.id} from={message.role}>
+                      <Message
+                        key={message.id}
+                        from={messageRole}
+                        onPointerDown={(event) => {
+                          if (!hasDisplayText) return
+                          if (event.button !== 0) return
+                          chatPointerDragRef.current = {
+                            text: displayText,
+                            role: messageRole,
+                            startX: event.clientX,
+                            startY: event.clientY,
+                            dragging: false,
+                          }
+                        }}
+                      >
                         <MessageContent
                           variant="contained"
-                          className={cn('relative overflow-visible pt-6', actionPadding)}
+                          className={cn(
+                            'relative overflow-visible pt-6',
+                            hasDisplayText && 'cursor-grab active:cursor-grabbing'
+                          )}
                         >
                           {message.role === 'assistant' ? (
                             <div className="flex flex-col gap-2 text-sm leading-relaxed text-foreground">
-                              {mainText && <div className="whitespace-pre-wrap break-words">{mainText}</div>}
+                              {messageFiles.length > 0 && (
+                                <div className="space-y-2">
+                                  {messageFiles.map((file) => {
+                                    const isImage = file.mediaType?.startsWith('image/')
+                                    return (
+                                      <div
+                                        key={`${file.url}-${file.filename ?? 'file'}`}
+                                        className="flex items-center gap-3 rounded-xl border border-border/70 bg-background/70 px-2.5 py-2"
+                                      >
+                                        {isImage ? (
+                                          <img
+                                            src={file.url}
+                                            alt={file.filename ?? 'image'}
+                                            className="h-10 w-10 rounded-lg object-cover"
+                                          />
+                                        ) : (
+                                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/40 text-[10px] font-semibold text-muted-foreground">
+                                            {resolveFileBadge(file.filename)}
+                                          </div>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <div className="truncate text-xs font-medium text-foreground">
+                                            {file.filename ?? '未命名附件'}
+                                          </div>
+                                          <div className="text-[10px] text-muted-foreground">
+                                            {file.mediaType ?? '文件'}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                              {hasDisplayText && (
+                                <div className="whitespace-pre-wrap break-words">{mainText}</div>
+                              )}
                               {promptText && (
                                 <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2 text-xs">
                                   <div className="flex items-center justify-between gap-2">
@@ -4936,18 +5556,56 @@ export function InfiniteCanvas() {
                               )}
                             </div>
                           ) : (
-                            <div className="whitespace-pre-wrap leading-relaxed">{text}</div>
+                            <div className="flex flex-col gap-2 text-sm leading-relaxed">
+                              {messageFiles.length > 0 && (
+                                <div className="space-y-2">
+                                  {messageFiles.map((file) => {
+                                    const isImage = file.mediaType?.startsWith('image/')
+                                    return (
+                                      <div
+                                        key={`${file.url}-${file.filename ?? 'file'}`}
+                                        className="flex items-center gap-3 rounded-xl border border-primary/30 bg-background/80 px-2.5 py-2 text-foreground"
+                                      >
+                                        {isImage ? (
+                                          <img
+                                            src={file.url}
+                                            alt={file.filename ?? 'image'}
+                                            className="h-10 w-10 rounded-lg object-cover"
+                                          />
+                                        ) : (
+                                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/40 text-[10px] font-semibold text-muted-foreground">
+                                            {resolveFileBadge(file.filename)}
+                                          </div>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <div className="truncate text-xs font-medium text-foreground">
+                                            {file.filename ?? '未命名附件'}
+                                          </div>
+                                          <div className="text-[10px] text-muted-foreground">
+                                            {file.mediaType ?? '文件'}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                              {hasDisplayText && (
+                                <div className="whitespace-pre-wrap break-words">{mainText}</div>
+                              )}
+                            </div>
                           )}
-                          <div
-                            className={cn(
-                              'pointer-events-none absolute top-2 flex items-center gap-1 opacity-0 transition',
-                              actionPlacement,
-                              'group-hover:pointer-events-auto group-hover:opacity-100'
-                            )}
-                          >
+                          {actionText && (
+                            <div
+                              className={cn(
+                                'pointer-events-none absolute top-2 flex items-center gap-1 opacity-0 transition',
+                                actionPlacement,
+                                'group-hover:pointer-events-auto group-hover:opacity-100'
+                              )}
+                            >
                               <button
                                 type="button"
-                                onClick={() => copyChatText(text)}
+                                onClick={() => copyChatText(actionText)}
                                 className={cn(
                                   'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
                                   actionButtonClass
@@ -4955,29 +5613,8 @@ export function InfiniteCanvas() {
                               >
                                 复制
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => insertChatTextToCanvas(text, { asNote: false, split: false })}
-                                className={cn(
-                                  'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
-                                  actionButtonClass
-                                )}
-                              >
-                                插入整段
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  insertChatTextToCanvas(text, { asNote: true, noteTone: 'sticky', split: false })
-                                }
-                                className={cn(
-                                  'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
-                                  actionButtonClass
-                                )}
-                              >
-                                保存单张便签
-                              </button>
-                          </div>
+                            </div>
+                          )}
                         </MessageContent>
                       </Message>
                     )
@@ -5982,6 +6619,31 @@ export function InfiniteCanvas() {
           )}
         </div>
       </div>
+
+      {chatDragGhost && (
+        <div
+          className="pointer-events-none fixed z-50"
+          style={{ left: chatDragGhost.x + 12, top: chatDragGhost.y + 12 }}
+        >
+          <div
+            className="max-w-[280px] rounded-lg px-4 py-3 text-sm shadow-lg"
+            style={{
+              backgroundColor:
+                chatDragGhost.role === 'user'
+                  ? resolveThemeColor('--primary', CHAT_BUBBLE_FALLBACK_USER_BG)
+                  : resolveThemeColor('--secondary', CHAT_BUBBLE_FALLBACK_ASSISTANT_BG),
+              color:
+                chatDragGhost.role === 'user'
+                  ? resolveThemeColor('--primary-foreground', CHAT_BUBBLE_FALLBACK_USER_TEXT)
+                  : resolveThemeColor('--foreground', CHAT_BUBBLE_FALLBACK_ASSISTANT_TEXT),
+              fontSize: CHAT_BUBBLE_FONT_SIZE,
+              lineHeight: 1.3,
+            }}
+          >
+            <div className="whitespace-pre-wrap break-words">{chatDragGhost.text}</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

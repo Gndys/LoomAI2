@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { config } from '@config'
 import { FeatureCard, FeaturePageShell } from '@/components/feature-page-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,8 +33,12 @@ import { Switch } from '@/components/ui/switch'
 import { useTranslation } from '@/hooks/use-translation'
 import { cn } from '@/lib/utils'
 
-const MAX_FILE_SIZE = 15 * 1024 * 1024
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_BATCH = 20
+
+const IMAGE_PROVIDER_LABELS = {
+  evolink: 'EvoLink',
+} as const
 
 type TemplateValue = 'commute' | 'luxury-store' | 'street' | 'studio'
 type ItemStatus = 'ready' | 'processing' | 'done' | 'failed'
@@ -42,6 +47,7 @@ type FilterValue = 'all' | 'pass' | 'review' | 'failed'
 
 type UploadItem = {
   id: string
+  file: File
   fileName: string
   fileSize: number
   previewUrl: string
@@ -51,6 +57,13 @@ type UploadItem = {
   quality?: QualityLevel
   qualityNote?: string
   error?: string
+  model?: string
+  size?: string
+}
+
+type RequestError = {
+  status?: number
+  message: string
 }
 
 const TEMPLATE_OPTIONS: Array<{
@@ -113,12 +126,6 @@ const EXPRESSION_OPTIONS = [
   { value: 'no-face', label: '不露脸' },
 ]
 
-const RATIO_OPTIONS = [
-  { value: '1:1', label: '1:1' },
-  { value: '4:5', label: '4:5' },
-  { value: '9:16', label: '9:16' },
-]
-
 const BACKGROUND_INTENSITY_OPTIONS = [
   { value: 'low', label: '低' },
   { value: 'medium', label: '中' },
@@ -132,9 +139,21 @@ const FILTER_OPTIONS: Array<{ value: FilterValue; label: string }> = [
   { value: 'failed', label: '失败' },
 ]
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+const QUALITY_NOTES = {
+  pass: [
+    '服装主体完整，细节可用。',
+    '人像自然度良好，可直接用于上新。',
+  ],
+  review: [
+    '细节有轻微偏差，建议复检后再导出。',
+    '背景元素稍复杂，建议同模板再来一版。',
+    '局部轮廓不够稳定，建议重试一次。',
+  ],
+  failed: [
+    '模型未稳定返回结果，请重试。',
+    '参考图上传成功但生成失败，请切换模板再试。',
+  ],
+} as const
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
@@ -189,27 +208,158 @@ function getStatusText(status: ItemStatus) {
   return '生成失败'
 }
 
-const QUALITY_NOTES = {
-  pass: [
-    '服装主体完整，细节可用。',
-    '人像自然度良好，可直接用于上新。',
-  ],
-  review: [
-    '手部细节略异常，建议复检后再导出。',
-    '背景信息稍杂，建议切换“电商影棚感”重试。',
-    '肩颈轮廓不够稳定，建议同模板再来一版。',
-  ],
-  failed: [
-    '人像结构不稳定，本次生成失败。',
-    '服装边缘识别不完整，请重试。',
-    '场景冲突导致模型失败，请切换模板。',
-  ],
-} as const
+function pickRandom<T>(list: readonly T[]): T {
+  return list[Math.floor(Math.random() * list.length)] as T
+}
+
+function toRequestError(error: unknown): RequestError {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = String((error as { message?: unknown }).message ?? '请求失败')
+    const status = 'status' in error ? Number((error as { status?: unknown }).status) : undefined
+    return { message, status }
+  }
+
+  if (error instanceof Error) {
+    return { message: error.message }
+  }
+
+  return { message: '请求失败' }
+}
+
+function createRequestError(message: string, status?: number) {
+  return { message, status }
+}
+
+function mapSettingLabel(options: Array<{ value: string; label: string }>, value: string) {
+  return options.find((option) => option.value === value)?.label ?? value
+}
+
+function buildAtmospherePrompt(params: {
+  template: TemplateValue
+  gender: string
+  ageRange: string
+  bodyType: string
+  pose: string
+  expression: string
+  backgroundIntensity: string
+}) {
+  const templateDescriptionMap: Record<TemplateValue, string> = {
+    commute: 'clean daily commuting atmosphere, natural city lifestyle style',
+    'luxury-store': 'light luxury boutique store atmosphere, polished and premium look',
+    street: 'fashion street style, editorial and trendy look',
+    studio: 'professional ecommerce studio mood, clean and conversion-oriented',
+  }
+
+  const templateDescription = templateDescriptionMap[params.template]
+  const genderLabel = mapSettingLabel(GENDER_OPTIONS, params.gender)
+  const ageLabel = mapSettingLabel(AGE_OPTIONS, params.ageRange)
+  const bodyLabel = mapSettingLabel(BODY_OPTIONS, params.bodyType)
+  const poseLabel = mapSettingLabel(POSE_OPTIONS, params.pose)
+  const expressionLabel = mapSettingLabel(EXPRESSION_OPTIONS, params.expression)
+  const bgLabel = mapSettingLabel(BACKGROUND_INTENSITY_OPTIONS, params.backgroundIntensity)
+
+  return [
+    'Create one realistic ecommerce fashion model atmosphere image based on the reference garment image.',
+    'Keep the clothing design, color, pattern, logo and silhouette consistent with the reference image.',
+    `Scene style: ${templateDescription}.`,
+    `Model setting: gender ${genderLabel}, age ${ageLabel}, body type ${bodyLabel}, pose ${poseLabel}, expression ${expressionLabel}.`,
+    `Background intensity: ${bgLabel}.`,
+    'Focus on the garment selling points. Keep product details clear and avoid over-stylization.',
+    'No text, no watermark, no extra logos, no collage, no duplicated people, no deformed hands.',
+    'Output should be suitable for ecommerce and social selling.',
+  ].join(' ')
+}
+
+const resolveDefaultEvolinkSize = (model: string) =>
+  model === 'z-image-turbo'
+    ? '1:1'
+    : (config.aiImage.defaults.size ?? config.aiImage.evolinkSizes[0]?.value)
+
+async function uploadReferenceImage(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok || !payload?.success || typeof payload?.data?.url !== 'string') {
+    const message = payload?.message || payload?.error || '上传参考图失败'
+    throw createRequestError(message, response.status)
+  }
+
+  return payload.data.url as string
+}
+
+async function generateImageByModel(payload: {
+  prompt: string
+  model: string
+  size: string
+  imageUrl: string
+}) {
+  const response = await fetch('/api/image-generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt: payload.prompt,
+      model: payload.model,
+      size: payload.size,
+      image_urls: [payload.imageUrl],
+    }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    const message = data?.message || data?.error || '生成失败'
+    throw createRequestError(message, response.status)
+  }
+
+  const imageUrl = data?.data?.imageUrl
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    throw createRequestError('生成成功但未返回图片地址', response.status)
+  }
+
+  return imageUrl
+}
+
+async function downloadImage(url: string, filename: string) {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error('下载失败')
+    }
+    const blob = await response.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(blobUrl)
+  } catch {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    link.click()
+  }
+}
 
 export default function ModelAtmospherePage() {
   const { locale: currentLocale } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const itemsRef = useRef<UploadItem[]>([])
+
+  const imageProviderModels = config.aiImage.availableModels
+  const defaultImageProvider = config.aiImage.defaultProvider
+  const defaultImageModel: string =
+    config.aiImage.defaultModels[defaultImageProvider] ?? imageProviderModels[defaultImageProvider]?.[0] ?? ''
 
   const [items, setItems] = useState<UploadItem[]>([])
   const [isDragActive, setIsDragActive] = useState(false)
@@ -220,10 +370,11 @@ export default function ModelAtmospherePage() {
   const [bodyType, setBodyType] = useState(BODY_OPTIONS[1]?.value ?? 'regular')
   const [pose, setPose] = useState(POSE_OPTIONS[0]?.value ?? 'standing')
   const [expression, setExpression] = useState(EXPRESSION_OPTIONS[0]?.value ?? 'smile')
-  const [ratio, setRatio] = useState(RATIO_OPTIONS[1]?.value ?? '4:5')
   const [backgroundIntensity, setBackgroundIntensity] = useState(
     BACKGROUND_INTENSITY_OPTIONS[1]?.value ?? 'medium'
   )
+  const [imageModel, setImageModel] = useState<string>(defaultImageModel)
+  const [imageSizeMode, setImageSizeMode] = useState<string>(resolveDefaultEvolinkSize(defaultImageModel))
   const [activeFilter, setActiveFilter] = useState<FilterValue>('all')
   const [exportOnlyPassed, setExportOnlyPassed] = useState(true)
   const [namingPrefix, setNamingPrefix] = useState('')
@@ -240,6 +391,34 @@ export default function ModelAtmospherePage() {
       })
     }
   }, [])
+
+  const imageModelOptions = useMemo(() => {
+    const providers = Object.entries(imageProviderModels) as Array<[string, readonly string[]]>
+    return providers.flatMap(([provider, models]) => {
+      const providerLabel = IMAGE_PROVIDER_LABELS[provider as keyof typeof IMAGE_PROVIDER_LABELS] ?? provider
+      return models.map((model) => ({
+        value: model,
+        label: `${providerLabel} · ${model}`,
+      }))
+    })
+  }, [imageProviderModels])
+
+  const isTurboImageModel = imageModel === 'z-image-turbo'
+
+  const imageSizeOptions = useMemo(() => {
+    const base = config.aiImage.evolinkSizes
+    if (isTurboImageModel) {
+      return base.filter((option) => option.value !== 'auto')
+    }
+    return base.filter((option) => option.value !== '1:2' && option.value !== '2:1')
+  }, [isTurboImageModel])
+
+  useEffect(() => {
+    const allowed = new Set<string>(imageSizeOptions.map((item) => item.value as string))
+    if (!allowed.has(imageSizeMode)) {
+      setImageSizeMode(resolveDefaultEvolinkSize(imageModel))
+    }
+  }, [imageModel, imageSizeMode, imageSizeOptions])
 
   const generatedItems = useMemo(() => items.filter((item) => item.status === 'done'), [items])
 
@@ -298,12 +477,13 @@ export default function ModelAtmospherePage() {
       }
 
       if (file.size > MAX_FILE_SIZE) {
-        toast.error(`${file.name} 超过 15MB，请压缩后重试`)
+        toast.error(`${file.name} 超过 10MB，请压缩后重试`)
         return
       }
 
       validFiles.push({
         id: `${Date.now()}-${index}-${file.name}`,
+        file,
         fileName: file.name,
         fileSize: file.size,
         previewUrl: URL.createObjectURL(file),
@@ -396,125 +576,216 @@ export default function ModelAtmospherePage() {
     setGender(GENDER_OPTIONS[0]?.value ?? 'female')
     setAgeRange(AGE_OPTIONS[1]?.value ?? '25-30')
     setBodyType(BODY_OPTIONS[1]?.value ?? 'regular')
-    setRatio(RATIO_OPTIONS[1]?.value ?? '4:5')
+    setImageModel(defaultImageModel)
+    setImageSizeMode(resolveDefaultEvolinkSize(defaultImageModel))
     applyTemplateDefaults(selectedTemplate)
     toast.success('已恢复推荐设置')
   }
 
-  const mockGenerateOne = (item: UploadItem): UploadItem => {
-    const failProbability = item.status === 'failed' ? 0.2 : 0.14
-    const failed = Math.random() < failProbability
-
-    if (failed) {
-      const note = QUALITY_NOTES.failed[Math.floor(Math.random() * QUALITY_NOTES.failed.length)]
-      return {
-        ...item,
-        status: 'failed',
-        quality: 'failed',
-        qualityNote: note,
-        error: note,
-        template: selectedTemplate,
-      }
-    }
-
-    const quality: QualityLevel = Math.random() < 0.72 ? 'pass' : 'review'
-    const notes = QUALITY_NOTES[quality]
-
-    return {
-      ...item,
-      status: 'done',
-      generatedUrl: item.previewUrl,
-      quality,
-      qualityNote: notes[Math.floor(Math.random() * notes.length)],
-      error: undefined,
-      template: selectedTemplate,
-    }
+  const updateItem = (id: string, updater: (item: UploadItem) => UploadItem) => {
+    setItems((prev) => prev.map((item) => (item.id === id ? updater(item) : item)))
   }
 
-  const generateMockResults = async () => {
+  const generateAtmosphereImages = async () => {
     if (!canGenerate) return
 
-    const snapshot = itemsRef.current
-    if (snapshot.length === 0) {
+    const queue = itemsRef.current
+    if (queue.length === 0) {
       toast.error('请先上传商品图')
       return
     }
 
     setIsGenerating(true)
-    setItems((prev) =>
-      prev.map((item) => ({
-        ...item,
+
+    let successCount = 0
+    let failedCount = 0
+    let shouldStop = false
+
+    for (const item of queue) {
+      if (shouldStop) break
+
+      updateItem(item.id, (current) => ({
+        ...current,
         status: 'processing',
         quality: undefined,
-        error: undefined,
         qualityNote: undefined,
+        error: undefined,
+        template: selectedTemplate,
+        model: imageModel,
+        size: imageSizeMode,
       }))
-    )
 
-    await sleep(1200)
+      try {
+        const uploadedUrl = await uploadReferenceImage(item.file)
+        const prompt = buildAtmospherePrompt({
+          template: selectedTemplate,
+          gender,
+          ageRange,
+          bodyType,
+          pose,
+          expression,
+          backgroundIntensity,
+        })
 
-    const nextItems = snapshot.map((item) => mockGenerateOne(item))
-    const successCount = nextItems.filter((item) => item.status === 'done').length
-    const failedCount = nextItems.length - successCount
+        const generatedUrl = await generateImageByModel({
+          prompt,
+          model: imageModel,
+          size: imageSizeMode,
+          imageUrl: uploadedUrl,
+        })
 
-    setItems(nextItems)
+        const quality: QualityLevel = Math.random() < 0.82 ? 'pass' : 'review'
+
+        updateItem(item.id, (current) => ({
+          ...current,
+          status: 'done',
+          generatedUrl,
+          quality,
+          qualityNote: pickRandom(QUALITY_NOTES[quality]),
+          error: undefined,
+          template: selectedTemplate,
+          model: imageModel,
+          size: imageSizeMode,
+        }))
+
+        successCount += 1
+      } catch (error) {
+        const parsedError = toRequestError(error)
+        const fallbackMessage = pickRandom(QUALITY_NOTES.failed)
+        const errorMessage = parsedError.message || fallbackMessage
+
+        updateItem(item.id, (current) => ({
+          ...current,
+          status: 'failed',
+          quality: 'failed',
+          qualityNote: errorMessage,
+          error: errorMessage,
+          template: selectedTemplate,
+          model: imageModel,
+          size: imageSizeMode,
+        }))
+
+        failedCount += 1
+
+        if (parsedError.status === 401) {
+          toast.error('请先登录后再生成')
+          shouldStop = true
+        } else if (parsedError.status === 402) {
+          toast.error('积分不足，已暂停后续生成')
+          shouldStop = true
+        }
+      }
+    }
+
     setIsGenerating(false)
 
-    if (failedCount > 0) {
-      toast.warning(`生成完成：成功 ${successCount} 张，失败 ${failedCount} 张，可对失败项重试`)
-    } else {
-      toast.success(`已完成 ${successCount} 张模特氛围图生成`)
-    }
-  }
-
-  const retryItem = async (id: string) => {
-    const current = itemsRef.current.find((item) => item.id === id)
-    if (!current) return
-
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'processing', error: undefined } : item))
-    )
-
-    await sleep(800)
-
-    const result = mockGenerateOne(current)
-    setItems((prev) => prev.map((item) => (item.id === id ? result : item)))
-
-    if (result.status === 'done') {
-      toast.success(`${current.fileName} 已重新生成`)
+    if (successCount === 0 && failedCount > 0) {
+      toast.error('本轮生成失败，请检查设置或积分后重试')
       return
     }
 
-    toast.error(result.error || '重试失败，请切换模板后再试')
+    if (failedCount > 0) {
+      toast.warning(`生成完成：成功 ${successCount} 张，失败 ${failedCount} 张，可重试失败项`)
+      return
+    }
+
+    toast.success(`已完成 ${successCount} 张模特氛围图生成`)
   }
 
-  const downloadSingle = (item: UploadItem, index: number) => {
+  const retryItem = async (id: string) => {
+    const target = itemsRef.current.find((item) => item.id === id)
+    if (!target || isGenerating) return
+
+    updateItem(id, (current) => ({
+      ...current,
+      status: 'processing',
+      error: undefined,
+      quality: undefined,
+      qualityNote: undefined,
+      template: selectedTemplate,
+      model: imageModel,
+      size: imageSizeMode,
+    }))
+
+    try {
+      const uploadedUrl = await uploadReferenceImage(target.file)
+      const prompt = buildAtmospherePrompt({
+        template: selectedTemplate,
+        gender,
+        ageRange,
+        bodyType,
+        pose,
+        expression,
+        backgroundIntensity,
+      })
+
+      const generatedUrl = await generateImageByModel({
+        prompt,
+        model: imageModel,
+        size: imageSizeMode,
+        imageUrl: uploadedUrl,
+      })
+
+      const quality: QualityLevel = Math.random() < 0.82 ? 'pass' : 'review'
+      updateItem(id, (current) => ({
+        ...current,
+        status: 'done',
+        generatedUrl,
+        quality,
+        qualityNote: pickRandom(QUALITY_NOTES[quality]),
+        error: undefined,
+        template: selectedTemplate,
+        model: imageModel,
+        size: imageSizeMode,
+      }))
+
+      toast.success(`${target.fileName} 已重新生成`)
+    } catch (error) {
+      const parsedError = toRequestError(error)
+      updateItem(id, (current) => ({
+        ...current,
+        status: 'failed',
+        quality: 'failed',
+        qualityNote: parsedError.message,
+        error: parsedError.message,
+        template: selectedTemplate,
+        model: imageModel,
+        size: imageSizeMode,
+      }))
+
+      if (parsedError.status === 401) {
+        toast.error('请先登录后再重试')
+      } else if (parsedError.status === 402) {
+        toast.error('积分不足，请充值后重试')
+      } else {
+        toast.error(parsedError.message)
+      }
+    }
+  }
+
+  const downloadSingle = async (item: UploadItem, index: number) => {
     if (!item.generatedUrl) {
       toast.error('当前图片尚未生成完成')
       return
     }
 
     const templateLabel = getTemplateByValue(item.template)?.label ?? '模特'
-    const link = document.createElement('a')
-    link.href = item.generatedUrl
-    link.download = `${buildDownloadName(item.fileName, templateLabel, namingPrefix, index)}.png`
-    link.click()
+    const filename = `${buildDownloadName(item.fileName, templateLabel, namingPrefix, index)}.png`
+    await downloadImage(item.generatedUrl, filename)
   }
 
-  const exportGenerated = () => {
+  const exportGenerated = async () => {
     if (downloadableItems.length === 0) {
       toast.error(exportOnlyPassed ? '暂无可导出的通过图片' : '暂无可导出的图片')
       return
     }
 
-    downloadableItems.forEach((item, index) => {
-      if (!item.generatedUrl) return
+    for (const [index, item] of downloadableItems.entries()) {
+      if (!item.generatedUrl) continue
       const templateLabel = getTemplateByValue(item.template)?.label ?? '模特'
-      const link = document.createElement('a')
-      link.href = item.generatedUrl
-      link.download = `${buildDownloadName(item.fileName, templateLabel, namingPrefix, index)}.png`
-      link.click()
-    })
+      const filename = `${buildDownloadName(item.fileName, templateLabel, namingPrefix, index)}.png`
+      await downloadImage(item.generatedUrl, filename)
+    }
 
     toast.success(`已触发 ${downloadableItems.length} 张图片下载`)
   }
@@ -560,7 +831,7 @@ export default function ModelAtmospherePage() {
                 <ImagePlus className="mx-auto h-7 w-7 text-muted-foreground" />
                 <p className="mt-3 text-sm font-medium">拖拽图片到这里，或点击上传</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  支持 JPG/PNG/WEBP，单张不超过 15MB，单次最多 {MAX_BATCH} 张
+                  支持 JPG/PNG/WEBP，单张不超过 10MB，单次最多 {MAX_BATCH} 张
                 </p>
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                   <Button size="sm" onClick={() => fileInputRef.current?.click()}>
@@ -590,10 +861,7 @@ export default function ModelAtmospherePage() {
                         <p className="truncate text-sm font-medium">{item.fileName}</p>
                         <p className="text-xs text-muted-foreground">{formatBytes(item.fileSize)}</p>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={cn('text-[11px]', getQualityClassName(item.quality))}
-                      >
+                      <Badge variant="outline" className={cn('text-[11px]', getQualityClassName(item.quality))}>
                         {item.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin" />}
                         {getStatusText(item.status)}
                       </Badge>
@@ -696,7 +964,10 @@ export default function ModelAtmospherePage() {
                           <p className="truncate text-sm font-medium" title={item.fileName}>
                             {item.fileName}
                           </p>
-                          <p className="text-xs text-muted-foreground">模板：{templateLabel}</p>
+                          <p className="text-xs text-muted-foreground">
+                            模板：{templateLabel} · 模型：{item.model ?? imageModel}
+                          </p>
+                          <p className="text-xs text-muted-foreground">尺寸：{item.size ?? imageSizeMode}</p>
                           {item.error ? (
                             <p className="text-xs text-destructive">{item.error}</p>
                           ) : (
@@ -713,14 +984,19 @@ export default function ModelAtmospherePage() {
                           >
                             对比
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => retryItem(item.id)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => retryItem(item.id)}
+                            disabled={isGenerating}
+                          >
                             <RefreshCw className="mr-1 h-3.5 w-3.5" />
                             重试
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => downloadSingle(item, index)}
+                            onClick={() => void downloadSingle(item, index)}
                             disabled={item.status !== 'done'}
                           >
                             <Download className="mr-1 h-3.5 w-3.5" />
@@ -771,7 +1047,7 @@ export default function ModelAtmospherePage() {
         <FeatureCard className="h-fit lg:sticky lg:top-20">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">模特设置与导出</CardTitle>
-            <CardDescription>推荐参数已预置，可直接开始生成。</CardDescription>
+            <CardDescription>模型选择直接复用无限画布配置。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-2">
@@ -783,6 +1059,38 @@ export default function ModelAtmospherePage() {
                 <p className="text-xs text-muted-foreground">已生成</p>
                 <p className="text-sm font-medium">{generatedItems.length} 张</p>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>生成模型（无限画布同款）</Label>
+              <Select value={imageModel} onValueChange={setImageModel} disabled={isGenerating}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择模型" />
+                </SelectTrigger>
+                <SelectContent>
+                  {imageModelOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>输出尺寸</Label>
+              <Select value={imageSizeMode} onValueChange={setImageSizeMode} disabled={isGenerating}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择尺寸" />
+                </SelectTrigger>
+                <SelectContent>
+                  {imageSizeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -869,38 +1177,20 @@ export default function ModelAtmospherePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-2">
-                <Label>输出比例</Label>
-                <Select value={ratio} onValueChange={setRatio}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择比例" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RATIO_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>背景强度</Label>
-                <Select value={backgroundIntensity} onValueChange={setBackgroundIntensity}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="背景强度" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BACKGROUND_INTENSITY_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>背景强度</Label>
+              <Select value={backgroundIntensity} onValueChange={setBackgroundIntensity}>
+                <SelectTrigger>
+                  <SelectValue placeholder="背景强度" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BACKGROUND_INTENSITY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2 rounded-xl border border-border/60 bg-muted/15 p-3">
@@ -927,7 +1217,7 @@ export default function ModelAtmospherePage() {
               <Button variant="outline" onClick={restoreRecommendedSettings}>
                 恢复推荐
               </Button>
-              <Button onClick={generateMockResults} disabled={!canGenerate}>
+              <Button onClick={generateAtmosphereImages} disabled={!canGenerate}>
                 {isGenerating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -942,7 +1232,7 @@ export default function ModelAtmospherePage() {
               </Button>
             </div>
 
-            <Button className="w-full" variant="outline" onClick={exportGenerated}>
+            <Button className="w-full" variant="outline" onClick={() => void exportGenerated()}>
               <Download className="mr-2 h-4 w-4" />
               批量导出（{downloadableItems.length}）
             </Button>
@@ -1004,7 +1294,7 @@ export default function ModelAtmospherePage() {
             </div>
 
             <div className="mt-3 flex flex-wrap justify-end gap-2">
-              <Button variant="outline" onClick={() => retryItem(compareItem.id)}>
+              <Button variant="outline" onClick={() => retryItem(compareItem.id)} disabled={isGenerating}>
                 <RefreshCw className="mr-2 h-4 w-4" />
                 同模板再来一版
               </Button>
@@ -1012,7 +1302,7 @@ export default function ModelAtmospherePage() {
                 onClick={() => {
                   const itemIndex = items.findIndex((item) => item.id === compareItem.id)
                   if (itemIndex >= 0) {
-                    downloadSingle(compareItem, itemIndex)
+                    void downloadSingle(compareItem, itemIndex)
                   } else {
                     toast.error('下载失败，请返回结果区重试')
                   }

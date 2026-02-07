@@ -11,7 +11,7 @@ import {
 export const maxDuration = 30;
 
 const MAX_AGENT_NAME_LENGTH = 20;
-const MAX_AGENT_PROMPT_LENGTH = 1200;
+const MAX_AGENT_PROMPT_LENGTH = 6000;
 
 type ChatAgentPayload = {
   id?: string;

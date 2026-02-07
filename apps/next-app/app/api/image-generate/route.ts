@@ -70,7 +70,7 @@ const persistGeneratedImage = async (imageUrl: string, userId: string, model: st
 
 const toOptionalSize = (value: unknown): EvolinkImageSize | undefined => {
   if (typeof value !== 'string') return undefined;
-  const allowed = new Set(config.aiImage.evolinkSizes.map((item) => item.value));
+  const allowed = new Set<string>(config.aiImage.evolinkSizes.map((item) => item.value));
   if (allowed.has(value)) return value as EvolinkImageSize;
   const match = value.match(/^(\d{3,4})x(\d{3,4})$/i);
   if (!match) return undefined;
@@ -116,13 +116,13 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     
     const prompt = body?.prompt;
-    const allowedModels = new Set(config.aiImage.availableModels.evolink);
+    const allowedModels = new Set<string>([...config.aiImage.availableModels.evolink, 'z-image']);
     const model =
       typeof body?.model === 'string' && allowedModels.has(body.model)
         ? body.model
         : config.aiImage.defaultModels.evolink;
     const fallbackSize: EvolinkImageSize =
-      model === 'z-image-turbo'
+      model === 'z-image-turbo' || model === 'z-image'
         ? '1:1'
         : ((config.aiImage.defaults.size ?? 'auto') as EvolinkImageSize);
     const size = toOptionalSize(body?.size) ?? fallbackSize;
