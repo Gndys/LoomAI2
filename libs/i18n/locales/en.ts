@@ -601,6 +601,45 @@ export const en: Locale = {
       messages: {
         fetchError: "Failed to load credit transactions. Please try again."
       },
+      dashboard: {
+        title: "Credit Consumption Dashboard",
+        subtitle: "Monitor recent credit usage and identify major consumption sources.",
+        empty: "No consumption data yet.",
+        summary: {
+          consumedToday: "Consumed Today",
+          consumed7d: "Consumed (7d)",
+          consumed30d: "Consumed (30d)",
+          totalConsumed: "Total Consumed",
+          avgDaily30d: "Avg Daily (30d)",
+          activeUsers30d: "Active Users (30d)",
+          transactions30d: "Transactions (30d)"
+        },
+        trend: {
+          title: "Consumption Trend",
+          description: "Daily credit consumption trend over selected range.",
+          consumedLabel: "Consumed",
+          range7d: "7D",
+          range30d: "30D",
+          range90d: "90D"
+        },
+        topUsers: {
+          title: "Top Users",
+          subtitle: "Highest credit consumers in the last 30 days.",
+          anonymous: "Unknown User"
+        },
+        topDescriptions: {
+          title: "Top Scenarios",
+          subtitle: "Most credit-intensive operation types in the last 30 days.",
+          unknown: "Unknown"
+        },
+        controls: {
+          allUsers: "All Users",
+          filterUser: "Filter by user",
+          exportCsv: "Export CSV",
+          exporting: "Exporting...",
+          loading: "Refreshing dashboard data..."
+        }
+      },
       adjustment: {
         action: "Adjust Credits",
         title: "Adjust Credits",

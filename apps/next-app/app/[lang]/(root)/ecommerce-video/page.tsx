@@ -33,6 +33,8 @@ import { Textarea } from '@/components/ui/textarea'
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 
 type TemplateValue = 'new-arrival' | 'texture-closeup' | 'promo-flash' | 'studio-showcase'
+type VideoModel = 'sora-2' | 'sora-2-vip' | 'sora-2-pro'
+type DurationValue = '10' | '15' | '25'
 type TaskStatus = 'idle' | 'pending' | 'processing' | 'completed' | 'failed'
 
 const TEMPLATE_OPTIONS: Array<{
@@ -75,7 +77,12 @@ const TEMPLATE_OPTIONS: Array<{
 const DURATION_OPTIONS = [
   { value: '10', label: '10 秒（推荐）' },
   { value: '15', label: '15 秒' },
-]
+] as const
+
+const DURATION_OPTIONS_PRO = [
+  ...DURATION_OPTIONS,
+  { value: '25', label: '25 秒（仅 sora-2-pro）' },
+] as const
 
 const ASPECT_OPTIONS = [
   { value: '9:16', label: '9:16（竖版）' },
@@ -87,6 +94,39 @@ const STYLE_OPTIONS = [
   { value: 'neutral', label: '中性电商' },
   { value: 'strong', label: '强促销感' },
 ]
+
+const MODEL_OPTIONS: Array<{
+  value: VideoModel
+  provider: string
+  modelId: string
+  description: string
+}> = [
+  {
+    value: 'sora-2',
+    provider: 'Evolink',
+    modelId: 'sora-2',
+    description: 'Evolink 渠道，稳定优先',
+  },
+  {
+    value: 'sora-2-vip',
+    provider: 'APIMart',
+    modelId: 'sora-2-vip',
+    description: 'APIMart 渠道，能力更强',
+  },
+  {
+    value: 'sora-2-pro',
+    provider: 'APIMart',
+    modelId: 'sora-2-pro',
+    description: 'APIMart 专业版，支持更长时长',
+  },
+]
+
+function getModelDisplay(model: VideoModel) {
+  const matched = MODEL_OPTIONS.find((option) => option.value === model)
+  if (!matched) return model
+  return `${matched.provider} + ${matched.modelId}`
+}
+
 
 type UploadedImage = {
   file: File
@@ -126,9 +166,31 @@ function pickTemplate(value: TemplateValue) {
   return TEMPLATE_OPTIONS.find((option) => option.value === value) ?? TEMPLATE_OPTIONS[0]
 }
 
+function buildRhythmGuidance(model: VideoModel, duration: DurationValue) {
+  if (model === 'sora-2-pro' && duration === '25') {
+    return [
+      'Timeline pacing for 25s: 0-4s hero establishing shot, 4-10s silhouette and fit movement, 10-18s fabric and stitching close-up details, 18-25s strong final hero hold with conversion-oriented ending mood.',
+      'Keep transitions smooth and cinematic, avoid abrupt cuts and repeated frames.',
+    ].join(' ')
+  }
+
+  if (duration === '15') {
+    return [
+      'Timeline pacing for 15s: 0-4s hero opening, 4-10s key detail sequence, 10-15s final conversion-oriented ending frame.',
+      'Maintain stable rhythm with clean transitions.',
+    ].join(' ')
+  }
+
+  return [
+    'Timeline pacing for 10s: 0-3s product opening, 3-7s detail highlight, 7-10s final hero frame.',
+    'Keep pace efficient and commercially focused.',
+  ].join(' ')
+}
+
 function buildVideoPrompt(params: {
+  model: VideoModel
   template: TemplateValue
-  duration: '10' | '15'
+  duration: DurationValue
   aspectRatio: '9:16' | '16:9'
   styleStrength: string
   productName: string
@@ -139,12 +201,15 @@ function buildVideoPrompt(params: {
 }) {
   const template = pickTemplate(params.template)
   const orientation = params.aspectRatio === '9:16' ? 'vertical' : 'horizontal'
+  const rhythmGuidance = buildRhythmGuidance(params.model, params.duration)
 
   const lines = [
     `Create a ${params.duration}-second ${orientation} ecommerce short video for clothing product ${params.productName || 'new arrival garment'}.`,
+    `Generation model context: ${params.model}.`,
     'Use cinematic but realistic product video style for social commerce.',
     `Template style: ${template.label}. Mood: ${template.mood}.`,
     `Shot plan: ${template.shotPlan}`,
+    rhythmGuidance,
     `Visual style strength: ${params.styleStrength}.`,
     `Selling points to emphasize: ${params.sellingPoints || 'fabric texture, silhouette, tailoring details, quality finish'}.`,
     `Call-to-action feeling: ${params.cta || 'new arrival, ready to buy now'}.`,
@@ -184,8 +249,9 @@ async function uploadReferenceImage(file: File) {
 }
 
 async function createVideoTask(payload: {
+  model: VideoModel
   prompt: string
-  duration: '10' | '15'
+  duration: DurationValue
   aspectRatio: '9:16' | '16:9'
   imageUrl?: string
   removeWatermark: boolean
@@ -196,6 +262,7 @@ async function createVideoTask(payload: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
+      model: payload.model,
       prompt: payload.prompt,
       duration: Number(payload.duration),
       aspectRatio: payload.aspectRatio,
@@ -223,8 +290,8 @@ async function createVideoTask(payload: {
   }
 }
 
-async function getTaskDetail(taskId: string) {
-  const response = await fetch(`/api/video-generate?taskId=${encodeURIComponent(taskId)}`, {
+async function getTaskDetail(taskId: string, model: VideoModel) {
+  const response = await fetch(`/api/video-generate?taskId=${encodeURIComponent(taskId)}&model=${encodeURIComponent(model)}`, {
     method: 'GET',
   })
 
@@ -239,10 +306,12 @@ async function getTaskDetail(taskId: string) {
 }
 
 function normalizeTaskStatus(value: unknown): TaskStatus {
+  if (value === 'submitted') return 'pending'
   if (value === 'pending') return 'pending'
   if (value === 'processing') return 'processing'
   if (value === 'completed') return 'completed'
   if (value === 'failed') return 'failed'
+  if (value === 'cancelled') return 'failed'
   return 'idle'
 }
 
@@ -276,8 +345,9 @@ export default function EcommerceVideoPage() {
 
   const [upload, setUpload] = useState<UploadedImage | null>(null)
   const [isDragActive, setIsDragActive] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<VideoModel>('sora-2-vip')
   const [template, setTemplate] = useState<TemplateValue>('studio-showcase')
-  const [duration, setDuration] = useState<'10' | '15'>('10')
+  const [duration, setDuration] = useState<DurationValue>('10')
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9'>('9:16')
   const [styleStrength, setStyleStrength] = useState(STYLE_OPTIONS[1]?.value ?? 'neutral')
   const [useReferenceImage, setUseReferenceImage] = useState(true)
@@ -296,6 +366,17 @@ export default function EcommerceVideoPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const availableDurationOptions = useMemo(
+    () => (selectedModel === 'sora-2-pro' ? DURATION_OPTIONS_PRO : DURATION_OPTIONS),
+    [selectedModel],
+  )
+
+  useEffect(() => {
+    if (selectedModel !== 'sora-2-pro' && duration === '25') {
+      setDuration('10')
+    }
+  }, [selectedModel, duration])
+
   useEffect(() => {
     return () => {
       pollingIdRef.current += 1
@@ -308,6 +389,7 @@ export default function EcommerceVideoPage() {
   const promptPreview = useMemo(
     () =>
       buildVideoPrompt({
+        model: selectedModel,
         template,
         duration,
         aspectRatio,
@@ -366,7 +448,7 @@ export default function EcommerceVideoPage() {
     })
   }
 
-  const pollTask = async (id: string) => {
+  const pollTask = async (id: string, model: VideoModel) => {
     const currentPollingId = Date.now()
     pollingIdRef.current = currentPollingId
 
@@ -376,7 +458,7 @@ export default function EcommerceVideoPage() {
         return
       }
 
-      const detail = await getTaskDetail(id)
+      const detail = await getTaskDetail(id, model)
       const nextStatus = normalizeTaskStatus(detail?.status)
       const nextProgress = typeof detail?.progress === 'number' ? detail.progress : 0
       const nextEstimated =
@@ -439,6 +521,7 @@ export default function EcommerceVideoPage() {
       }
 
       const result = await createVideoTask({
+        model: selectedModel,
         prompt: promptPreview,
         duration,
         aspectRatio,
@@ -450,7 +533,7 @@ export default function EcommerceVideoPage() {
       setTaskStatus(normalizeTaskStatus(result.status))
       setProgress(result.progress)
 
-      await pollTask(result.taskId)
+      await pollTask(result.taskId, selectedModel)
     } catch (error) {
       const requestError = toRequestError(error)
       setTaskStatus('failed')
@@ -547,6 +630,25 @@ export default function EcommerceVideoPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
+                <Label>模型</Label>
+                <Select value={selectedModel} onValueChange={(value) => setSelectedModel(value as VideoModel)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MODEL_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.provider} + {option.modelId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {MODEL_OPTIONS.find((option) => option.value === selectedModel)?.description}
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label>视频模板</Label>
                 <Select value={template} onValueChange={(value) => setTemplate(value as TemplateValue)}>
                   <SelectTrigger>
@@ -565,18 +667,21 @@ export default function EcommerceVideoPage() {
 
               <div className="space-y-2">
                 <Label>时长</Label>
-                <Select value={duration} onValueChange={(value) => setDuration(value as '10' | '15')}>
+                <Select value={duration} onValueChange={(value) => setDuration(value as DurationValue)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {DURATION_OPTIONS.map((option) => (
+                    {availableDurationOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedModel !== 'sora-2-pro' && (
+                  <p className="text-xs text-muted-foreground">当前模型支持 10 / 15 秒</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -700,7 +805,10 @@ export default function EcommerceVideoPage() {
               </div>
 
               {taskId ? (
-                <div className="text-xs text-muted-foreground break-all">任务ID：{taskId}</div>
+                <div className="space-y-1 text-xs text-muted-foreground break-all">
+                  <div>任务ID：{taskId}</div>
+                  <div>模型：{getModelDisplay(selectedModel)}</div>
+                </div>
               ) : (
                 <div className="text-xs text-muted-foreground">还没有任务，配置参数后点击生成。</div>
               )}

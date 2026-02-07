@@ -18,6 +18,7 @@ import { storageConfig } from './config/storage';
 import { aiConfig } from './config/ai';
 import { aiImageConfig } from './config/aiImage';
 import { evolinkConfig } from './config/evolink';
+import { apimartConfig } from './config/apimart';
 
 // Re-export types for backwards compatibility
 export type { RecurringPlan, OneTimePlan, CreditPlan, Plan } from './config/types';
@@ -154,4 +155,5 @@ export const config = {
   ai: aiConfig,
   aiImage: aiImageConfig,
   evolink: evolinkConfig,
+  apimart: apimartConfig,
 } as const;

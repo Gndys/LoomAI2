@@ -608,6 +608,45 @@ export const zhCN: Locale = {
       messages: {
         fetchError: "加载积分交易记录失败，请重试。"
       },
+      dashboard: {
+        title: "积分消耗仪表盘",
+        subtitle: "直观查看近期积分消耗趋势，快速定位主要消耗来源。",
+        empty: "暂无积分消耗数据。",
+        summary: {
+          consumedToday: "今日消耗",
+          consumed7d: "近7天消耗",
+          consumed30d: "近30天消耗",
+          totalConsumed: "累计消耗",
+          avgDaily30d: "近30天日均",
+          activeUsers30d: "近30天活跃用户",
+          transactions30d: "近30天交易数"
+        },
+        trend: {
+          title: "消耗趋势",
+          description: "按天展示所选时间范围内的积分消耗。",
+          consumedLabel: "消耗",
+          range7d: "7天",
+          range30d: "30天",
+          range90d: "90天"
+        },
+        topUsers: {
+          title: "消耗 Top 用户",
+          subtitle: "近30天积分消耗最高的用户。",
+          anonymous: "未知用户"
+        },
+        topDescriptions: {
+          title: "消耗 Top 场景",
+          subtitle: "近30天积分消耗最多的操作类型。",
+          unknown: "未知"
+        },
+        controls: {
+          allUsers: "全部用户",
+          filterUser: "按用户筛选",
+          exportCsv: "导出 CSV",
+          exporting: "导出中...",
+          loading: "正在刷新仪表盘数据..."
+        }
+      },
       adjustment: {
         action: "调整积分",
         title: "调整积分",

@@ -20,6 +20,7 @@ import {
   Download,
   DraftingCompass,
   Hand,
+  History,
   ImagePlus,
   Italic,
   Moon,
@@ -198,11 +199,21 @@ type CanvasChatAgent = {
   starterPrompts: string[]
 }
 
+type CanvasChatHistoryItem = {
+  id: string
+  title: string
+  agentId: string
+  updatedAt: string
+  messages: UIMessage[]
+}
+
 const STORAGE_KEY = 'loomai:canvas:phase0'
 const SEED_STORAGE_KEY = 'loomai:canvas:seed'
 const CHAT_AGENT_STORAGE_KEY = 'loomai:canvas:chat-agents:v1'
 const CHAT_AGENT_SELECTED_KEY = 'loomai:canvas:chat-agent-selected:v1'
+const CHAT_HISTORY_STORAGE_KEY = 'loomai:canvas:chat-history:v1'
 const CHAT_AGENT_NONE_VALUE = '__none__'
+const MAX_CHAT_HISTORY = 20
 const MIN_SCALE = 0.2
 const MAX_SCALE = 4
 const ZOOM_SPEED = 0.0015
@@ -390,6 +401,24 @@ const buildChatWelcomeMessage = (agentName?: string): UIMessage => ({
     },
   ],
 })
+
+const normalizeChatHistoryMessages = (source: UIMessage[]) =>
+  source.map((message) => {
+    const parts = (message as UIMessage & { parts?: unknown }).parts
+    const content = (message as UIMessage & { content?: unknown }).content
+    const files = (message as UIMessage & { files?: unknown }).files
+    const attachments = (message as UIMessage & { attachments?: unknown }).attachments
+    const experimentalAttachments = (message as UIMessage & { experimental_attachments?: unknown }).experimental_attachments
+    return {
+      id: message.id,
+      role: message.role,
+      ...(parts ? { parts } : {}),
+      ...(content ? { content } : {}),
+      ...(files ? { files } : {}),
+      ...(attachments ? { attachments } : {}),
+      ...(experimentalAttachments ? { experimental_attachments: experimentalAttachments } : {}),
+    } as UIMessage
+  })
 
 const normalizeAgentStarterPrompts = (value: unknown) => {
   if (!Array.isArray(value)) return []
@@ -853,6 +882,8 @@ export function InfiniteCanvas() {
   const [newChatAgentPrompt, setNewChatAgentPrompt] = useState('')
   const [isChatPinnedToBottom, setIsChatPinnedToBottom] = useState(true)
   const [showChatJumpToLatest, setShowChatJumpToLatest] = useState(false)
+  const [chatHistories, setChatHistories] = useState<CanvasChatHistoryItem[]>([])
+  const [activeChatHistoryId, setActiveChatHistoryId] = useState<string | null>(null)
   const chatProvider = 'devdove'
   const chatModel = 'gemini-2.5-flash'
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
@@ -1535,6 +1566,45 @@ export function InfiniteCanvas() {
       console.error('Failed to persist selected chat agent', chatAgentError)
     }
   }, [selectedChatAgentId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem(CHAT_HISTORY_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as unknown
+      if (!Array.isArray(parsed)) return
+      const restored = parsed
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => {
+          const record = item as Partial<CanvasChatHistoryItem>
+          if (!record.id || !record.title || !Array.isArray(record.messages)) return null
+          return {
+            id: String(record.id),
+            title: String(record.title),
+            agentId: String(record.agentId ?? CHAT_AGENT_NONE_VALUE),
+            updatedAt: String(record.updatedAt ?? ''),
+            messages: normalizeChatHistoryMessages(record.messages as UIMessage[]),
+          } satisfies CanvasChatHistoryItem
+        })
+        .filter((item): item is CanvasChatHistoryItem => Boolean(item))
+        .slice(0, MAX_CHAT_HISTORY)
+      if (restored.length > 0) {
+        setChatHistories(restored)
+      }
+    } catch (historyError) {
+      console.error('Failed to restore chat history', historyError)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(chatHistories))
+    } catch (historyError) {
+      console.error('Failed to persist chat history', historyError)
+    }
+  }, [chatHistories])
 
   useEffect(() => {
     if (!hasHydrated) return
@@ -3473,6 +3543,7 @@ export function InfiniteCanvas() {
 
   const handleChatAgentSwitch = (nextAgentId: string) => {
     if (nextAgentId === selectedChatAgentId) return
+    setActiveChatHistoryId(null)
     setFashionPromptDraft(null)
     processedFashionAssistantIdsRef.current.clear()
     if (nextAgentId === CHAT_AGENT_NONE_VALUE) {
@@ -3524,6 +3595,7 @@ export function InfiniteCanvas() {
     setNewChatAgentName('')
     setNewChatAgentPrompt('')
     setIsChatAgentComposerOpen(false)
+    setActiveChatHistoryId(null)
     toast.success('已创建智能体')
     requestAnimationFrame(() => {
       chatInputRef.current?.focus()
@@ -4164,6 +4236,70 @@ export function InfiniteCanvas() {
     container.scrollTo({ top: container.scrollHeight, behavior })
   }, [])
 
+  const resolveChatHistoryTitle = useCallback(
+    (historyMessages: UIMessage[]) => {
+      const firstUser = historyMessages.find((message) => message.role === 'user')
+      const candidate = firstUser ? resolveMessageText(firstUser) : ''
+      if (candidate) return candidate.slice(0, 24)
+      const agentName = activeChatAgent?.name ?? '普通对话'
+      return `${agentName} 对话`
+    },
+    [activeChatAgent?.name, resolveMessageText]
+  )
+  const formatChatHistoryTime = useCallback((value: string) => {
+    if (!value) return ''
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+    return date.toLocaleString()
+  }, [])
+  const saveChatHistory = useCallback(
+    (snapshot?: UIMessage[]) => {
+      const source = snapshot ?? messages
+      if (!source.some((message) => message.role === 'user')) return
+      const history: CanvasChatHistoryItem = {
+        id: nanoid(8),
+        title: resolveChatHistoryTitle(source),
+        agentId: selectedChatAgentId,
+        updatedAt: new Date().toISOString(),
+        messages: normalizeChatHistoryMessages(source),
+      }
+      setChatHistories((prev) => [history, ...prev].slice(0, MAX_CHAT_HISTORY))
+      setActiveChatHistoryId(history.id)
+    },
+    [messages, resolveChatHistoryTitle, selectedChatAgentId]
+  )
+  const handleNewChat = useCallback(() => {
+    saveChatHistory()
+    setMessages([buildChatWelcomeMessage(activeChatAgent?.name)])
+    setChatInput('')
+    setIsChatPinnedToBottom(true)
+    setShowChatJumpToLatest(false)
+    setFashionPromptDraft(null)
+    processedFashionAssistantIdsRef.current.clear()
+    setActiveChatHistoryId(null)
+    requestAnimationFrame(() => {
+      chatInputRef.current?.focus()
+      scrollChatToBottom('auto')
+    })
+  }, [activeChatAgent?.name, saveChatHistory, scrollChatToBottom])
+  const handleSelectChatHistory = useCallback(
+    (history: CanvasChatHistoryItem) => {
+      const candidateAgentId = history.agentId?.trim() || CHAT_AGENT_NONE_VALUE
+      const agentExists =
+        candidateAgentId === CHAT_AGENT_NONE_VALUE || chatAgents.some((agent) => agent.id === candidateAgentId)
+      setSelectedChatAgentId(agentExists ? candidateAgentId : CHAT_AGENT_NONE_VALUE)
+      setMessages(normalizeChatHistoryMessages(history.messages))
+      setChatInput('')
+      setIsChatPinnedToBottom(true)
+      setShowChatJumpToLatest(false)
+      setFashionPromptDraft(null)
+      processedFashionAssistantIdsRef.current.clear()
+      setActiveChatHistoryId(history.id)
+      requestAnimationFrame(() => scrollChatToBottom('auto'))
+    },
+    [chatAgents, scrollChatToBottom]
+  )
+
   const copyChatText = useCallback(async (text: string) => {
     const value = text.trim()
     if (!value) return
@@ -4187,10 +4323,11 @@ export function InfiniteCanvas() {
     }
   }, [])
 
-  const insertPromptToPanel = useCallback(
+  const openPromptGenerator = useCallback(
     (prompt: string) => {
       const value = prompt.trim()
       if (!value) return
+      setActiveTool('image')
       setIsCanvasPromptOpen(true)
       setCanvasInput((prev) => {
         const existing = prev.trim()
@@ -4199,9 +4336,9 @@ export function InfiniteCanvas() {
         return `${existing}\n${value}`
       })
       requestAnimationFrame(() => canvasInputRef.current?.focus())
-      toast.success('已添加到面板')
+      toast.success('已填入提示词')
     },
-    [setCanvasInput, setIsCanvasPromptOpen]
+    [setActiveTool, setCanvasInput, setIsCanvasPromptOpen]
   )
 
   const insertChatTextToCanvas = useCallback(
@@ -5186,26 +5323,28 @@ export function InfiniteCanvas() {
 
       <div className="pointer-events-none absolute bottom-3 right-2 top-4 z-20">
         <div className="relative h-full w-[360px]">
-          <div className="pointer-events-auto absolute right-3 top-3 z-30">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsChatOpen(true)
-                    setIsChatMinimized((prev) => !prev)
-                  }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground"
-                  aria-label={isChatPanelOpen ? '隐藏 AI 对话' : '展开 AI 对话'}
-                >
-                  {isChatPanelOpen ? <ArrowRight className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="text-xs">
-                {isChatPanelOpen ? '隐藏对话' : activeChatAgent?.name ?? '普通对话'}
-              </TooltipContent>
-            </Tooltip>
-          </div>
+          {!isChatPanelOpen && (
+            <div className="pointer-events-auto absolute right-3 top-3 z-30">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChatOpen(true)
+                      setIsChatMinimized((prev) => !prev)
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground"
+                    aria-label="展开 AI 对话"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="text-xs">
+                  {activeChatAgent?.name ?? '普通对话'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
           <div
             className={cn(
               'pointer-events-auto flex h-full w-full flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur transition-transform duration-300 ease-out',
@@ -5216,18 +5355,94 @@ export function InfiniteCanvas() {
           >
             <div className="border-b border-border">
               <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-xs font-semibold text-primary">
                     AI
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-foreground">
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-semibold text-foreground">
                       {activeChatAgent?.name ?? '普通对话'}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="truncate text-xs text-muted-foreground">
                       {activeChatAgent ? '已启用' : '未启用'}
                     </span>
                   </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={handleNewChat}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" align="end" className="text-xs">
+                      新建对话
+                    </TooltipContent>
+                  </Tooltip>
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                          >
+                            <History className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="end" className="text-xs">
+                        历史对话
+                      </TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent side="left" align="end" className="w-72 p-2">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">历史对话</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {chatHistories.length === 0 ? (
+                        <div className="px-2 py-3 text-xs text-muted-foreground">暂无历史对话</div>
+                      ) : (
+                        <div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+                          {chatHistories.map((history) => (
+                            <DropdownMenuItem
+                              key={history.id}
+                              onClick={() => handleSelectChatHistory(history)}
+                              className={cn(
+                                'flex flex-col items-start gap-1 rounded-lg px-2 py-2',
+                                history.id === activeChatHistoryId && 'bg-muted/60'
+                              )}
+                            >
+                              <span className="text-sm text-foreground">{history.title}</span>
+                              <span className="text-[11px] text-muted-foreground">
+                                {formatChatHistoryTime(history.updatedAt)}
+                              </span>
+                            </DropdownMenuItem>
+                          ))}
+                        </div>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsChatOpen(true)
+                          setIsChatMinimized((prev) => !prev)
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="隐藏 AI 对话"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" align="end" className="text-xs">
+                      隐藏对话
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
               {isChatAgentComposerOpen && (
@@ -5394,14 +5609,14 @@ export function InfiniteCanvas() {
                                       </button>
                                       <button
                                         type="button"
-                                        onClick={() => insertPromptToPanel(promptText)}
+                                        onClick={() => openPromptGenerator(promptText)}
                                         className="rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
                                       >
-                                        添加到面板
+                                        生成图片
                                       </button>
                                     </div>
                                   </div>
-                                  <div className="mt-2 whitespace-pre-wrap break-words text-[11px] text-foreground">
+                                  <div className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-[11px] text-foreground scrollbar-hide">
                                     {promptText}
                                   </div>
                                 </div>

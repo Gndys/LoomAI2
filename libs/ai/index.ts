@@ -19,6 +19,7 @@ export {
   getImageSizesForProvider,
 } from './image';
 export * from './evolink';
+export * from './apimart';
 
 // Re-export image config from config folder
 export { aiImageConfig } from '../../config/aiImage';

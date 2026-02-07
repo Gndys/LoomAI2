@@ -25,3 +25,4 @@ export { databaseConfig } from './database';
 export { storageConfig } from './storage';
 export { aiConfig } from './ai';
 export { aiImageConfig } from './aiImage';
+export { apimartConfig } from './apimart';
