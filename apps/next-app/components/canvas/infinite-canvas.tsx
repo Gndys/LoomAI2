@@ -240,9 +240,8 @@ const NOTE_NEUTRAL_TEXT_COLOR = '#0f172a'
 const NOTE_NEUTRAL_BACKGROUND_COLOR = '#f1f5f9'
 const NOTE_NEUTRAL_BORDER_COLOR = '#e2e8f0'
 const CHAT_BUBBLE_FONT_SIZE = 14
-const CHAT_BUBBLE_MAX_WIDTH = 280
+const CHAT_BUBBLE_MAX_WIDTH = 300
 const CHAT_BUBBLE_FALLBACK_USER_BG = '#0f766e'
-const CHAT_BUBBLE_FALLBACK_USER_TEXT = '#f8fafc'
 const CHAT_BUBBLE_FALLBACK_ASSISTANT_BG = '#e2e8f0'
 const CHAT_BUBBLE_FALLBACK_ASSISTANT_TEXT = '#0f172a'
 const MAX_CHAT_AGENT_NAME_LENGTH = 20
@@ -882,22 +881,6 @@ export function InfiniteCanvas() {
   const canvasInputRef = useRef<HTMLInputElement | null>(null)
   const chatInputRef = useRef<HTMLTextAreaElement | null>(null)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
-  const chatDragPayloadRef = useRef<string | null>(null)
-  const isChatDraggingRef = useRef(false)
-  const chatDragRoleRef = useRef<'user' | 'assistant' | null>(null)
-  const chatPointerDragRef = useRef<{
-    text: string
-    role: 'user' | 'assistant'
-    startX: number
-    startY: number
-    dragging: boolean
-  } | null>(null)
-  const [chatDragGhost, setChatDragGhost] = useState<{
-    x: number
-    y: number
-    text: string
-    role: 'user' | 'assistant'
-  } | null>(null)
   const [fashionPromptDraft, setFashionPromptDraft] = useState<FashionPromptDraft | null>(null)
   const processedFashionAssistantIdsRef = useRef<Set<string>>(new Set())
 
@@ -923,10 +906,11 @@ export function InfiniteCanvas() {
 
   const getViewportRect = () => viewportRef.current?.getBoundingClientRect()
 
-  const resolveThemeColor = useCallback((token: string, fallback: string) => {
+  const resolveThemeColor = useCallback((token: string, fallback: string, alpha?: number) => {
     if (typeof window === 'undefined') return fallback
     const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim()
-    return value ? `hsl(${value})` : fallback
+    if (!value) return fallback
+    return typeof alpha === 'number' ? `hsl(${value} / ${alpha})` : `hsl(${value})`
   }, [])
 
   const screenToWorld = useCallback(
@@ -1172,17 +1156,20 @@ export function InfiniteCanvas() {
   )
 
   const createChatBubbleItem = useCallback(
-    (worldX: number, worldY: number, text: string, role: 'user' | 'assistant') => {
+    (
+      worldX: number,
+      worldY: number,
+      text: string,
+      role: 'user' | 'assistant',
+      anchor: 'top-left' | 'center' = 'top-left'
+    ) => {
       const value = text.trim()
       if (!value) return null
       const backgroundColor =
         role === 'user'
-          ? resolveThemeColor('--primary', CHAT_BUBBLE_FALLBACK_USER_BG)
-          : resolveThemeColor('--secondary', CHAT_BUBBLE_FALLBACK_ASSISTANT_BG)
-      const textColor =
-        role === 'user'
-          ? resolveThemeColor('--primary-foreground', CHAT_BUBBLE_FALLBACK_USER_TEXT)
-          : resolveThemeColor('--foreground', CHAT_BUBBLE_FALLBACK_ASSISTANT_TEXT)
+          ? resolveThemeColor('--primary', CHAT_BUBBLE_FALLBACK_USER_BG, 0.12)
+          : resolveThemeColor('--muted', CHAT_BUBBLE_FALLBACK_ASSISTANT_BG, 0.3)
+      const textColor = resolveThemeColor('--foreground', CHAT_BUBBLE_FALLBACK_ASSISTANT_TEXT)
       const { width, height } = measureTextBox(
         value,
         CHAT_BUBBLE_FONT_SIZE,
@@ -1194,11 +1181,13 @@ export function InfiniteCanvas() {
         TEXT_PADDING_X,
         TEXT_PADDING_Y
       )
+      const resolvedX = anchor === 'center' ? worldX - width / 2 : worldX
+      const resolvedY = anchor === 'center' ? worldY - height / 2 : worldY
       const nextItem: CanvasTextItem = {
         id: nanoid(),
         type: 'text',
-        x: worldX,
-        y: worldY,
+        x: resolvedX,
+        y: resolvedY,
         width,
         height,
         data: {
@@ -1222,6 +1211,17 @@ export function InfiniteCanvas() {
       return nextItem.id
     },
     [measureTextBox, resolveThemeColor, syncSelection]
+  )
+
+  const insertChatMessageToCanvas = useCallback(
+    (text: string, role: 'user' | 'assistant') => {
+      const value = text.trim()
+      if (!value) return
+      const center = getViewportCenterWorld()
+      createChatBubbleItem(center.x, center.y, value, role, 'center')
+      toast.success('已插入到画布')
+    },
+    [createChatBubbleItem, getViewportCenterWorld]
   )
 
   const handleDeleteItems = useCallback(
@@ -2497,25 +2497,6 @@ export function InfiniteCanvas() {
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
-    const textPayload =
-      event.dataTransfer.getData('application/loomai-chat-text') ||
-      event.dataTransfer.getData('text/plain')
-    const resolvedText = textPayload?.trim() || chatDragPayloadRef.current?.trim()
-    if (resolvedText) {
-      const rect = getViewportRect()
-      if (!rect) return
-      const worldPoint = screenToWorld(event.clientX - rect.left, event.clientY - rect.top)
-      const rolePayload = event.dataTransfer.getData('application/loomai-chat-role')
-      const resolvedRole = rolePayload === 'user' || rolePayload === 'assistant'
-        ? rolePayload
-        : chatDragRoleRef.current ?? 'assistant'
-      createChatBubbleItem(worldPoint.x, worldPoint.y, resolvedText, resolvedRole)
-      toast.success('已插入到画布')
-      chatDragPayloadRef.current = null
-      isChatDraggingRef.current = false
-      chatDragRoleRef.current = null
-      return
-    }
     handleFiles(event.dataTransfer.files)
   }
 
@@ -4340,109 +4321,6 @@ export function InfiniteCanvas() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [layerContextMenu, layerDetailPopover])
 
-  useEffect(() => {
-    const handleGlobalDragOver = (event: DragEvent) => {
-      if (!isChatDraggingRef.current) return
-      event.preventDefault()
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'copy'
-      }
-    }
-
-    const handleGlobalDrop = (event: DragEvent) => {
-      if (!isChatDraggingRef.current) return
-      const textPayload =
-        event.dataTransfer?.getData('application/loomai-chat-text') ||
-        event.dataTransfer?.getData('text/plain')
-      const resolvedText = textPayload?.trim() || chatDragPayloadRef.current?.trim()
-      if (!resolvedText) {
-        isChatDraggingRef.current = false
-        return
-      }
-      const rect = getViewportRect()
-      if (!rect) {
-        isChatDraggingRef.current = false
-        return
-      }
-      const withinX = event.clientX >= rect.left && event.clientX <= rect.right
-      const withinY = event.clientY >= rect.top && event.clientY <= rect.bottom
-      if (!withinX || !withinY) {
-        isChatDraggingRef.current = false
-        return
-      }
-      event.preventDefault()
-      const worldPoint = screenToWorld(event.clientX - rect.left, event.clientY - rect.top)
-      const rolePayload = event.dataTransfer?.getData('application/loomai-chat-role')
-      const resolvedRole =
-        rolePayload === 'user' || rolePayload === 'assistant'
-          ? rolePayload
-          : chatDragRoleRef.current ?? 'assistant'
-      createChatBubbleItem(worldPoint.x, worldPoint.y, resolvedText, resolvedRole)
-      toast.success('已插入到画布')
-      chatDragPayloadRef.current = null
-      isChatDraggingRef.current = false
-      chatDragRoleRef.current = null
-    }
-
-    window.addEventListener('dragover', handleGlobalDragOver)
-    window.addEventListener('drop', handleGlobalDrop)
-    return () => {
-      window.removeEventListener('dragover', handleGlobalDragOver)
-      window.removeEventListener('drop', handleGlobalDrop)
-    }
-  }, [createChatBubbleItem, screenToWorld])
-
-  useEffect(() => {
-    const handlePointerMove = (event: PointerEvent) => {
-      const state = chatPointerDragRef.current
-      if (!state) return
-      const dx = event.clientX - state.startX
-      const dy = event.clientY - state.startY
-      if (!state.dragging) {
-        if (Math.hypot(dx, dy) < 6) return
-        state.dragging = true
-        document.body.style.userSelect = 'none'
-        document.body.style.cursor = 'grabbing'
-      }
-      if (!state.dragging) return
-      setChatDragGhost({
-        x: event.clientX,
-        y: event.clientY,
-        text: state.text,
-        role: state.role,
-      })
-    }
-
-    const handlePointerUp = (event: PointerEvent) => {
-      const state = chatPointerDragRef.current
-      if (!state) return
-      if (state.dragging) {
-        const rect = getViewportRect()
-        if (rect) {
-          const withinX = event.clientX >= rect.left && event.clientX <= rect.right
-          const withinY = event.clientY >= rect.top && event.clientY <= rect.bottom
-          if (withinX && withinY) {
-            const worldPoint = screenToWorld(event.clientX - rect.left, event.clientY - rect.top)
-            createChatBubbleItem(worldPoint.x, worldPoint.y, state.text, state.role)
-            toast.success('已插入到画布')
-          }
-        }
-      }
-      chatPointerDragRef.current = null
-      setChatDragGhost(null)
-      document.body.style.userSelect = ''
-      document.body.style.cursor = ''
-    }
-
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', handlePointerUp)
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', handlePointerUp)
-      document.body.style.userSelect = ''
-      document.body.style.cursor = ''
-    }
-  }, [createChatBubbleItem, screenToWorld])
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
@@ -4821,7 +4699,7 @@ export function InfiniteCanvas() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {layerItems.map((item) => {
                     const isSelected = selectedIdsSet.has(item.id)
                     const isHidden = Boolean(item.hidden)
@@ -5335,13 +5213,8 @@ export function InfiniteCanvas() {
                       {activeChatAgent?.name ?? '普通对话'}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {activeChatAgent ? '已启用智能体' : '未启用智能体'} · 支持画布选中图片
+                      {activeChatAgent ? '已启用' : '未启用'}
                     </span>
-                    {activeChatAgent?.id === FASHION_TREND_AGENT_ID && fashionPromptDraft?.prompts?.length ? (
-                      <span className="text-[11px] text-primary">
-                        已解析 {fashionPromptDraft.prompts.length} 个方向提示词 · 可直接回复“同意生成方向1”
-                      </span>
-                    ) : null}
                   </div>
                 </div>
                 <Button
@@ -5464,30 +5337,19 @@ export function InfiniteCanvas() {
                       : { body: displayText, prompt: undefined }
                     const messageRole: 'user' | 'assistant' = message.role === 'assistant' ? 'assistant' : 'user'
                     const actionPlacement = isAssistant ? 'left-2' : 'right-2'
-                    const actionButtonClass = isAssistant
-                      ? 'border-border/70 bg-background/90 text-muted-foreground hover:border-primary/50 hover:text-foreground'
-                      : 'border-primary/30 bg-primary/10 text-primary hover:border-primary/60 hover:text-primary'
+                    const actionButtonClass =
+                      'border-border/60 bg-background/80 text-muted-foreground hover:border-primary/40 hover:text-foreground'
                     return (
                       <Message
                         key={message.id}
                         from={messageRole}
-                        onPointerDown={(event) => {
-                          if (!hasDisplayText) return
-                          if (event.button !== 0) return
-                          chatPointerDragRef.current = {
-                            text: displayText,
-                            role: messageRole,
-                            startX: event.clientX,
-                            startY: event.clientY,
-                            dragging: false,
-                          }
-                        }}
                       >
                         <MessageContent
                           variant="contained"
                           className={cn(
-                            'relative overflow-visible pt-6',
-                            hasDisplayText && 'cursor-grab active:cursor-grabbing'
+                            'relative overflow-visible rounded-2xl border border-transparent pt-6 shadow-[0_6px_16px_-12px_hsl(var(--foreground)/0.3)]',
+                            'group-[.is-user]:bg-primary/10 group-[.is-user]:text-foreground group-[.is-user]:border-primary/20',
+                            'group-[.is-assistant]:bg-muted/30 group-[.is-assistant]:text-foreground group-[.is-assistant]:border-border/60'
                           )}
                         >
                           {message.role === 'assistant' ? (
@@ -5612,6 +5474,16 @@ export function InfiniteCanvas() {
                                 )}
                               >
                                 复制
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => insertChatMessageToCanvas(actionText, messageRole)}
+                                className={cn(
+                                  'rounded-full border px-2 py-0.5 text-[10px] shadow-sm transition',
+                                  actionButtonClass
+                                )}
+                              >
+                                插入
                               </button>
                             </div>
                           )}
@@ -6620,30 +6492,6 @@ export function InfiniteCanvas() {
         </div>
       </div>
 
-      {chatDragGhost && (
-        <div
-          className="pointer-events-none fixed z-50"
-          style={{ left: chatDragGhost.x + 12, top: chatDragGhost.y + 12 }}
-        >
-          <div
-            className="max-w-[280px] rounded-lg px-4 py-3 text-sm shadow-lg"
-            style={{
-              backgroundColor:
-                chatDragGhost.role === 'user'
-                  ? resolveThemeColor('--primary', CHAT_BUBBLE_FALLBACK_USER_BG)
-                  : resolveThemeColor('--secondary', CHAT_BUBBLE_FALLBACK_ASSISTANT_BG),
-              color:
-                chatDragGhost.role === 'user'
-                  ? resolveThemeColor('--primary-foreground', CHAT_BUBBLE_FALLBACK_USER_TEXT)
-                  : resolveThemeColor('--foreground', CHAT_BUBBLE_FALLBACK_ASSISTANT_TEXT),
-              fontSize: CHAT_BUBBLE_FONT_SIZE,
-              lineHeight: 1.3,
-            }}
-          >
-            <div className="whitespace-pre-wrap break-words">{chatDragGhost.text}</div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
