@@ -186,6 +186,7 @@ type LassoState = {
 }
 
 const STORAGE_KEY = 'loomai:canvas:phase0'
+const SEED_STORAGE_KEY = 'loomai:canvas:seed'
 const MIN_SCALE = 0.2
 const MAX_SCALE = 4
 const ZOOM_SPEED = 0.0015
@@ -683,6 +684,7 @@ export function InfiniteCanvas() {
     [resolveLocalPoint]
   )
 
+
   const getLassoBounds = useCallback((points: LassoPoint[]) => {
     let minX = Number.POSITIVE_INFINITY
     let minY = Number.POSITIVE_INFINITY
@@ -1071,6 +1073,28 @@ export function InfiniteCanvas() {
       setHasHydrated(true)
     }
   }, [])
+
+  useEffect(() => {
+    if (!hasHydrated) return
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.sessionStorage.getItem(SEED_STORAGE_KEY)
+      if (!raw) return
+      window.sessionStorage.removeItem(SEED_STORAGE_KEY)
+      const parsed = JSON.parse(raw) as { prompt?: string; image?: string }
+      if (parsed.prompt) {
+        setCanvasInput(parsed.prompt)
+        setIsCanvasPromptOpen(true)
+      }
+      if (parsed.image) {
+        requestAnimationFrame(() => {
+          addImageItem(parsed.image as string, 'ai-generate')
+        })
+      }
+    } catch (error) {
+      console.error('Failed to restore canvas seed', error)
+    }
+  }, [hasHydrated])
 
   useEffect(() => {
     if (!hasHydrated) return
@@ -2107,6 +2131,51 @@ export function InfiniteCanvas() {
     }
   }
 
+  const buildLassoMarkedImage = async (item: CanvasImageItem, points: LassoPoint[]) => {
+    const ensured = await ensureRemoteImageUrl(item, { allowLocal: true })
+    const image = await loadExportImage(ensured.url)
+    if (!image) {
+      throw new Error('图片加载失败')
+    }
+    const width = image.naturalWidth || image.width
+    const height = image.naturalHeight || image.height
+    if (!width || !height) {
+      throw new Error('图片尺寸读取失败')
+    }
+    const metrics = resolveImageMetrics(item)
+    const scaleX = metrics ? width / metrics.intrinsicWidth : 1
+    const scaleY = metrics ? height / metrics.intrinsicHeight : 1
+
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.floor(width))
+    canvas.height = Math.max(1, Math.floor(height))
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      throw new Error('无法创建画布')
+    }
+    ctx.drawImage(image, 0, 0, width, height)
+    ctx.save()
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.95)'
+    ctx.lineWidth = 3
+    ctx.lineJoin = 'round'
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    points.forEach((point, index) => {
+      const x = point.x * scaleX
+      const y = point.y * scaleY
+      if (index === 0) {
+        ctx.moveTo(x, y)
+      } else {
+        ctx.lineTo(x, y)
+      }
+    })
+    ctx.closePath()
+    ctx.stroke()
+    ctx.restore()
+
+    return canvas.toDataURL('image/png')
+  }
+
   const getExportBounds = (exportItems: CanvasItem[]) => {
     let minX = Number.POSITIVE_INFINITY
     let minY = Number.POSITIVE_INFINITY
@@ -2955,8 +3024,10 @@ export function InfiniteCanvas() {
   }
 
   const resolveImageFileName = (name: string | undefined, mediaType: string) => {
-    if (name) return name
     const fallbackExt = mediaType.split('/')[1] || 'png'
+    if (name) {
+      return name.includes('.') ? name : `${name}.${fallbackExt}`
+    }
     return `selected-image.${fallbackExt}`
   }
 
@@ -3013,6 +3084,11 @@ export function InfiniteCanvas() {
     try {
       const modelOption = imageModelOptions.find((option) => option.value === imageModel)
       const providerLabel = modelOption?.provider
+      const isLassoEdit = isLassoActive && isLassoReady && selectedItem?.type === 'image'
+      if (isLassoActive && !isLassoReady) {
+        toast.error('请先闭合套索选区', { id: toastId })
+        return
+      }
       let resolvedSize: string | undefined
       if (imageSizeMode === 'custom') {
         const width = Number(customSizeWidth)
@@ -3043,22 +3119,32 @@ export function InfiniteCanvas() {
         model: imageModel,
       }
 
-      if (referenceImageLimit > 0 && selectedImageItems.length > referenceImageLimit) {
-        toast.error(`当前模型最多支持 ${referenceImageLimit} 张参考图`, { id: toastId })
-        return
-      }
-
-      if (referenceImageLimit > 0 && selectedImageItems.length > 0) {
-        const resolvedUrls: string[] = []
-        for (const item of selectedImageItems) {
-          const ensured = await ensureRemoteImageUrl(item)
-          if (!ensured?.url) {
-            throw new Error('参考图获取失败')
-          }
-          resolvedUrls.push(ensured.url)
+      if (isLassoEdit) {
+        const markedDataUrl = await buildLassoMarkedImage(selectedItem as CanvasImageItem, lassoState!.points)
+        const markedFile = dataUrlToFile(markedDataUrl, 'lasso-edit.png')
+        const uploaded = await uploadImageFile(markedFile)
+        if (!uploaded?.url) {
+          throw new Error('标注图上传失败')
         }
-        if (resolvedUrls.length > 0) {
-          payload.image_urls = resolvedUrls
+        payload.image_urls = [uploaded.url]
+      } else {
+        if (referenceImageLimit > 0 && selectedImageItems.length > referenceImageLimit) {
+          toast.error(`当前模型最多支持 ${referenceImageLimit} 张参考图`, { id: toastId })
+          return
+        }
+
+        if (referenceImageLimit > 0 && selectedImageItems.length > 0) {
+          const resolvedUrls: string[] = []
+          for (const item of selectedImageItems) {
+            const ensured = await ensureRemoteImageUrl(item)
+            if (!ensured?.url) {
+              throw new Error('参考图获取失败')
+            }
+            resolvedUrls.push(ensured.url)
+          }
+          if (resolvedUrls.length > 0) {
+            payload.image_urls = resolvedUrls
+          }
         }
       }
 
@@ -3099,7 +3185,7 @@ export function InfiniteCanvas() {
         provider: storageProvider,
         expiresAt,
         meta: {
-          source: 'generate',
+          source: isLassoEdit ? 'lasso-edit' : 'generate',
           model: imageModel,
           provider: providerLabel,
           prompt,
@@ -3119,6 +3205,28 @@ export function InfiniteCanvas() {
       setIsImageGenerating(false)
     }
   }
+
+  const handleCreateLassoMark = async () => {
+    if (!isLassoActive || !isLassoReady || selectedItem?.type !== 'image') {
+      toast.error('请先闭合套索选区')
+      return
+    }
+    const toastId = toast.loading('正在生成选区标注...')
+    try {
+      const markedDataUrl = await buildLassoMarkedImage(selectedItem, lassoState!.points)
+      addImageItem(markedDataUrl, 'lasso-mark', {
+        meta: {
+          source: 'lasso-mark',
+          createdAt: new Date().toISOString(),
+        },
+      })
+      toast.success('已添加选区标注', { id: toastId })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '生成失败，请稍后重试'
+      toast.error(message, { id: toastId })
+    }
+  }
+
 
   const insertCanvasText = () => {
     const text = resolvedCanvasPrompt.trim()
@@ -3192,6 +3300,8 @@ export function InfiniteCanvas() {
       duplicate: '复制',
       import: '导入',
       lasso: '套索抠图',
+      'lasso-edit': '套索修图',
+      'lasso-mark': '选区标注',
     }
     return map[source] ?? '未知来源'
   }
@@ -4689,6 +4799,12 @@ export function InfiniteCanvas() {
         <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 w-[min(720px,calc(100%-3rem))] -translate-x-1/2">
         <div className="pointer-events-auto relative">
           <div className="flex flex-col gap-3 rounded-3xl border border-border bg-background/90 px-4 py-3 shadow-lg backdrop-blur">
+            {isLassoActive && (
+              <div className="flex items-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+                <PencilLine className="h-3.5 w-3.5" />
+                套索修图模式：圈选区域后输入需求，仅修改选区
+              </div>
+            )}
             {showCanvasPromptAdvanced && (
               <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-muted/30 px-3 py-2">
                 <Select value={imageSizeMode} onValueChange={setImageSizeMode} disabled={isImageGenerating}>
@@ -5033,15 +5149,17 @@ export function InfiniteCanvas() {
                 </>
               ) : (
                 <>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 gap-1 rounded-full px-2 text-xs"
-                    onClick={() => setIsCanvasPromptOpen(true)}
-                  >
-                    <Wand2 className="h-3.5 w-3.5" />
-                    编辑
-                  </Button>
+                  {!isLassoActive && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1 rounded-full px-2 text-xs"
+                      onClick={() => setIsCanvasPromptOpen(true)}
+                    >
+                      <Wand2 className="h-3.5 w-3.5" />
+                      编辑
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"
@@ -5057,6 +5175,23 @@ export function InfiniteCanvas() {
                   </Button>
                   {isLassoActive && (
                     <>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 rounded-full px-2 text-xs"
+                        onClick={handleCreateLassoMark}
+                      >
+                        选区标注
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 rounded-full px-2 text-xs"
+                        onClick={() => setIsCanvasPromptOpen(true)}
+                      >
+                        <Wand2 className="h-3.5 w-3.5" />
+                        AI 编辑
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -5078,118 +5213,124 @@ export function InfiniteCanvas() {
                       </Button>
                     </>
                   )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 gap-1 rounded-full px-2 text-xs"
-                    onClick={() => handleRemoveBackground(selectedItem as CanvasImageItem)}
-                    disabled={isRemovingBackground}
-                  >
-                    {isRemovingBackground ? (
-                      <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Scissors className="h-3.5 w-3.5" />
-                    )}
-                    {isRemovingBackground ? '处理中' : '去背'}
-                  </Button>
-                  <DropdownMenu open={isDecomposeMenuOpen} onOpenChange={setIsDecomposeMenuOpen}>
-                    <DropdownMenuTrigger asChild>
+                  {!isLassoActive && (
+                    <>
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-7 gap-1 rounded-full px-2 text-xs"
-                        disabled={isLayerDecomposing}
+                        onClick={() => handleRemoveBackground(selectedItem as CanvasImageItem)}
+                        disabled={isRemovingBackground}
                       >
-                        {isLayerDecomposing ? (
+                        {isRemovingBackground ? (
                           <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
                         ) : (
-                          <Layers className="h-3.5 w-3.5" />
+                          <Scissors className="h-3.5 w-3.5" />
                         )}
-                        {isLayerDecomposing ? '处理中' : '拆解图层'}
-                        <ChevronDown className="h-3.5 w-3.5" />
+                        {isRemovingBackground ? '处理中' : '去背'}
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      side="top"
-                      className="w-[220px] rounded-2xl border border-border/80 bg-popover/95 p-3 text-xs shadow-lg backdrop-blur"
-                    >
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-muted-foreground">图层数</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={10}
-                            step={1}
-                            value={layerDecomposeCount}
-                            onChange={(event) => {
-                              const next = Number(event.target.value)
-                              if (!Number.isFinite(next)) return
-                              setLayerDecomposeCount(clamp(Math.round(next), 1, 10))
-                            }}
-                            className="w-16 rounded-full border border-border bg-background px-2 py-1 text-center text-xs text-foreground focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-muted-foreground">引导强度</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={20}
-                            step={0.5}
-                            value={layerGuidanceScale}
-                            onChange={(event) => {
-                              const next = Number(event.target.value)
-                              if (!Number.isFinite(next)) return
-                              const clamped = clamp(next, 1, 20)
-                              setLayerGuidanceScale(Math.round(clamped * 10) / 10)
-                            }}
-                            className="w-16 rounded-full border border-border bg-background px-2 py-1 text-center text-xs text-foreground focus:outline-none"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsDecomposeMenuOpen(false)
-                            handleDecomposeLayers(selectedItem as CanvasImageItem)
-                          }}
-                          disabled={isLayerDecomposing}
-                          className="mt-1 rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      <DropdownMenu open={isDecomposeMenuOpen} onOpenChange={setIsDecomposeMenuOpen}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 gap-1 rounded-full px-2 text-xs"
+                            disabled={isLayerDecomposing}
+                          >
+                            {isLayerDecomposing ? (
+                              <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Layers className="h-3.5 w-3.5" />
+                            )}
+                            {isLayerDecomposing ? '处理中' : '拆解图层'}
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          side="top"
+                          className="w-[220px] rounded-2xl border border-border/80 bg-popover/95 p-3 text-xs shadow-lg backdrop-blur"
                         >
-                          {isLayerDecomposing ? '处理中...' : '开始拆解'}
-                        </button>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 gap-1 rounded-full px-2 text-xs"
-                    onClick={() => handleDownloadItem(selectedItem as CanvasImageItem)}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    下载
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 gap-1 rounded-full px-2 text-xs"
-                    onClick={() => handleCopyItem(selectedItem)}
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    复制
-                  </Button>
+                          <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-muted-foreground">图层数</span>
+                              <input
+                                type="number"
+                                min={1}
+                                max={10}
+                                step={1}
+                                value={layerDecomposeCount}
+                                onChange={(event) => {
+                                  const next = Number(event.target.value)
+                                  if (!Number.isFinite(next)) return
+                                  setLayerDecomposeCount(clamp(Math.round(next), 1, 10))
+                                }}
+                                className="w-16 rounded-full border border-border bg-background px-2 py-1 text-center text-xs text-foreground focus:outline-none"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-muted-foreground">引导强度</span>
+                              <input
+                                type="number"
+                                min={1}
+                                max={20}
+                                step={0.5}
+                                value={layerGuidanceScale}
+                                onChange={(event) => {
+                                  const next = Number(event.target.value)
+                                  if (!Number.isFinite(next)) return
+                                  const clamped = clamp(next, 1, 20)
+                                  setLayerGuidanceScale(Math.round(clamped * 10) / 10)
+                                }}
+                                className="w-16 rounded-full border border-border bg-background px-2 py-1 text-center text-xs text-foreground focus:outline-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsDecomposeMenuOpen(false)
+                                handleDecomposeLayers(selectedItem as CanvasImageItem)
+                              }}
+                              disabled={isLayerDecomposing}
+                              className="mt-1 rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {isLayerDecomposing ? '处理中...' : '开始拆解'}
+                            </button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 rounded-full px-2 text-xs"
+                        onClick={() => handleDownloadItem(selectedItem as CanvasImageItem)}
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        下载
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 rounded-full px-2 text-xs"
+                        onClick={() => handleCopyItem(selectedItem)}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        复制
+                      </Button>
+                    </>
+                  )}
                 </>
               )}
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 gap-1 rounded-full px-2 text-xs text-destructive hover:text-destructive"
-                onClick={() => handleDeleteItems(selectedIds.length > 0 ? selectedIds : [selectedItem.id])}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                删除
-              </Button>
+              {!isLassoActive && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1 rounded-full px-2 text-xs text-destructive hover:text-destructive"
+                  onClick={() => handleDeleteItems(selectedIds.length > 0 ? selectedIds : [selectedItem.id])}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  删除
+                </Button>
+              )}
             </div>
           </div>
           <div
@@ -5384,9 +5525,9 @@ export function InfiniteCanvas() {
                           {lassoPath && (
                             <path
                               d={lassoPath}
-                              fill="rgba(59, 130, 246, 0.15)"
-                              stroke="rgba(59, 130, 246, 0.85)"
-                              strokeWidth={1.5}
+                              fill="none"
+                              stroke="rgba(239, 68, 68, 0.95)"
+                              strokeWidth={2}
                             />
                           )}
                         </svg>

@@ -2,14 +2,21 @@
 
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { Sparkles, X, SlidersHorizontal } from 'lucide-react'
+import { Sparkles, X, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { useTranslation } from '@/hooks/use-translation'
 import { FeaturePageShell, FeatureCard } from '@/components/feature-page-shell'
 import { CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -37,7 +44,8 @@ import {
 } from '@libs/ai/prompt-engine'
 
 export default function AIGeneratePage() {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
+  const router = useRouter()
   // 状态管理
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
@@ -176,6 +184,25 @@ export default function AIGeneratePage() {
     } finally {
       setIsGenerating(false)
     }
+  }
+
+  const handleGenerateInCanvas = () => {
+    if (!uploadedImage || !prompt) {
+      toast.error(t.aiGenerate.toasts.needUploadPrompt)
+      return
+    }
+    try {
+      sessionStorage.setItem(
+        'loomai:canvas:seed',
+        JSON.stringify({
+          prompt,
+          image: uploadedImage,
+        })
+      )
+    } catch (error) {
+      console.error('Failed to seed canvas state', error)
+    }
+    router.push(`/${locale}/canvas`)
   }
 
   // 重新生成
@@ -515,14 +542,37 @@ export default function AIGeneratePage() {
                       >
                         {t.aiGenerate.prompt.random}
                       </Button>
-                      <Button
-                        type="button"
-                        onClick={handleGenerate}
-                        disabled={!canGenerate}
-                        className="h-9 rounded-full px-5 text-xs font-medium text-background shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)] bg-foreground hover:opacity-90 disabled:opacity-50"
-                      >
-                        {isGenerating ? t.aiGenerate.generate.generating : t.aiGenerate.generate.button}
-                      </Button>
+                      <div className="inline-flex items-center">
+                        <Button
+                          type="button"
+                          onClick={handleGenerate}
+                          disabled={!canGenerate}
+                          className="h-9 rounded-l-full rounded-r-none px-5 text-xs font-medium text-background shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)] bg-foreground hover:opacity-90 disabled:opacity-50"
+                        >
+                          {isGenerating ? t.aiGenerate.generate.generating : t.aiGenerate.generate.button}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              size="icon"
+                              disabled={!canGenerate}
+                              className="h-9 w-9 rounded-l-none rounded-r-full bg-foreground text-background shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)] hover:opacity-90 disabled:opacity-50"
+                              aria-label={t.aiGenerate.generate.button}
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={handleGenerate}>
+                              {t.aiGenerate.generate.button}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleGenerateInCanvas}>
+                              {t.aiGenerate.generate.canvas}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -1947,7 +1947,8 @@ export const en: Locale = {
     generate: {
       button: "Generate Image",
       generating: "Generating...",
-      credits: "(Costs {credits} credits)"
+      credits: "(Costs {credits} credits)",
+      canvas: "Generate on canvas"
     },
     result: {
       title: "Result",

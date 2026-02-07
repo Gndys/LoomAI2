@@ -207,6 +207,18 @@ export default function Header({ className }: HeaderProps) {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link
+                    href={`/${currentLocale}/product-white-background`}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    <Shirt className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex flex-col">
+                      <span className="font-medium">白底产品图</span>
+                      <span className="text-xs text-muted-foreground">5分钟批量生成可上架白底图</span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
                     href={`/${currentLocale}/background-remover`}
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
                   >
@@ -415,6 +427,13 @@ export default function Header({ className }: HeaderProps) {
                   <div>
                     <span className="block">线稿三视图</span>
                     <span className="block text-xs text-muted-foreground">上传参考图，按张数生成工艺线稿三视图</span>
+                  </div>
+                </Link>
+                <Link href={`/${currentLocale}/product-white-background`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>
+                  <Shirt className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="block">白底产品图</span>
+                    <span className="block text-xs text-muted-foreground">5分钟批量生成可上架白底图</span>
                   </div>
                 </Link>
                 <Link href={`/${currentLocale}/background-remover`} className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted" onClick={() => setIsMenuOpen(false)}>

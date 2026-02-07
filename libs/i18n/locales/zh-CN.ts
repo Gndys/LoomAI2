@@ -1955,7 +1955,8 @@ export const zhCN: Locale = {
     generate: {
       button: "生成图片",
       generating: "生成中...",
-      credits: "（消耗 {credits} 积分）"
+      credits: "（消耗 {credits} 积分）",
+      canvas: "在画布中生成"
     },
     result: {
       title: "生成结果",
