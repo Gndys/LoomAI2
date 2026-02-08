@@ -31,6 +31,7 @@ import {
   MousePointer2,
   Megaphone,
   Lock,
+  Loader2,
   Unlock,
   Palette,
   PencilLine,
@@ -68,6 +69,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { Message, MessageContent } from '@/components/ai-elements/message'
 import { Response } from '@/components/ai-elements/response'
@@ -95,12 +97,22 @@ type CanvasImageItem = CanvasBaseItem & {
   type: 'image'
   data: {
     src: string
+    generation?: CanvasImageGenerationState
     key?: string
     provider?: string
     expiresAt?: string
     name?: string
     meta?: {
-      source: 'upload' | 'generate' | 'remove-background' | 'layered' | 'duplicate' | 'import' | 'lasso'
+      source:
+        | 'upload'
+        | 'generate'
+        | 'remove-background'
+        | 'layered'
+        | 'duplicate'
+        | 'import'
+        | 'lasso'
+        | 'lasso-edit'
+        | 'lasso-mark'
       model?: string
       provider?: string
       prompt?: string
@@ -109,6 +121,12 @@ type CanvasImageItem = CanvasBaseItem & {
       createdAt?: string
     }
   }
+}
+
+type CanvasImageGenerationState = {
+  status: 'pending'
+  progress: number
+  startedAt: string
 }
 
 type CanvasTextItem = CanvasBaseItem & {
@@ -210,7 +228,6 @@ type CanvasChatHistoryItem = {
 const STORAGE_KEY = 'loomai:canvas:phase0'
 const SEED_STORAGE_KEY = 'loomai:canvas:seed'
 const CHAT_AGENT_STORAGE_KEY = 'loomai:canvas:chat-agents:v1'
-const CHAT_AGENT_SELECTED_KEY = 'loomai:canvas:chat-agent-selected:v1'
 const CHAT_HISTORY_STORAGE_KEY = 'loomai:canvas:chat-history:v1'
 const CHAT_AGENT_NONE_VALUE = '__none__'
 const MAX_CHAT_HISTORY = 20
@@ -258,6 +275,9 @@ const CHAT_BUBBLE_MAX_WIDTH = 300
 const CHAT_BUBBLE_FALLBACK_USER_BG = '#0f766e'
 const CHAT_BUBBLE_FALLBACK_ASSISTANT_BG = '#e2e8f0'
 const CHAT_BUBBLE_FALLBACK_ASSISTANT_TEXT = '#0f172a'
+const IMAGE_ITEM_MAX_SIDE = 520
+const PENDING_IMAGE_MAX_PROGRESS = 94
+const PENDING_IMAGE_PLACEHOLDER_SRC = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 const MAX_CHAT_AGENT_NAME_LENGTH = 20
 const MAX_CHAT_AGENT_PROMPT_LENGTH = 6000
 const MAX_CUSTOM_CHAT_AGENT_COUNT = 20
@@ -572,7 +592,7 @@ const IMAGE_PROVIDER_LABELS = {
   evolink: 'EvoLink',
 } as const
 
-const isSquareOnlyEvolinkModel = (model: string) => model === 'z-image-turbo' || model === 'z-image'
+const isSquareOnlyEvolinkModel = (model: string) => model === 'z-image'
 
 const resolveCanvasReferenceImageLimit = (model: string) => {
   if (model === 'z-image') return 0
@@ -588,6 +608,40 @@ const resolveDefaultEvolinkSize = (model: string) =>
     : (config.aiImage.defaults.size ?? config.aiImage.evolinkSizes[0]?.value)
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+const fitImageToCanvasSize = (intrinsicWidth: number, intrinsicHeight: number, maxSide = IMAGE_ITEM_MAX_SIDE) => {
+  const scale = Math.min(1, maxSide / Math.max(intrinsicWidth, intrinsicHeight))
+  return {
+    width: Math.max(1, Math.round(intrinsicWidth * scale)),
+    height: Math.max(1, Math.round(intrinsicHeight * scale)),
+  }
+}
+
+const resolvePendingImageDimensions = (size?: string) => {
+  if (!size || size === 'auto') {
+    return fitImageToCanvasSize(1024, 1024)
+  }
+
+  const customMatch = size.match(/^(\d{2,4})x(\d{2,4})$/i)
+  if (customMatch) {
+    const width = Number(customMatch[1])
+    const height = Number(customMatch[2])
+    if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+      return fitImageToCanvasSize(width, height)
+    }
+  }
+
+  const ratioMatch = size.match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/)
+  if (ratioMatch) {
+    const ratioW = Number(ratioMatch[1])
+    const ratioH = Number(ratioMatch[2])
+    if (Number.isFinite(ratioW) && Number.isFinite(ratioH) && ratioW > 0 && ratioH > 0) {
+      return fitImageToCanvasSize(ratioW * 1000, ratioH * 1000)
+    }
+  }
+
+  return fitImageToCanvasSize(1024, 1024)
+}
 
 const buildTextStrokeShadow = (color: string, width: number) => {
   if (!color || color === 'transparent' || width <= 0) return 'none'
@@ -850,6 +904,11 @@ export function InfiniteCanvas() {
   const refreshingSignedUrlsRef = useRef<Record<string, Promise<SignedUrlPayload | null>>>({})
   const lassoPointerIdRef = useRef<number | null>(null)
   const lassoStateRef = useRef<LassoState | null>(null)
+  const itemsRef = useRef<CanvasItem[]>([])
+  const loadedImagesRef = useRef<Record<string, boolean>>({})
+  const brokenImagesRef = useRef<Record<string, boolean>>({})
+  const imageLoadRetryTimersRef = useRef<Record<string, number>>({})
+  const refreshingImageUrlsRef = useRef<Record<string, boolean>>({})
 
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, scale: 1 })
   const [items, setItems] = useState<CanvasItem[]>([])
@@ -861,6 +920,7 @@ export function InfiniteCanvas() {
   const [dragMode, setDragMode] = useState<'pan' | 'item' | 'resize' | 'select' | null>(null)
   const [hasHydrated, setHasHydrated] = useState(false)
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
+  const [brokenThumbnails, setBrokenThumbnails] = useState<Record<string, boolean>>({})
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({})
   const [removingBackgroundIds, setRemovingBackgroundIds] = useState<Record<string, boolean>>({})
   const [decomposingLayerIds, setDecomposingLayerIds] = useState<Record<string, boolean>>({})
@@ -871,11 +931,11 @@ export function InfiniteCanvas() {
   const [backgroundIntensity, setBackgroundIntensity] = useState<'low' | 'medium' | 'high'>('medium')
   const [backgroundSpacing, setBackgroundSpacing] = useState<'tight' | 'medium' | 'loose'>('medium')
   const [isChatOpen, setIsChatOpen] = useState(true)
-  const [isChatMinimized, setIsChatMinimized] = useState(true)
+  const [isChatMinimized, setIsChatMinimized] = useState(false)
   const [chatInput, setChatInput] = useState('')
   const [customChatAgents, setCustomChatAgents] = useState<CanvasChatAgent[]>([])
   const [selectedChatAgentId, setSelectedChatAgentId] = useState<string>(
-    BUILTIN_CHAT_AGENTS[0]?.id ?? CHAT_AGENT_NONE_VALUE
+    FASHION_TREND_AGENT_ID
   )
   const [isChatAgentComposerOpen, setIsChatAgentComposerOpen] = useState(false)
   const [newChatAgentName, setNewChatAgentName] = useState('')
@@ -915,6 +975,7 @@ export function InfiniteCanvas() {
   const canvasInputRef = useRef<HTMLInputElement | null>(null)
   const chatInputRef = useRef<HTMLTextAreaElement | null>(null)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
+  const pendingImageProgressTimerRef = useRef<number | null>(null)
   const [fashionPromptDraft, setFashionPromptDraft] = useState<FashionPromptDraft | null>(null)
   const processedFashionAssistantIdsRef = useRef<Set<string>>(new Set())
 
@@ -1323,6 +1384,21 @@ export function InfiniteCanvas() {
     [setSelectedId]
   )
 
+  const handleDeleteItemsSafe = useCallback(
+    (ids: string[]) => {
+      const nextIds = items
+        .filter((item) => ids.includes(item.id))
+        .filter((item) => !(item.type === 'image' && item.data.generation?.status === 'pending'))
+        .map((item) => item.id)
+      if (!nextIds.length) {
+        toast.message('图片生成中，暂不支持删除')
+        return
+      }
+      handleDeleteItems(nextIds)
+    },
+    [handleDeleteItems, items]
+  )
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return
@@ -1377,14 +1453,14 @@ export function InfiniteCanvas() {
       if (isEditableTarget(event.target)) return
       if (selectedIds.length === 0 && !selectedId) return
       event.preventDefault()
-      handleDeleteItems(selectedIds.length > 0 ? selectedIds : selectedId ? [selectedId] : [])
+      handleDeleteItemsSafe(selectedIds.length > 0 ? selectedIds : selectedId ? [selectedId] : [])
     }
 
     window.addEventListener('keydown', handleDeleteKey, { capture: true })
     return () => {
       window.removeEventListener('keydown', handleDeleteKey, { capture: true })
     }
-  }, [handleDeleteItems, selectedId, selectedIds])
+  }, [handleDeleteItemsSafe, selectedId, selectedIds])
 
   useEffect(() => {
     const handleSelectionKeys = (event: KeyboardEvent) => {
@@ -1494,7 +1570,11 @@ export function InfiniteCanvas() {
               },
             }
           })
-          .filter((item) => (item.type === 'text' ? Boolean(item.data?.text?.trim()) : Boolean(item.data?.src)))
+          .filter((item) =>
+            item.type === 'text'
+              ? Boolean(item.data?.text?.trim())
+              : Boolean(item.data?.src) && item.data?.generation?.status !== 'pending'
+          )
         setItems(nextItems)
       }
     } catch (error) {
@@ -1540,10 +1620,6 @@ export function InfiniteCanvas() {
           setCustomChatAgents(restored)
         }
       }
-      const rawSelectedId = window.localStorage.getItem(CHAT_AGENT_SELECTED_KEY)
-      if (rawSelectedId?.trim()) {
-        setSelectedChatAgentId(rawSelectedId.trim())
-      }
     } catch (chatAgentError) {
       console.error('Failed to restore chat agents', chatAgentError)
     }
@@ -1557,15 +1633,6 @@ export function InfiniteCanvas() {
       console.error('Failed to persist chat agents', chatAgentError)
     }
   }, [customChatAgents])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      window.localStorage.setItem(CHAT_AGENT_SELECTED_KEY, selectedChatAgentId)
-    } catch (chatAgentError) {
-      console.error('Failed to persist selected chat agent', chatAgentError)
-    }
-  }, [selectedChatAgentId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1616,6 +1683,9 @@ export function InfiniteCanvas() {
         const persistItems: CanvasItem[] = []
 
         for (const item of items) {
+          if (item.type === 'image' && item.data?.generation?.status === 'pending') {
+            continue
+          }
           const src = item.type === 'image' ? item.data?.src : undefined
           const srcLength = src ? src.length : 0
           const isDataUrl = typeof src === 'string' && src.startsWith('data:')
@@ -1652,6 +1722,15 @@ export function InfiniteCanvas() {
     const message = error instanceof Error ? error.message : 'AI 请求失败，请稍后再试'
     toast.error(message)
   }, [error])
+
+  useEffect(() => {
+    return () => {
+      if (pendingImageProgressTimerRef.current !== null) {
+        window.clearInterval(pendingImageProgressTimerRef.current)
+        pendingImageProgressTimerRef.current = null
+      }
+    }
+  }, [])
 
   useEffect(() => {
     lassoStateRef.current = lassoState
@@ -2201,35 +2280,52 @@ export function InfiniteCanvas() {
     viewportRef.current?.setPointerCapture(event.pointerId)
   }
 
-  const addImageItem = (src: string, name: string, metadata?: Partial<CanvasImageItem['data']>) => {
+  const addImageItem = useCallback((
+    src: string,
+    name: string,
+    metadata?: Partial<CanvasImageItem['data']>,
+    placement?: { x: number; y: number; width: number; height: number }
+  ) => {
     const img = new Image()
     img.onerror = () => {
       toast.error('图片加载失败，请换一张图试试')
     }
     img.onload = () => {
-      const maxSide = 520
       const intrinsicWidth = img.naturalWidth || img.width
       const intrinsicHeight = img.naturalHeight || img.height
       if (!intrinsicWidth || !intrinsicHeight) {
         toast.error('图片尺寸读取失败，请换一张图试试')
         return
       }
-      const scale = Math.min(1, maxSide / Math.max(intrinsicWidth, intrinsicHeight))
-      const width = intrinsicWidth * scale
-      const height = intrinsicHeight * scale
+      const nextSize = fitImageToCanvasSize(intrinsicWidth, intrinsicHeight)
 
-      const rect = getViewportRect()
-      const centerX = rect ? rect.width / 2 : 0
-      const centerY = rect ? rect.height / 2 : 0
-      const worldCenter = screenToWorld(centerX, centerY)
+      const nextPlacement = placement
+        ? {
+            x: placement.x,
+            y: placement.y,
+            width: placement.width,
+            height: placement.height,
+          }
+        : (() => {
+            const rect = getViewportRect()
+            const centerX = rect ? rect.width / 2 : 0
+            const centerY = rect ? rect.height / 2 : 0
+            const worldCenter = screenToWorld(centerX, centerY)
+            return {
+              x: worldCenter.x - nextSize.width / 2,
+              y: worldCenter.y - nextSize.height / 2,
+              width: nextSize.width,
+              height: nextSize.height,
+            }
+          })()
 
       const nextItem: CanvasItem = {
         id: nanoid(),
         type: 'image',
-        x: worldCenter.x - width / 2,
-        y: worldCenter.y - height / 2,
-        width,
-        height,
+        x: nextPlacement.x,
+        y: nextPlacement.y,
+        width: nextPlacement.width,
+        height: nextPlacement.height,
         data: {
           src,
           name,
@@ -2253,7 +2349,161 @@ export function InfiniteCanvas() {
       })
     }
     img.src = src
-  }
+  }, [screenToWorld, syncSelection])
+
+  const createPendingImageItem = useCallback(
+    (input: { prompt: string; model: string; provider?: string; size?: string }) => {
+      const nextId = nanoid()
+      const nextSize = resolvePendingImageDimensions(input.size)
+      const center = getViewportCenterWorld()
+      const nextItem: CanvasImageItem = {
+        id: nextId,
+        type: 'image',
+        x: Math.round((center.x - nextSize.width / 2) * 100) / 100,
+        y: Math.round((center.y - nextSize.height / 2) * 100) / 100,
+        width: nextSize.width,
+        height: nextSize.height,
+        data: {
+          src: PENDING_IMAGE_PLACEHOLDER_SRC,
+          name: `AI-${input.model}`,
+          generation: {
+            status: 'pending',
+            progress: 6,
+            startedAt: new Date().toISOString(),
+          },
+          meta: {
+            source: 'generate',
+            model: input.model,
+            provider: input.provider,
+            prompt: input.prompt,
+            size: input.size,
+            createdAt: new Date().toISOString(),
+          },
+        },
+      }
+
+      setItems((prev) => [...prev, nextItem])
+      syncSelection([nextId], nextId)
+      setLoadedImages((prev) => ({ ...prev, [nextId]: true }))
+      setBrokenImages((prev) => {
+        if (!prev[nextId]) return prev
+        const next = { ...prev }
+        delete next[nextId]
+        return next
+      })
+      return nextItem
+    },
+    [getViewportCenterWorld, syncSelection]
+  )
+
+  const removePendingImageItem = useCallback((id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id))
+    setLoadedImages((prev) => {
+      if (!prev[id]) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setBrokenImages((prev) => {
+      if (!prev[id]) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setImageSizeMap((prev) => {
+      if (!prev[id]) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setSelectedIds((prev) => prev.filter((entryId) => entryId !== id))
+    setSelectedId((prev) => (prev === id ? null : prev))
+  }, [])
+
+  const setPendingImageProgress = useCallback((id: string, progress: number) => {
+    const normalized = clamp(Math.round(progress), 0, 100)
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id && item.type === 'image' && item.data.generation?.status === 'pending'
+          ? {
+              ...item,
+              data: {
+                ...item.data,
+                generation: {
+                  ...item.data.generation,
+                  progress: normalized,
+                },
+              },
+            }
+          : item
+      )
+    )
+  }, [])
+
+  const finalizePendingImageItem = useCallback(
+    (
+      pendingId: string,
+      input: {
+        src: string
+        key?: string
+        provider?: string
+        expiresAt?: string
+        model: string
+        providerLabel?: string
+        prompt: string
+        size?: string
+        source?: 'generate' | 'lasso-edit'
+      }
+    ) => {
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== pendingId || item.type !== 'image' || item.data.generation?.status !== 'pending') {
+            return item
+          }
+          return {
+            ...item,
+            data: {
+              ...item.data,
+              src: input.src,
+              key: input.key,
+              provider: input.provider,
+              expiresAt: input.expiresAt,
+              name: `AI-${input.model}`,
+              generation: undefined,
+              meta: {
+                ...item.data.meta,
+                source: input.source ?? 'generate',
+                model: input.model,
+                provider: input.providerLabel,
+                prompt: input.prompt,
+                size: input.size,
+                createdAt: item.data.meta?.createdAt ?? new Date().toISOString(),
+              },
+            },
+          }
+        })
+      )
+      setLoadedImages((prev) => {
+        if (!prev[pendingId]) return prev
+        const next = { ...prev }
+        delete next[pendingId]
+        return next
+      })
+      setBrokenImages((prev) => {
+        if (!prev[pendingId]) return prev
+        const next = { ...prev }
+        delete next[pendingId]
+        return next
+      })
+      setImageSizeMap((prev) => {
+        if (!prev[pendingId]) return prev
+        const next = { ...prev }
+        delete next[pendingId]
+        return next
+      })
+    },
+    []
+  )
 
   const resetImageLoadState = (id: string) => {
     setLoadedImages((prev) => {
@@ -2269,6 +2519,13 @@ export function InfiniteCanvas() {
       return next
     })
   }
+
+  const markImageBroken = useCallback((id: string) => {
+    setBrokenImages((prev) => {
+      if (prev[id]) return prev
+      return { ...prev, [id]: true }
+    })
+  }, [])
 
   const updateImageItem = (id: string, updates: Partial<CanvasImageItem['data']>) => {
     setItems((prev) =>
@@ -2928,6 +3185,7 @@ export function InfiniteCanvas() {
     })()
   }
 
+
   const buildCutoutName = (name?: string) => {
     if (!name) return 'cutout.png'
     const base = name.includes('.') ? name.slice(0, Math.max(0, name.lastIndexOf('.'))) : name
@@ -3001,6 +3259,66 @@ export function InfiniteCanvas() {
       delete refreshingSignedUrlsRef.current[item.id]
     }
   }
+
+  const ensureImageUrlFresh = useCallback(
+    (item: CanvasImageItem) => {
+      const src = item.data?.src
+      if (!src || (!src.startsWith('http://') && !src.startsWith('https://'))) return
+      if (!isSignedUrlExpiring(src, item.data?.expiresAt)) return
+      if (refreshingImageUrlsRef.current[item.id]) return
+      refreshingImageUrlsRef.current[item.id] = true
+      void (async () => {
+        try {
+          await refreshSignedUrlForItem(item)
+        } finally {
+          delete refreshingImageUrlsRef.current[item.id]
+        }
+      })()
+    },
+    [refreshSignedUrlForItem]
+  )
+
+  const scheduleImageLoadRetry = useCallback(
+    (itemId: string) => {
+      if (imageLoadRetryTimersRef.current[itemId]) return
+      imageLoadRetryTimersRef.current[itemId] = window.setTimeout(async () => {
+        delete imageLoadRetryTimersRef.current[itemId]
+        const currentItem = itemsRef.current.find((entry) => entry.id === itemId)
+        if (!currentItem || currentItem.type !== 'image') return
+        if (currentItem.data?.generation?.status === 'pending') return
+        if (loadedImagesRef.current[itemId] || brokenImagesRef.current[itemId]) return
+
+        setBrokenThumbnails((prev) => {
+          if (!prev[itemId]) return prev
+          const next = { ...prev }
+          delete next[itemId]
+          return next
+        })
+
+        const refreshed = await refreshSignedUrlForItem(currentItem)
+        if (refreshed?.url) return
+        markImageBroken(itemId)
+      }, 8000)
+    },
+    [markImageBroken, refreshSignedUrlForItem]
+  )
+
+  useEffect(() => {
+    const liveIds = new Set(items.map((item) => item.id))
+    Object.entries(imageLoadRetryTimersRef.current).forEach(([id, timer]) => {
+      if (liveIds.has(id)) return
+      window.clearTimeout(timer)
+      delete imageLoadRetryTimersRef.current[id]
+    })
+
+    items.forEach((item) => {
+      if (item.type !== 'image') return
+      if (item.data?.generation?.status === 'pending') return
+      if (!item.data?.src) return
+      if (loadedImages[item.id] || brokenImages[item.id]) return
+      scheduleImageLoadRetry(item.id)
+    })
+  }, [items, loadedImages, brokenImages, scheduleImageLoadRetry])
 
   const uploadImageFile = async (file: File) => {
     const formData = new FormData()
@@ -3651,7 +3969,11 @@ export function InfiniteCanvas() {
     let files: FileUIPart[] | undefined
     let attachmentHint = ''
 
-    if (primaryItem?.type === 'image' && primaryItem.data?.src) {
+    if (
+      primaryItem?.type === 'image' &&
+      primaryItem.data?.src &&
+      primaryItem.data?.generation?.status !== 'pending'
+    ) {
       try {
         const ensured = await ensureRemoteImageUrl(primaryItem)
         const mediaType = resolveImageMediaType(ensured.url, primaryItem.data.name)
@@ -3712,6 +4034,13 @@ export function InfiniteCanvas() {
     }
     const toastId = toast.loading('正在生成图片...')
     setIsImageGenerating(true)
+    let pendingImageId: string | null = null
+    const stopPendingProgress = () => {
+      if (pendingImageProgressTimerRef.current !== null) {
+        window.clearInterval(pendingImageProgressTimerRef.current)
+        pendingImageProgressTimerRef.current = null
+      }
+    }
 
     try {
       const model = options?.modelOverride?.trim() || imageModel
@@ -3788,9 +4117,41 @@ export function InfiniteCanvas() {
         }
       }
 
-      if (resolvedSize) {
+      if (resolvedSize && resolvedSize !== 'auto') {
         payload.size = resolvedSize
       }
+
+      const pendingItem = createPendingImageItem({
+        prompt,
+        model,
+        provider: providerLabel,
+        size: resolvedSize,
+      })
+      pendingImageId = pendingItem.id
+
+      pendingImageProgressTimerRef.current = window.setInterval(() => {
+        setItems((prev) =>
+          prev.map((item) => {
+            if (item.id !== pendingItem.id || item.type !== 'image' || item.data.generation?.status !== 'pending') {
+              return item
+            }
+            const current = item.data.generation.progress
+            const delta = current < 35 ? 8 : current < 65 ? 5 : current < 85 ? 3 : 1
+            const nextProgress = Math.min(PENDING_IMAGE_MAX_PROGRESS, current + delta)
+            if (nextProgress === current) return item
+            return {
+              ...item,
+              data: {
+                ...item.data,
+                generation: {
+                  ...item.data.generation,
+                  progress: nextProgress,
+                },
+              },
+            }
+          })
+        )
+      }, 1300)
 
       const response = await fetch('/api/image-generate', {
         method: 'POST',
@@ -3800,6 +4161,11 @@ export function InfiniteCanvas() {
       const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
+        stopPendingProgress()
+        if (pendingImageId) {
+          removePendingImageItem(pendingImageId)
+          pendingImageId = null
+        }
         const message = data?.message || data?.error || '生成失败'
         if (response.status === 401) {
           toast.error('请先登录后再试', { id: toastId })
@@ -3820,19 +4186,27 @@ export function InfiniteCanvas() {
       const storageProvider = typeof data?.data?.provider === 'string' ? data.data.provider : undefined
       const expiresAt = typeof data?.data?.expiresAt === 'string' ? data.data.expiresAt : undefined
 
-      addImageItem(imageUrl, `AI-${model}`, {
+      if (pendingImageId) {
+        setPendingImageProgress(pendingImageId, 99)
+      }
+      stopPendingProgress()
+
+      if (!pendingImageId) {
+        throw new Error('生成占位已丢失，请重试')
+      }
+
+      finalizePendingImageItem(pendingImageId, {
+        src: imageUrl,
         key: storageKey,
         provider: storageProvider,
         expiresAt,
-        meta: {
-          source: isLassoEdit ? 'lasso-edit' : 'generate',
-          model,
-          provider: providerLabel,
-          prompt,
-          size: resolvedSize,
-          createdAt: new Date().toISOString(),
-        },
+        model,
+        providerLabel,
+        prompt,
+        size: resolvedSize,
+        source: isLassoEdit ? 'lasso-edit' : 'generate',
       })
+      pendingImageId = null
       setCanvasInput('')
       if (typeof data?.credits?.remaining === 'number') {
         setCreditBalance(data.credits.remaining)
@@ -3840,10 +4214,15 @@ export function InfiniteCanvas() {
       toast.success('已生成并添加到画布', { id: toastId })
       return { success: true as const }
     } catch (error) {
+      stopPendingProgress()
+      if (pendingImageId) {
+        removePendingImageItem(pendingImageId)
+      }
       const message = error instanceof Error ? error.message : '生成失败，请稍后重试'
       toast.error(message, { id: toastId })
       return { success: false as const, error: message }
     } finally {
+      stopPendingProgress()
       setIsImageGenerating(false)
     }
   }
@@ -3901,6 +4280,14 @@ export function InfiniteCanvas() {
     event.preventDefault()
     await sendChat()
   }
+
+  const handleQuickStartFashionAnalysis = useCallback((prompt: string) => {
+    setIsChatOpen(true)
+    setIsChatMinimized(false)
+    setSelectedChatAgentId(FASHION_TREND_AGENT_ID)
+    setChatInput(prompt)
+    requestAnimationFrame(() => chatInputRef.current?.focus())
+  }, [])
 
   const resolveMessageText = (message: UIMessage) => resolveCanvasMessageText(message)
   const resolveMessageFiles = (message: UIMessage) => {
@@ -4002,7 +4389,10 @@ export function InfiniteCanvas() {
     [items, selectedIds]
   )
   const selectedImageItems = useMemo(
-    () => selectedItems.filter((item): item is CanvasImageItem => item.type === 'image'),
+    () =>
+      selectedItems.filter(
+        (item): item is CanvasImageItem => item.type === 'image' && item.data?.generation?.status !== 'pending'
+      ),
     [selectedItems]
   )
   const selectedItem = selectedItems.find((item) => item.id === selectedId) ?? selectedItems[0] ?? null
@@ -4013,7 +4403,9 @@ export function InfiniteCanvas() {
     ? getLayerLabel(selectedItem)
     : ''
   const primaryReferenceItem =
-    selectedItem?.type === 'image' ? selectedItem : selectedImageItems[0] ?? null
+    selectedItem?.type === 'image' && selectedItem.data?.generation?.status !== 'pending'
+      ? selectedItem
+      : selectedImageItems[0] ?? null
   const primaryReferenceLabel = primaryReferenceItem?.data?.name?.trim() || '未命名图片'
   const userDisplayName = user?.name?.trim() || user?.email?.split('@')[0] || '访客'
   const userInitials = userDisplayName.slice(0, 2)
@@ -4024,6 +4416,8 @@ export function InfiniteCanvas() {
       ? Math.round(creditBalance).toString()
       : '--'
   const isTextSelected = selectedItem?.type === 'text' && !hasMultiSelection
+  const isSelectedImageGenerating =
+    selectedItem?.type === 'image' && selectedItem.data?.generation?.status === 'pending'
   const isRemovingBackground =
     selectedItem?.type === 'image' && Boolean(removingBackgroundIds[selectedItem.id])
   const isLayerDecomposing =
@@ -4115,6 +4509,35 @@ export function InfiniteCanvas() {
     const focusPrompt = selectedItem ? '总结当前选中对象' : '总结当前画布'
     return [focusPrompt, ...basePrompts].slice(0, 5)
   }, [activeChatAgent, selectedItem])
+
+  useEffect(() => {
+    itemsRef.current = items
+  }, [items])
+
+  useEffect(() => {
+    loadedImagesRef.current = loadedImages
+  }, [loadedImages])
+
+  useEffect(() => {
+    brokenImagesRef.current = brokenImages
+  }, [brokenImages])
+
+  useEffect(() => {
+    if (!user?.id) return
+    items.forEach((item) => {
+      if (item.type !== 'image') return
+      if (item.data?.generation?.status === 'pending') return
+      if (!item.data?.src) return
+      ensureImageUrlFresh(item)
+    })
+  }, [items, ensureImageUrlFresh, user?.id])
+
+  useEffect(() => {
+    return () => {
+      Object.values(imageLoadRetryTimersRef.current).forEach((timer) => window.clearTimeout(timer))
+      imageLoadRetryTimersRef.current = {}
+    }
+  }, [])
 
   useEffect(() => {
     if (selectedChatAgentId === CHAT_AGENT_NONE_VALUE) return
@@ -4772,28 +5195,25 @@ export function InfiniteCanvas() {
 
       <div className="pointer-events-none absolute bottom-3 left-2 top-4 z-20">
         <div className="relative h-full w-[280px]">
-          <div className="pointer-events-auto absolute bottom-0 left-0 z-30">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setIsLayerPanelOpen((prev) => !prev)}
-                  className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground',
-                    isLayerPanelOpen
-                      ? 'border-primary/40 bg-primary/10 text-primary shadow-none'
-                      : 'shadow-sm'
-                  )}
-                  aria-label={isLayerPanelOpen ? '隐藏图层面板' : '显示图层面板'}
-                >
-                  {isLayerPanelOpen ? <ArrowLeft className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">
-                {isLayerPanelOpen ? '隐藏图层' : '显示图层'}
-              </TooltipContent>
-            </Tooltip>
-          </div>
+          {!isLayerPanelOpen && (
+            <div className="pointer-events-auto absolute bottom-0 left-0 z-30">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setIsLayerPanelOpen((prev) => !prev)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition hover:bg-muted hover:text-foreground"
+                    aria-label="显示图层面板"
+                  >
+                    <Layers className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  显示图层
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         <div
             className={cn(
               'flex h-full w-full flex-col overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur transition-transform duration-300 ease-out',
@@ -4854,6 +5274,7 @@ export function InfiniteCanvas() {
                     const isHidden = Boolean(item.hidden)
                     const isLocked = Boolean(item.locked)
                     const isRenaming = renamingLayerId === item.id
+                    const hasThumbError = Boolean(brokenThumbnails[item.id])
                     const label = getLayerLabel(item)
                     const canSelect = !isHidden && !isLocked
 
@@ -4897,13 +5318,43 @@ export function InfiniteCanvas() {
                         <div className="flex min-w-0 items-center gap-2">
                           <div
                             className={cn(
-                              'flex h-8 w-8 items-center justify-center rounded-xl border',
+                              'relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl border',
                               isSelected
                                 ? 'border-primary/40 bg-primary/5 text-primary'
                                 : 'border-border bg-muted/40 text-muted-foreground'
                             )}
                           >
-                            {item.type === 'image' ? (
+                            {item.type === 'image' && item.data?.src ? (
+                              <>
+                                <img
+                                  src={item.data.src}
+                                  alt={label}
+                                  className={cn('h-full w-full object-cover', hasThumbError && 'opacity-0')}
+                                  draggable={false}
+                                  loading="lazy"
+                                  decoding="async"
+                                  fetchPriority="low"
+                                  onLoad={() => {
+                                    if (!hasThumbError) return
+                                    setBrokenThumbnails((prev) => {
+                                      if (!prev[item.id]) return prev
+                                      const next = { ...prev }
+                                      delete next[item.id]
+                                      return next
+                                    })
+                                  }}
+                                  onError={() => {
+                                    setBrokenThumbnails((prev) => {
+                                      if (prev[item.id]) return prev
+                                      return { ...prev, [item.id]: true }
+                                    })
+                                  }}
+                                />
+                                {hasThumbError && (
+                                  <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </>
+                            ) : item.type === 'image' ? (
                               <ImagePlus className="h-4 w-4" />
                             ) : (
                               <Type className="h-4 w-4" />
@@ -4979,6 +5430,25 @@ export function InfiniteCanvas() {
                     )
                   })}
                 </div>
+              )}
+            </div>
+            <div className="flex h-10 items-center gap-2 bg-background/80 pl-1 pr-2.5 backdrop-blur-sm shadow-[inset_0_1px_0_0_hsl(var(--border)/0.4)]">
+              {isLayerPanelOpen && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setIsLayerPanelOpen(false)}
+                      className="flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-background/90 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      aria-label="隐藏图层面板"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    隐藏图层
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           </div>
@@ -6189,7 +6659,7 @@ export function InfiniteCanvas() {
       {selectedItem && !hasMultiSelection && (
         <>
           <div
-            className="pointer-events-none absolute z-20"
+            className="pointer-events-none absolute z-10"
             style={{
               left: worldToScreen(selectedItem.x + selectedItem.width / 2, selectedItem.y + selectedItem.height)
                 .x,
@@ -6223,6 +6693,11 @@ export function InfiniteCanvas() {
                     复制
                   </Button>
                 </>
+              ) : isSelectedImageGenerating ? (
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  图片生成中...
+                </div>
               ) : (
                 <>
                   {!isLassoActive && (
@@ -6396,12 +6871,12 @@ export function InfiniteCanvas() {
                   )}
                 </>
               )}
-              {!isLassoActive && (
+              {!isLassoActive && !isSelectedImageGenerating && (
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-7 gap-1 rounded-full px-2 text-xs text-destructive hover:text-destructive"
-                  onClick={() => handleDeleteItems(selectedIds.length > 0 ? selectedIds : [selectedItem.id])}
+                  onClick={() => handleDeleteItemsSafe(selectedIds.length > 0 ? selectedIds : [selectedItem.id])}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   删除
@@ -6410,7 +6885,7 @@ export function InfiniteCanvas() {
             </div>
           </div>
           <div
-            className="pointer-events-none absolute z-20"
+            className="pointer-events-none absolute z-10"
             style={{
               left: worldToScreen(selectedItem.x + selectedItem.width, selectedItem.y).x,
               top: worldToScreen(selectedItem.x + selectedItem.width, selectedItem.y).y,
@@ -6485,6 +6960,14 @@ export function InfiniteCanvas() {
             const selected = selectedIdsSet.has(item.id)
             const isPrimary = item.id === selectedId
             const isText = item.type === 'text'
+            const isImageGeneratingItem = item.type === 'image' && item.data.generation?.status === 'pending'
+            const pendingProgress = isImageGeneratingItem ? clamp(item.data.generation?.progress ?? 0, 0, 100) : 0
+            const pendingSize =
+              item.type === 'image'
+                ? item.data.meta?.size && item.data.meta.size !== 'auto'
+                  ? item.data.meta.size
+                  : `${Math.round(item.width)}×${Math.round(item.height)}`
+                : ''
             const isEditing = isText && editingId === item.id
             const isLassoTarget = item.type === 'image' && lassoState?.itemId === item.id
             const lassoPath =
@@ -6549,40 +7032,63 @@ export function InfiniteCanvas() {
                 )}
                 {item.type === 'image' ? (
                   <>
-                    {!loadedImages[item.id] && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-dashed border-border bg-muted/50 text-xs text-muted-foreground">
-                        {brokenImages[item.id] ? '图片加载失败' : '图片加载中'}
+                    {isImageGeneratingItem ? (
+                      <div className="absolute inset-0 flex flex-col rounded-2xl border border-dashed border-primary/40 bg-muted/65 p-3 shadow-[0_16px_40px_-28px_hsl(var(--foreground)/0.35)]">
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            生成中
+                          </span>
+                          <span>{pendingProgress}%</span>
+                        </div>
+                        <div className="mt-2">
+                          <Progress value={pendingProgress} className="h-1.5 bg-primary/15" />
+                        </div>
+                        <div className="mt-auto flex items-center justify-between text-[10px] text-muted-foreground/90">
+                          <span className="max-w-[70%] truncate">{item.data.meta?.model ?? 'AI'}</span>
+                          <span>{pendingSize}</span>
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        {!loadedImages[item.id] && (
+                          <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-dashed border-border bg-muted/50 text-xs text-muted-foreground">
+                            {brokenImages[item.id] ? '图片加载失败' : '图片加载中'}
+                          </div>
+                        )}
+                        <img
+                          src={item.data.src}
+                          alt={item.data.name ?? 'canvas'}
+                          crossOrigin="anonymous"
+                          className="h-full w-full rounded-2xl object-contain shadow-[0_16px_40px_-28px_hsl(var(--foreground)/0.35)]"
+                          draggable={false}
+                          decoding="async"
+                          fetchPriority="high"
+                          style={{ WebkitUserDrag: 'none' }}
+                          onLoad={(event) => {
+                            const target = event.currentTarget
+                            if (target.naturalWidth && target.naturalHeight) {
+                              setImageSizeMap((prev) => {
+                                const existing = prev[item.id]
+                                if (
+                                  existing &&
+                                  existing.width === target.naturalWidth &&
+                                  existing.height === target.naturalHeight
+                                ) {
+                                  return prev
+                                }
+                                return {
+                                  ...prev,
+                                  [item.id]: { width: target.naturalWidth, height: target.naturalHeight },
+                                }
+                              })
+                            }
+                            setLoadedImages((prev) => ({ ...prev, [item.id]: true }))
+                          }}
+                          onError={() => handleImageLoadError(item)}
+                        />
+                      </>
                     )}
-                    <img
-                      src={item.data.src}
-                      alt={item.data.name ?? 'canvas'}
-                      crossOrigin="anonymous"
-                      className="h-full w-full rounded-2xl object-contain shadow-[0_16px_40px_-28px_hsl(var(--foreground)/0.35)]"
-                      draggable={false}
-                      style={{ WebkitUserDrag: 'none' }}
-                      onLoad={(event) => {
-                        const target = event.currentTarget
-                        if (target.naturalWidth && target.naturalHeight) {
-                          setImageSizeMap((prev) => {
-                            const existing = prev[item.id]
-                            if (
-                              existing &&
-                              existing.width === target.naturalWidth &&
-                              existing.height === target.naturalHeight
-                            ) {
-                              return prev
-                            }
-                            return {
-                              ...prev,
-                              [item.id]: { width: target.naturalWidth, height: target.naturalHeight },
-                            }
-                          })
-                        }
-                        setLoadedImages((prev) => ({ ...prev, [item.id]: true }))
-                      }}
-                      onError={() => handleImageLoadError(item)}
-                    />
                     {isLassoTarget && (
                       <div
                         data-lasso-overlay
@@ -6617,7 +7123,7 @@ export function InfiniteCanvas() {
                     {selected && (
                       <>
                         <div className="pointer-events-none absolute -inset-1 rounded-[20px] border border-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.2)]" />
-                        {isPrimary && !hasMultiSelection && !isLassoTarget && (
+                        {isPrimary && !hasMultiSelection && !isLassoTarget && !isImageGeneratingItem && (
                           <>
                             {RESIZE_HANDLES.map((handle) => (
                               <div
@@ -6742,8 +7248,39 @@ export function InfiniteCanvas() {
           })}
 
           {items.length === 0 && (
-            <div className="absolute left-1/2 top-1/2 w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-dashed border-border bg-background/80 p-6 text-center text-sm text-muted-foreground shadow-[0_12px_35px_-25px_hsl(var(--foreground)/0.25)]">
-              拖拽图片到画布，或点击左侧工具栏上传 / 添加文本
+            <div className="absolute left-1/2 top-1/2 w-[min(560px,calc(100%-3rem))] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-dashed border-border bg-background/85 p-6 text-center text-sm text-muted-foreground shadow-[0_16px_45px_-28px_hsl(var(--foreground)/0.3)] backdrop-blur">
+              <div className="space-y-2">
+                <p className="text-base font-semibold text-foreground">爆款服装拆解工作台</p>
+                <p>先上传一张穿搭图，再让智能体帮你拆解爆火逻辑并给出可生成方向。</p>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleUploadClick}
+                  className="h-8 rounded-full px-3 text-xs"
+                >
+                  <Upload className="mr-1.5 h-3.5 w-3.5" />
+                  上传穿搭图
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQuickStartFashionAnalysis('分析这张穿搭图：拆解爆火原因并给我 3 个爆款方向')}
+                  className="h-8 rounded-full px-3 text-xs"
+                >
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                  一键拆解爆火原因
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQuickStartFashionAnalysis('按小白能看懂的方式输出，并附上完整可复制提示词')}
+                  className="h-8 rounded-full px-3 text-xs"
+                >
+                  <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                  给我 3 个方向
+                </Button>
+              </div>
             </div>
           )}
         </div>
