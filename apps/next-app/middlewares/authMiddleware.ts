@@ -181,6 +181,11 @@ const protectedRoutes: ProtectedRouteConfig[] = [
     requiredPermission: { action: Action.MANAGE, subject: Subject.ALL }
   },
   {
+    pattern: new RegExp('^/api/generation-logs(\\/.*)?$'),
+    type: 'api',
+    requiresAuth: true,
+  },
+  {
     pattern: new RegExp('^/api/premium(\\/.*)?$'), 
     type: 'api',
     requiresAuth: true,

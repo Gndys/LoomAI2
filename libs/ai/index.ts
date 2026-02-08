@@ -20,6 +20,7 @@ export {
 } from './image';
 export * from './evolink';
 export * from './apimart';
+export * from './generation-log';
 
 // Re-export image config from config folder
 export { aiImageConfig } from '../../config/aiImage';

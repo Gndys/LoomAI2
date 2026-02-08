@@ -44,6 +44,7 @@ export const zhCN: Locale = {
       subscriptions: "订阅管理",
       orders: "订单管理",
       credits: "积分管理",
+      generationLogs: "生成日志",
       application: "应用程序"
     }
   },
@@ -707,6 +708,46 @@ export const zhCN: Locale = {
         refund: "退款",
         bonus: "奖励",
         adjustment: "调整"
+      }
+    },
+    generationLogs: {
+      title: "生成调用日志",
+      subtitle: "记录每次生成调用的时间、状态、失败原因和详情。",
+      messages: {
+        fetchError: "加载生成日志失败。"
+      },
+      filters: {
+        allStatus: "全部状态",
+        allFeatures: "全部功能",
+        videoGenerate: "视频生成"
+      },
+      status: {
+        pending: "排队中",
+        processing: "生成中",
+        completed: "已完成",
+        failed: "失败"
+      },
+      table: {
+        noResults: "暂无生成日志。",
+        columns: {
+          time: "时间",
+          user: "用户",
+          feature: "功能",
+          providerModel: "通道 / 模型",
+          taskId: "任务ID",
+          status: "状态",
+          success: "成功",
+          failureReason: "失败原因",
+          details: "详情"
+        },
+        actions: {
+          viewDetails: "查看详情"
+        }
+      },
+      pagination: {
+        previous: "上一页",
+        next: "下一页",
+        pageInfo: "第 {current} / {total} 页"
       }
     },
     subscriptions: {

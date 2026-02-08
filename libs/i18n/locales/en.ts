@@ -44,6 +44,7 @@ export const en: Locale = {
       subscriptions: "Subscriptions",
       orders: "Orders",
       credits: "Credits",
+      generationLogs: "Generation Logs",
       application: "Application"
     }
   },
@@ -700,6 +701,46 @@ export const en: Locale = {
         refund: "Refund",
         bonus: "Bonus",
         adjustment: "Adjustment"
+      }
+    },
+    generationLogs: {
+      title: "Generation Call Logs",
+      subtitle: "Track generation calls, status, failure reasons, and full details.",
+      messages: {
+        fetchError: "Failed to load generation logs."
+      },
+      filters: {
+        allStatus: "All Status",
+        allFeatures: "All Features",
+        videoGenerate: "Video Generate"
+      },
+      status: {
+        pending: "Pending",
+        processing: "Processing",
+        completed: "Completed",
+        failed: "Failed"
+      },
+      table: {
+        noResults: "No generation logs found.",
+        columns: {
+          time: "Time",
+          user: "User",
+          feature: "Feature",
+          providerModel: "Provider / Model",
+          taskId: "Task ID",
+          status: "Status",
+          success: "Success",
+          failureReason: "Failure Reason",
+          details: "Details"
+        },
+        actions: {
+          viewDetails: "View Details"
+        }
+      },
+      pagination: {
+        previous: "Previous",
+        next: "Next",
+        pageInfo: "Page {current} of {total}"
       }
     },
     subscriptions: {
