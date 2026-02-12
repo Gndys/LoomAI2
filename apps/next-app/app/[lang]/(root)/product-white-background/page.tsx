@@ -31,8 +31,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { config } from '@config'
 
-const MAX_FILE_SIZE = 15 * 1024 * 1024
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_BATCH = 30
 
 type ItemStatus = 'ready' | 'processing' | 'done' | 'failed'
@@ -42,12 +43,17 @@ type FilterValue = 'all' | 'pass' | 'review' | 'failed'
 
 type UploadItem = {
   id: string
+  file: File
   fileName: string
   fileSize: number
   previewUrl: string
   status: ItemStatus
   quality?: QualityLevel
   error?: string
+  generatedUrl?: string
+  uploadedUrl?: string
+  model?: string
+  size?: string
 }
 
 type SampleItem = {
@@ -89,6 +95,10 @@ const SIZE_PRESETS = [
   { value: '1688-1-1-1500', label: '1688 1:1 · 1500x1500' },
 ]
 
+const MODEL_PROVIDER_LABELS: Record<string, string> = {
+  evolink: 'EvoLink',
+}
+
 const QUALITY_LABELS: Record<QualityLevel, string> = {
   pass: '通过',
   review: '建议复检',
@@ -120,7 +130,7 @@ const STEP_ITEMS = [
 const FAQ_ITEMS = [
   {
     question: '支持哪些图片格式？',
-    answer: '支持 JPG、PNG、WEBP，单张不超过 15MB。',
+    answer: '支持 JPG、PNG、WEBP，单张不超过 10MB。',
   },
   {
     question: '生成需要多久？',
@@ -149,9 +159,40 @@ const SHOWCASE_BASE = [
     title: '批量出图更省人力',
     description: '不用反复修图，直接批量导出。',
   },
+  {
+    title: '细节保真更放心',
+    description: '保留材质与色彩层次，质检更容易通过。',
+  },
 ]
 
 const SAMPLE_LABELS = ['女装上新', '男装基础款', '裙装上架', '配饰单品']
+
+const CATEGORY_PROMPT_LABELS: Record<string, string> = {
+  top: 'tops',
+  pants: 'pants',
+  dress: 'dress',
+  outerwear: 'outerwear',
+  'shoes-bag': 'shoes or bags',
+  accessory: 'accessories',
+}
+
+const SHADOW_PROMPT_LABELS: Record<string, string> = {
+  none: 'no shadow',
+  soft: 'soft natural shadow',
+  standard: 'standard studio shadow',
+}
+
+const SIZE_PRESET_IMAGE_SIZE: Record<string, string> = {
+  'taobao-1-1-800': '800x800',
+  'douyin-1-1-1000': '1000x1000',
+  'pdd-1-1-1000': '1000x1000',
+  '1688-1-1-1500': '1500x1500',
+}
+
+type RequestError = {
+  message: string
+  status?: number
+}
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
@@ -199,30 +240,134 @@ function getQualityBadgeClass(level?: QualityLevel) {
   return 'bg-muted text-muted-foreground'
 }
 
-function buildMockResult(index: number) {
-  if (index % 7 === 0) {
-    return {
-      status: 'failed' as const,
-      quality: 'failed' as const,
-      error: '主体边缘过暗，识别不稳定',
-    }
-  }
-
-  if (index % 3 === 0) {
-    return {
-      status: 'done' as const,
-      quality: 'review' as const,
-    }
-  }
-
-  return {
-    status: 'done' as const,
-    quality: 'pass' as const,
-  }
-}
-
 function buildPicsumUrl(seed: string, width: number, height: number) {
   return `https://picsum.photos/seed/${seed}/${width}/${height}`
+}
+
+function toRequestError(error: unknown): RequestError {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = String((error as { message?: unknown }).message ?? '请求失败')
+    const status = 'status' in error ? Number((error as { status?: unknown }).status) : undefined
+    return { message, status }
+  }
+
+  if (error instanceof Error) {
+    return { message: error.message }
+  }
+
+  return { message: '请求失败' }
+}
+
+function createRequestError(message: string, status?: number) {
+  return { message, status }
+}
+
+function resolveSizeFromPreset(value: string) {
+  return SIZE_PRESET_IMAGE_SIZE[value] ?? 'auto'
+}
+
+function mapSettingLabel(options: Array<{ value: string; label: string }>, value: string) {
+  return options.find((option) => option.value === value)?.label ?? value
+}
+
+function buildWhiteBackgroundPrompt(params: {
+  category: string
+  shadow: string
+  padding: string
+  protectColor: boolean
+}) {
+  const categoryLabel =
+    CATEGORY_PROMPT_LABELS[params.category] ?? mapSettingLabel(CATEGORY_OPTIONS, params.category)
+  const shadowLabel =
+    SHADOW_PROMPT_LABELS[params.shadow] ?? mapSettingLabel(SHADOW_OPTIONS, params.shadow)
+  const paddingValue = `${params.padding}%`
+  const colorNote = params.protectColor
+    ? 'Preserve original colors, textures, and materials.'
+    : 'Allow subtle color normalization for a clean white background.'
+
+  return [
+    'Create a clean ecommerce product image on a pure white (#FFFFFF) background.',
+    `Category: ${categoryLabel}.`,
+    'Keep the product details, shape, and proportions identical to the reference image.',
+    `Shadow style: ${shadowLabel}.`,
+    `Leave about ${paddingValue} whitespace around the product, centered composition.`,
+    colorNote,
+    'No text, no watermark, no extra props, no model or hands.',
+  ].join(' ')
+}
+
+async function uploadReferenceImage(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  })
+
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok || !payload?.success || typeof payload?.data?.url !== 'string') {
+    const message = payload?.message || payload?.error || '上传失败'
+    throw createRequestError(message, response.status)
+  }
+
+  return payload.data.url as string
+}
+
+async function generateWhiteBackgroundImage(payload: {
+  prompt: string
+  model: string
+  size: string
+  imageUrl: string
+}) {
+  const response = await fetch('/api/image-generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt: payload.prompt,
+      model: payload.model,
+      size: payload.size,
+      image_urls: [payload.imageUrl],
+    }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const message = data?.message || data?.error || '生成失败'
+    throw createRequestError(message, response.status)
+  }
+
+  const imageUrl = data?.data?.imageUrl
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    throw createRequestError('生成成功但未返回图片地址', response.status)
+  }
+
+  return imageUrl
+}
+
+async function downloadImage(url: string, filename: string) {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error('下载失败')
+    }
+    const blob = await response.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(blobUrl)
+  } catch {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    link.click()
+  }
 }
 
 export default function ProductWhiteBackgroundPage() {
@@ -241,6 +386,11 @@ export default function ProductWhiteBackgroundPage() {
   const [shadow, setShadow] = useState(SHADOW_OPTIONS[1]?.value ?? 'soft')
   const [padding, setPadding] = useState(PADDING_OPTIONS[1]?.value ?? '8')
   const [sizePreset, setSizePreset] = useState(SIZE_PRESETS[1]?.value ?? 'douyin-1-1-1000')
+  const imageProviderModels = config.aiImage.availableModels
+  const defaultImageProvider = config.aiImage.defaultProvider
+  const defaultImageModel =
+    config.aiImage.defaultModels[defaultImageProvider] ?? imageProviderModels[defaultImageProvider]?.[0] ?? ''
+  const [imageModel, setImageModel] = useState<string>(defaultImageModel)
   const [protectColor, setProtectColor] = useState(true)
   const [namingMode, setNamingMode] = useState<NamingMode>('origin-suffix')
   const [filePrefix, setFilePrefix] = useState('')
@@ -271,7 +421,7 @@ export default function ProductWhiteBackgroundPage() {
   )
 
   const generatedItems = useMemo(
-    () => items.filter((item) => item.status === 'done'),
+    () => items.filter((item) => item.status === 'done' && item.generatedUrl),
     [items]
   )
 
@@ -314,6 +464,17 @@ export default function ProductWhiteBackgroundPage() {
     [showcaseSeeds]
   )
 
+  const imageModelOptions = useMemo(() => {
+    const providers = Object.entries(imageProviderModels) as Array<[string, readonly string[]]>
+    return providers.flatMap(([provider, models]) => {
+      const providerLabel = MODEL_PROVIDER_LABELS[provider] ?? provider
+      return models.map((model) => ({
+        value: model,
+        label: `${providerLabel} · ${model}`,
+      }))
+    })
+  }, [imageProviderModels])
+
   const canGenerate = items.length > 0 && !isGenerating
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
@@ -341,12 +502,13 @@ export default function ProductWhiteBackgroundPage() {
       }
 
       if (file.size > MAX_FILE_SIZE) {
-        toast.error(`${file.name} 超过 15MB，请压缩后重试`)
+        toast.error(`${file.name} 超过 10MB，请压缩后重试`)
         return
       }
 
       validFiles.push({
         id: `${Date.now()}-${index}-${file.name}`,
+        file,
         fileName: file.name,
         fileSize: file.size,
         previewUrl: URL.createObjectURL(file),
@@ -424,62 +586,188 @@ export default function ProductWhiteBackgroundPage() {
     }
   }
 
-  const applyMockResults = (targetIds?: Set<string>) => {
-    setItems((prev) =>
-      prev.map((item, index) => {
-        if (targetIds && !targetIds.has(item.id)) return item
-        const mock = buildMockResult(index)
-        return {
-          ...item,
-          status: mock.status,
-          quality: mock.quality,
-          error: mock.error,
-        }
-      })
-    )
+  const updateItem = (id: string, updater: (item: UploadItem) => UploadItem) => {
+    setItems((prev) => prev.map((item) => (item.id === id ? updater(item) : item)))
   }
 
-  const generateMockResults = () => {
+  const generateWhiteBackgrounds = async () => {
     if (!canGenerate) return
 
-    const total = items.length
+    const queue = itemsRef.current.filter((item) => item.status === 'ready' || item.status === 'failed')
+    if (queue.length === 0) {
+      toast.error('当前没有待生成的图片')
+      return
+    }
+
     setIsGenerating(true)
-    setItems((prev) => prev.map((item) => ({ ...item, status: 'processing', error: undefined })))
+    let successCount = 0
+    let failedCount = 0
+    let shouldStop = false
 
-    const timer = window.setTimeout(() => {
-      applyMockResults()
-      setIsGenerating(false)
-      toast.success(`已完成 ${total} 张白底图生成`)
-    }, 900)
+    for (const item of queue) {
+      if (shouldStop) break
 
-    timeoutRef.current.push(timer)
+      const sizeValue = resolveSizeFromPreset(sizePreset)
+      const prompt = buildWhiteBackgroundPrompt({
+        category,
+        shadow,
+        padding,
+        protectColor,
+      })
+
+      updateItem(item.id, (current) => ({
+        ...current,
+        status: 'processing',
+        quality: undefined,
+        error: undefined,
+        model: imageModel,
+        size: sizeValue,
+      }))
+
+      try {
+        const uploadedUrl = item.uploadedUrl ?? (await uploadReferenceImage(item.file))
+        updateItem(item.id, (current) => ({
+          ...current,
+          uploadedUrl,
+        }))
+
+        const generatedUrl = await generateWhiteBackgroundImage({
+          prompt,
+          model: imageModel,
+          size: sizeValue,
+          imageUrl: uploadedUrl,
+        })
+
+        updateItem(item.id, (current) => ({
+          ...current,
+          status: 'done',
+          quality: 'pass',
+          error: undefined,
+          generatedUrl,
+          model: imageModel,
+          size: sizeValue,
+        }))
+
+        successCount += 1
+      } catch (error) {
+        const parsedError = toRequestError(error)
+        const errorMessage = parsedError.message || '生成失败'
+
+        updateItem(item.id, (current) => ({
+          ...current,
+          status: 'failed',
+          quality: 'failed',
+          error: errorMessage,
+          model: imageModel,
+          size: sizeValue,
+        }))
+
+        failedCount += 1
+
+        if (parsedError.status === 401) {
+          toast.error('请先登录后再生成')
+          shouldStop = true
+        } else if (parsedError.status === 402) {
+          toast.error('积分不足，已暂停后续生成')
+          shouldStop = true
+        }
+      }
+    }
+
+    setIsGenerating(false)
+
+    if (successCount === 0 && failedCount > 0) {
+      toast.error('本轮生成失败，请检查设置或积分后重试')
+      return
+    }
+
+    if (failedCount > 0) {
+      toast.warning(`生成完成：成功 ${successCount} 张，失败 ${failedCount} 张，可重试失败项`)
+      return
+    }
+
+    toast.success(`已完成 ${successCount} 张白底图生成`)
   }
 
-  const retryItem = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: 'processing', error: undefined } : item
-      )
-    )
+  const retryItem = async (id: string) => {
+    const target = itemsRef.current.find((item) => item.id === id)
+    if (!target || isGenerating) return
 
-    const timer = window.setTimeout(() => {
-      applyMockResults(new Set([id]))
-      toast.success('已重新生成该图片')
-    }, 700)
+    const sizeValue = resolveSizeFromPreset(sizePreset)
+    const prompt = buildWhiteBackgroundPrompt({
+      category,
+      shadow,
+      padding,
+      protectColor,
+    })
 
-    timeoutRef.current.push(timer)
+    updateItem(id, (current) => ({
+      ...current,
+      status: 'processing',
+      quality: undefined,
+      error: undefined,
+      model: imageModel,
+      size: sizeValue,
+    }))
+
+    try {
+      const uploadedUrl = target.uploadedUrl ?? (await uploadReferenceImage(target.file))
+      updateItem(id, (current) => ({
+        ...current,
+        uploadedUrl,
+      }))
+
+      const generatedUrl = await generateWhiteBackgroundImage({
+        prompt,
+        model: imageModel,
+        size: sizeValue,
+        imageUrl: uploadedUrl,
+      })
+
+      updateItem(id, (current) => ({
+        ...current,
+        status: 'done',
+        quality: 'pass',
+        error: undefined,
+        generatedUrl,
+        model: imageModel,
+        size: sizeValue,
+      }))
+
+      toast.success(`${target.fileName} 已重新生成`)
+    } catch (error) {
+      const parsedError = toRequestError(error)
+      const message = parsedError.message || '生成失败'
+      updateItem(id, (current) => ({
+        ...current,
+        status: 'failed',
+        quality: 'failed',
+        error: message,
+        model: imageModel,
+        size: sizeValue,
+      }))
+
+      if (parsedError.status === 401) {
+        toast.error('请先登录后再重试')
+      } else if (parsedError.status === 402) {
+        toast.error('积分不足，请充值后重试')
+      } else {
+        toast.error(message)
+      }
+    }
   }
 
-  const downloadSingle = (item: UploadItem, index: number) => {
-    if (item.status !== 'done') return
+  const downloadSingle = async (item: UploadItem, index: number) => {
+    if (!item.generatedUrl) {
+      toast.error('当前图片尚未生成完成')
+      return
+    }
 
-    const link = document.createElement('a')
-    link.href = item.previewUrl
-    link.download = `${buildDownloadName(item.fileName, namingMode, filePrefix, index)}.png`
-    link.click()
+    const filename = `${buildDownloadName(item.fileName, namingMode, filePrefix, index)}.png`
+    await downloadImage(item.generatedUrl, filename)
   }
 
-  const exportGenerated = () => {
+  const exportGenerated = async () => {
     const candidates = generatedItems.filter((item) =>
       exportOnlyPass ? item.quality === 'pass' : true
     )
@@ -489,12 +777,11 @@ export default function ProductWhiteBackgroundPage() {
       return
     }
 
-    candidates.forEach((item, index) => {
-      const link = document.createElement('a')
-      link.href = item.previewUrl
-      link.download = `${buildDownloadName(item.fileName, namingMode, filePrefix, index)}.png`
-      link.click()
-    })
+    for (const [index, item] of candidates.entries()) {
+      if (!item.generatedUrl) continue
+      const filename = `${buildDownloadName(item.fileName, namingMode, filePrefix, index)}.png`
+      await downloadImage(item.generatedUrl, filename)
+    }
 
     toast.success(`已触发 ${candidates.length} 张图片下载`)
   }
@@ -612,6 +899,22 @@ export default function ProductWhiteBackgroundPage() {
                       </Select>
                     </div>
 
+                    <div className="space-y-2">
+                      <Label>模型</Label>
+                      <Select value={imageModel} onValueChange={setImageModel} disabled={isGenerating}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择模型" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {imageModelOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="flex items-center justify-between rounded-full bg-background/60 px-3 py-2">
                       <p className="text-sm">色彩保护</p>
                       <Switch checked={protectColor} onCheckedChange={setProtectColor} />
@@ -619,7 +922,7 @@ export default function ProductWhiteBackgroundPage() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Button onClick={generateMockResults} disabled={!canGenerate}>
+                    <Button onClick={generateWhiteBackgrounds} disabled={!canGenerate}>
                       {isGenerating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -704,7 +1007,7 @@ export default function ProductWhiteBackgroundPage() {
                   <div className="relative z-10 flex h-full items-center justify-center">
                     {activeItem ? (
                       <img
-                        src={activeItem.previewUrl}
+                        src={activeItem.generatedUrl ?? activeItem.previewUrl}
                         alt={activeItem.fileName}
                         className="max-h-[360px] w-auto rounded-2xl bg-white p-4 shadow-xl"
                       />
@@ -775,7 +1078,7 @@ export default function ProductWhiteBackgroundPage() {
                           <div className="overflow-hidden rounded-xl bg-white">
                             <div className="flex h-32 w-full items-center justify-center bg-white/80 p-2">
                               <img
-                                src={item.previewUrl}
+                                src={item.generatedUrl ?? item.previewUrl}
                                 alt={`${item.fileName} 白底图`}
                                 className={cn(
                                   'max-h-full w-full object-contain',
@@ -854,7 +1157,7 @@ export default function ProductWhiteBackgroundPage() {
                 <div className="overflow-hidden rounded-lg bg-white">
                   <div className="flex h-60 w-full items-center justify-center bg-white p-2">
                     <img
-                      src={compareItem.previewUrl}
+                      src={compareItem.generatedUrl ?? compareItem.previewUrl}
                       alt="白底图"
                       className={cn(
                         'max-h-full w-full object-contain',
@@ -924,7 +1227,7 @@ export default function ProductWhiteBackgroundPage() {
         <section ref={uploadSectionRef} className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl md:text-3xl font-semibold text-foreground">上传商品图</h2>
+              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">上传商品图</h2>
               <p className="mt-3 text-sm md:text-base text-muted-foreground leading-relaxed">
                 上传后自动进入编辑器。
               </p>
@@ -951,7 +1254,7 @@ export default function ProductWhiteBackgroundPage() {
               <div className="flex flex-col items-center justify-center gap-2 text-center">
                 <ImagePlus className="h-7 w-7 text-muted-foreground" />
                 <p className="text-sm font-medium">拖拽图片到这里，或点击上传</p>
-                <p className="text-xs text-muted-foreground">支持 JPG/PNG/WEBP，单张不超过 15MB</p>
+                <p className="text-xs text-muted-foreground">支持 JPG/PNG/WEBP，单张不超过 10MB</p>
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                   <Button size="sm" onClick={() => fileInputRef.current?.click()}>
                     选择图片
@@ -992,9 +1295,9 @@ export default function ProductWhiteBackgroundPage() {
           </div>
         </section>
 
-        <section className="space-y-10 py-6">
+        <section className="space-y-12 py-6">
           <div className="text-center">
-            <h2 className="text-2xl md:text-4xl font-semibold text-foreground">功能展示</h2>
+            <h2 className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground">功能展示</h2>
             <p className="mt-3 text-sm md:text-base text-muted-foreground leading-relaxed">
               简单三步，稳定输出上架素材。
             </p>
@@ -1004,21 +1307,21 @@ export default function ProductWhiteBackgroundPage() {
               <div
                 key={item.title}
                 className={cn(
-                  'grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_480px]',
-                  index % 2 === 1 && 'lg:grid-cols-[480px_minmax(0,1fr)]'
+                  'grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_520px]',
+                  index % 2 === 1 && 'lg:grid-cols-[520px_minmax(0,1fr)]'
                 )}
               >
                 <div className={cn(index % 2 === 1 && 'lg:order-2')}>
-                  <h3 className="text-2xl font-semibold text-foreground">{item.title}</h3>
+                  <h3 className="text-2xl font-semibold tracking-tight text-foreground">{item.title}</h3>
                   <p className="mt-3 text-sm md:text-base text-muted-foreground leading-relaxed">
                     {item.description}
                   </p>
                 </div>
-                <div className={cn('overflow-hidden rounded-3xl bg-muted/20', index % 2 === 1 && 'lg:order-1')}>
+                <div className={cn('overflow-hidden rounded-3xl', index % 2 === 1 && 'lg:order-1')}>
                   <img
-                    src={buildPicsumUrl(item.seed, 720, 540)}
+                    src={buildPicsumUrl(item.seed, 900, 640)}
                     alt={item.title}
-                    className="h-60 w-full object-cover md:h-72"
+                    className="h-64 w-full object-cover md:h-72 lg:h-80"
                   />
                 </div>
               </div>
@@ -1028,7 +1331,7 @@ export default function ProductWhiteBackgroundPage() {
 
         <section className="space-y-8 py-6">
           <div className="text-center">
-            <h2 className="text-2xl md:text-4xl font-semibold text-foreground">三步完成，快速落地</h2>
+            <h2 className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground">三步完成，快速落地</h2>
             <p className="mt-3 text-sm md:text-base text-muted-foreground leading-relaxed">
               上传一次，AI 自动处理，全程可预览可导出。
             </p>
@@ -1040,7 +1343,7 @@ export default function ProductWhiteBackgroundPage() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <span className="text-base font-semibold">{index + 1}</span>
                   </div>
-                  <h3 className="text-lg font-semibold text-foreground">{step.title}</h3>
+                  <h3 className="text-lg font-semibold tracking-tight text-foreground">{step.title}</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">{step.description}</p>
               </div>
@@ -1050,7 +1353,7 @@ export default function ProductWhiteBackgroundPage() {
 
         <section className="space-y-8 py-6">
           <div className="text-center">
-            <h2 className="text-2xl md:text-4xl font-semibold text-foreground">常见问题</h2>
+            <h2 className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground">常见问题</h2>
             <p className="mt-3 text-sm md:text-base text-muted-foreground leading-relaxed">
               快速了解使用细节。
             </p>
@@ -1081,7 +1384,7 @@ export default function ProductWhiteBackgroundPage() {
             <div className="pointer-events-none absolute -top-20 right-10 h-40 w-40 rounded-full bg-chart-1/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-24 left-10 h-44 w-44 rounded-full bg-chart-3/20 blur-3xl" />
             <div className="relative z-10">
-              <h2 className="text-2xl md:text-4xl font-semibold text-foreground">先出一批图，再决定是否付费</h2>
+              <h2 className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground">先出一批图，再决定是否付费</h2>
               <p className="mt-4 text-sm md:text-base text-muted-foreground leading-relaxed">
                 首周免费 30 张，满意后再升级。
               </p>
