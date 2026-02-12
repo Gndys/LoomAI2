@@ -238,6 +238,9 @@ type WorkflowStep = {
   name: string
   description: string
   kind: 'prompt' | 'action'
+  inputSource?: 'step' | 'manual' | 'previous'
+  inputFromStepId?: string
+  outputSelection?: 'all' | 'first'
 }
 
 type WorkflowTemplateDefinition = {
@@ -356,6 +359,10 @@ const WORKFLOW_TEMPLATES: WorkflowTemplateDefinition[] = [
   },
 ]
 
+const CUSTOM_WORKFLOW_INPUTS: WorkflowSlotDefinition[] = [
+  { id: 'custom-input', label: '输入素材', required: true, multiple: true },
+]
+
 const WORKFLOW_BLOCK_GROUPS: WorkflowBlockGroup[] = [
   {
     id: 'prompt',
@@ -398,6 +405,9 @@ const WORKFLOW_OUTPUT_ITEM_WIDTH = 220
 const WORKFLOW_OUTPUT_ITEM_HEIGHT = 220
 const WORKFLOW_POLL_INTERVAL_MS = 1500
 const WORKFLOW_POLL_MAX_ATTEMPTS = 60
+
+const resolveWorkflowInputs = (template: WorkflowTemplateDefinition) =>
+  template.kind === 'custom' ? CUSTOM_WORKFLOW_INPUTS : template.inputs
 
 const resolveWorkflowItemLabel = (item: CanvasItem) => {
   if (item.type === 'image') {
@@ -4079,18 +4089,61 @@ export function InfiniteCanvas() {
     [screenToWorld]
   )
 
+  const normalizeBuilderSteps = useCallback((steps: WorkflowStep[]) => {
+    if (steps.length === 0) return steps
+    const stepIds = steps.map((step) => step.id)
+    return steps.map((step, index) => {
+      if (index === 0) {
+        return {
+          ...step,
+          inputSource: 'manual',
+          inputFromStepId: undefined,
+        }
+      }
+      const previousStepId = stepIds[index - 1]
+      const validSourceIds = new Set(stepIds.slice(0, index))
+      let nextInputSource = step.inputSource
+      let nextInputFrom = step.inputFromStepId
+
+      if (nextInputSource === 'previous') {
+        nextInputSource = 'step'
+        nextInputFrom = previousStepId
+      }
+
+      if (nextInputSource === 'manual') {
+        nextInputFrom = undefined
+      } else {
+        nextInputSource = 'step'
+        if (!nextInputFrom || !validSourceIds.has(nextInputFrom)) {
+          nextInputFrom = previousStepId
+        }
+      }
+
+      return {
+        ...step,
+        inputSource: nextInputSource,
+        inputFromStepId: nextInputFrom,
+      }
+    })
+  }, [])
+
   const handleAddWorkflowStep = useCallback((block: WorkflowBlock) => {
-    setBuilderSteps((prev) => [
-      ...prev,
-      {
+    setBuilderSteps((prev) =>
+      normalizeBuilderSteps([
+        ...prev,
+        {
         id: `step-${nanoid(6)}`,
         blockId: block.id,
         name: block.name,
         description: block.description,
         kind: block.kind,
-      },
-    ])
-  }, [])
+        inputSource: prev.length === 0 ? 'manual' : 'step',
+        inputFromStepId: prev.length === 0 ? undefined : prev[prev.length - 1]?.id,
+        outputSelection: 'all',
+        },
+      ])
+    )
+  }, [normalizeBuilderSteps])
 
   const handleMoveWorkflowStep = useCallback((index: number, direction: -1 | 1) => {
     setBuilderSteps((prev) => {
@@ -4100,13 +4153,13 @@ export function InfiniteCanvas() {
       const next = [...prev]
       const [item] = next.splice(index, 1)
       next.splice(targetIndex, 0, item)
-      return next
+      return normalizeBuilderSteps(next)
     })
-  }, [])
+  }, [normalizeBuilderSteps])
 
   const handleRemoveWorkflowStep = useCallback((stepId: string) => {
-    setBuilderSteps((prev) => prev.filter((step) => step.id !== stepId))
-  }, [])
+    setBuilderSteps((prev) => normalizeBuilderSteps(prev.filter((step) => step.id !== stepId)))
+  }, [normalizeBuilderSteps])
 
   const resetWorkflowBuilder = useCallback(() => {
     setBuilderName('')
@@ -4140,7 +4193,7 @@ export function InfiniteCanvas() {
       const center = getViewportCenterWorld()
       const nextId = `workflow-${nanoid(8)}`
       const inputs: Record<string, WorkflowSlotBinding[]> = {}
-      template.inputs.forEach((slot) => {
+      resolveWorkflowInputs(template).forEach((slot) => {
         inputs[slot.id] = []
       })
       const nextCard: WorkflowCard = {
@@ -4218,11 +4271,7 @@ export function InfiniteCanvas() {
           if (card.id !== cardId) return card
           const template = workflowTemplateMap.get(card.templateId)
           if (!template) return card
-          if (template.kind === 'custom') {
-            toast.message('自定义工作流暂不支持绑定素材')
-            return card
-          }
-          const slot = template.inputs.find((item) => item.id === slotId)
+          const slot = resolveWorkflowInputs(template).find((item) => item.id === slotId)
           if (!slot) return card
           const limit = slot.multiple ? MAX_WORKFLOW_SLOT_BINDINGS : 1
           const bindings: WorkflowSlotBinding[] = selectedItems.slice(0, limit).map((item) => ({
@@ -6110,6 +6159,128 @@ export function InfiniteCanvas() {
                             {index + 1}. {step.name}
                           </div>
                           <div className="mt-1 text-[11px] text-muted-foreground">{step.description}</div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                            <span className="font-medium text-foreground/80">输入来源</span>
+                            <Select
+                              value={
+                                step.inputSource === 'step'
+                                  ? step.inputFromStepId ?? ''
+                                  : step.inputSource === 'previous'
+                                  ? builderSteps[index - 1]?.id ?? ''
+                                  : ''
+                              }
+                              onValueChange={(value) => {
+                                setBuilderSteps((prev) =>
+                                  prev.map((item) =>
+                                    item.id === step.id
+                                      ? {
+                                          ...item,
+                                          inputSource: 'step',
+                                          inputFromStepId: value,
+                                          outputSelection: item.outputSelection ?? 'all',
+                                        }
+                                      : item
+                                  )
+                                )
+                              }}
+                              disabled={index === 0 || builderSteps.slice(0, index).length === 0}
+                            >
+                              <SelectTrigger
+                                className={cn(
+                                  'h-7 rounded-full border px-2 text-[10px] text-muted-foreground',
+                                  step.inputSource === 'step' && 'border-primary/40 text-primary',
+                                  index === 0 && 'cursor-not-allowed opacity-50'
+                                )}
+                              >
+                                <SelectValue placeholder="选择来源步骤" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {builderSteps.slice(0, index).map((sourceStep, sourceIndex) => {
+                                  const label = sourceStep.name || WORKFLOW_BLOCK_MAP.get(sourceStep.blockId)?.name || '未命名步骤'
+                                  return (
+                                    <SelectItem key={sourceStep.id} value={sourceStep.id}>
+                                      {sourceIndex + 1}. {label} 结果
+                                    </SelectItem>
+                                  )
+                                })}
+                              </SelectContent>
+                            </Select>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setBuilderSteps((prev) =>
+                                  prev.map((item) =>
+                                    item.id === step.id
+                                      ? {
+                                          ...item,
+                                          inputSource: 'manual',
+                                          inputFromStepId: undefined,
+                                        }
+                                      : item
+                                  )
+                                )
+                              }
+                              className={cn(
+                                'rounded-full border px-2 py-0.5 text-[10px] transition',
+                                step.inputSource === 'manual'
+                                  ? 'border-primary/40 bg-primary/10 text-primary'
+                                  : 'border-border text-muted-foreground hover:text-foreground'
+                              )}
+                            >
+                              手动输入
+                            </button>
+                            {step.inputSource !== 'manual' && (
+                              <>
+                                <span className="ml-1 font-medium text-foreground/80">输出选择</span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setBuilderSteps((prev) =>
+                                      prev.map((item) =>
+                                        item.id === step.id
+                                          ? {
+                                              ...item,
+                                              outputSelection: 'all',
+                                            }
+                                          : item
+                                      )
+                                    )
+                                  }
+                                  className={cn(
+                                    'rounded-full border px-2 py-0.5 text-[10px] transition',
+                                    (step.outputSelection ?? 'all') === 'all'
+                                      ? 'border-primary/40 bg-primary/10 text-primary'
+                                      : 'border-border text-muted-foreground hover:text-foreground'
+                                  )}
+                                >
+                                  全部
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setBuilderSteps((prev) =>
+                                      prev.map((item) =>
+                                        item.id === step.id
+                                          ? {
+                                              ...item,
+                                              outputSelection: 'first',
+                                            }
+                                          : item
+                                      )
+                                    )
+                                  }
+                                  className={cn(
+                                    'rounded-full border px-2 py-0.5 text-[10px] transition',
+                                    step.outputSelection === 'first'
+                                      ? 'border-primary/40 bg-primary/10 text-primary'
+                                      : 'border-border text-muted-foreground hover:text-foreground'
+                                  )}
+                                >
+                                  首张
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <button
@@ -8297,11 +8468,80 @@ export function InfiniteCanvas() {
                     {isCustomTemplate ? (
                       <>
                         <div className="space-y-2">
+                          <div className="text-[11px] font-medium text-foreground">输入素材（用于第 1 步）</div>
+                          {resolveWorkflowInputs(template).map((slot) => {
+                            const bindings = card.inputs[slot.id] ?? []
+                            return (
+                              <div key={slot.id} className="rounded-xl border border-border bg-background/80 p-2">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <div className="truncate text-xs font-medium text-foreground">
+                                    {slot.label}
+                                    {slot.required && <span className="ml-1 text-primary">*</span>}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleBindWorkflowSlot(card.id, slot.id)}
+                                      className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+                                    >
+                                      绑定选中
+                                    </button>
+                                    {bindings.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleClearWorkflowSlot(card.id, slot.id)}
+                                        className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition hover:text-foreground"
+                                      >
+                                        清空
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                {bindings.length === 0 ? (
+                                  <div className="rounded-lg border border-dashed border-border px-2 py-2 text-[11px] text-muted-foreground">
+                                    请选择素材后点击“绑定选中”
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1.5">
+                                    {bindings.map((binding) => (
+                                      <div
+                                        key={`${slot.id}-${binding.itemId}`}
+                                        className="flex items-center gap-2 rounded-lg border border-border/80 bg-muted/20 px-2 py-1"
+                                      >
+                                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                          {binding.type === 'image' ? '图' : '文'}
+                                        </span>
+                                        <span className="truncate text-[11px] text-foreground">{binding.label}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        <div className="space-y-2">
                           <div className="text-[11px] font-medium text-foreground">步骤列表</div>
                           {(template.steps ?? []).length > 0 ? (
                             <div className="space-y-1.5">
                               {template.steps?.map((step, index) => {
                                 const stepLabel = step.name || WORKFLOW_BLOCK_MAP.get(step.blockId)?.name || '未命名步骤'
+                                const sourceStep =
+                                  step.inputSource === 'step'
+                                    ? template.steps?.find((entry) => entry.id === step.inputFromStepId) ?? null
+                                    : step.inputSource === 'previous'
+                                    ? template.steps?.[Math.max(0, index - 1)] ?? null
+                                    : null
+                                const sourceIndex =
+                                  sourceStep && template.steps ? template.steps.findIndex((entry) => entry.id === sourceStep.id) : -1
+                                const sourceLabel = sourceStep
+                                  ? `${sourceIndex + 1}. ${sourceStep.name || WORKFLOW_BLOCK_MAP.get(sourceStep.blockId)?.name || '未命名步骤'}`
+                                  : '未指定'
+                                const inputSourceLabel =
+                                  step.inputSource === 'manual'
+                                    ? '输入：手动输入'
+                                    : `输入：${sourceLabel} 结果（${step.outputSelection === 'first' ? '首张' : '全部'}）`
                                 return (
                                   <div
                                     key={`${card.id}-step-${step.id}-${index}`}
@@ -8311,6 +8551,9 @@ export function InfiniteCanvas() {
                                       {index + 1}
                                     </span>
                                     <span className="truncate text-[11px] text-foreground">{stepLabel}</span>
+                                    <span className="ml-auto rounded-full border border-border/70 bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
+                                      {inputSourceLabel}
+                                    </span>
                                   </div>
                                 )
                               })}

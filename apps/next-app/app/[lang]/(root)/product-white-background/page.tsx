@@ -183,10 +183,10 @@ const SHADOW_PROMPT_LABELS: Record<string, string> = {
 }
 
 const SIZE_PRESET_IMAGE_SIZE: Record<string, string> = {
-  'taobao-1-1-800': '800x800',
-  'douyin-1-1-1000': '1000x1000',
-  'pdd-1-1-1000': '1000x1000',
-  '1688-1-1-1500': '1500x1500',
+  'taobao-1-1-800': '1:1',
+  'douyin-1-1-1000': '1:1',
+  'pdd-1-1-1000': '1:1',
+  '1688-1-1-1500': '1:1',
 }
 
 type RequestError = {
@@ -396,6 +396,7 @@ export default function ProductWhiteBackgroundPage() {
   const [filePrefix, setFilePrefix] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterValue>('all')
   const [exportOnlyPass, setExportOnlyPass] = useState(true)
+  const [resultView, setResultView] = useState<1 | 2 | 3>(2)
   const [compareItem, setCompareItem] = useState<UploadItem | null>(null)
   const [isEditorOpen, setIsEditorOpen] = useState(false)
 
@@ -1036,7 +1037,33 @@ export default function ProductWhiteBackgroundPage() {
                       </Button>
                     ))}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/70 p-1">
+                      <Button
+                        size="sm"
+                        variant={resultView === 1 ? 'default' : 'ghost'}
+                        className="h-7 rounded-full px-2 text-[11px]"
+                        onClick={() => setResultView(1)}
+                      >
+                        1列
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={resultView === 2 ? 'default' : 'ghost'}
+                        className="h-7 rounded-full px-2 text-[11px]"
+                        onClick={() => setResultView(2)}
+                      >
+                        2列
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={resultView === 3 ? 'default' : 'ghost'}
+                        className="h-7 rounded-full px-2 text-[11px]"
+                        onClick={() => setResultView(3)}
+                      >
+                        3列
+                      </Button>
+                    </div>
                     <span>已上传 {counts.uploaded}</span>
                     <span>已生成 {counts.generated}</span>
                   </div>
@@ -1051,7 +1078,14 @@ export default function ProductWhiteBackgroundPage() {
                     当前筛选条件下没有结果。
                   </div>
                 ) : (
-                  <div className="grid gap-6 sm:grid-cols-2">
+                  <div
+                    className={cn(
+                      'grid gap-6',
+                      resultView === 1 && 'grid-cols-1',
+                      resultView === 2 && 'sm:grid-cols-2',
+                      resultView === 3 && 'sm:grid-cols-2 lg:grid-cols-3'
+                    )}
+                  >
                     {filteredItems.map((item, index) => (
                       <div key={item.id} className="space-y-3">
                         <div className="flex items-center justify-between">
