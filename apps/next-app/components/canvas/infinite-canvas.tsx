@@ -232,6 +232,14 @@ type WorkflowSlotDefinition = {
   multiple?: boolean
 }
 
+type WorkflowStep = {
+  id: string
+  blockId: string
+  name: string
+  description: string
+  kind: 'prompt' | 'action'
+}
+
 type WorkflowTemplateDefinition = {
   id: string
   name: string
@@ -239,6 +247,8 @@ type WorkflowTemplateDefinition = {
   badge: string
   inputs: WorkflowSlotDefinition[]
   outputs: string[]
+  kind?: 'builtin' | 'custom'
+  steps?: WorkflowStep[]
 }
 
 type WorkflowSlotBinding = {
@@ -261,12 +271,26 @@ type WorkflowCard = {
   inputs: Record<string, WorkflowSlotBinding[]>
 }
 
+type WorkflowBlock = {
+  id: string
+  name: string
+  description: string
+  kind: WorkflowStep['kind']
+}
+
+type WorkflowBlockGroup = {
+  id: string
+  label: string
+  blocks: WorkflowBlock[]
+}
+
 const WORKFLOW_TEMPLATES: WorkflowTemplateDefinition[] = [
   {
     id: 'tryon-basic',
     name: '简单换衣',
     description: '服装图 + 模特图，快速完成 1 对 1 换衣。',
     badge: 'Workflow',
+    kind: 'builtin',
     inputs: [
       { id: 'garment', label: '服装图', required: true },
       { id: 'model', label: '模特图', required: true },
@@ -279,6 +303,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplateDefinition[] = [
     name: '固定面部换衣',
     description: '保持面部一致，同时完成服装替换。',
     badge: 'Workflow',
+    kind: 'builtin',
     inputs: [
       { id: 'garment', label: '服装图', required: true },
       { id: 'model', label: '模特图', required: true },
@@ -292,6 +317,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplateDefinition[] = [
     name: '面部+背景+姿势',
     description: '高可控场景：锁定人脸、背景并参考姿势生成。',
     badge: 'Workflow',
+    kind: 'builtin',
     inputs: [
       { id: 'garment', label: '服装图', required: true },
       { id: 'face', label: '人脸参考', required: true },
@@ -306,6 +332,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplateDefinition[] = [
     name: '模特图生成',
     description: '以参考图为基础，生成面部一致的模特组图。',
     badge: 'Workflow',
+    kind: 'builtin',
     inputs: [
       { id: 'model_ref', label: '模特参考图', required: true },
       { id: 'scene_ref', label: '场景参考' },
@@ -319,6 +346,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplateDefinition[] = [
     name: '详情页制作',
     description: '从产品图出发，生成电商详情页素材。',
     badge: 'Workflow',
+    kind: 'builtin',
     inputs: [
       { id: 'product', label: '产品图', required: true, multiple: true },
       { id: 'selling_points', label: '核心卖点' },
@@ -327,6 +355,41 @@ const WORKFLOW_TEMPLATES: WorkflowTemplateDefinition[] = [
     outputs: ['首图', '细节图', '卖点页'],
   },
 ]
+
+const WORKFLOW_BLOCK_GROUPS: WorkflowBlockGroup[] = [
+  {
+    id: 'prompt',
+    label: '预设提示词',
+    blocks: getAllFunctions().map((preset) => ({
+      id: `prompt:${preset.id}`,
+      name: preset.name,
+      description: preset.description,
+      kind: 'prompt',
+    })),
+  },
+  {
+    id: 'canvas',
+    label: '画布功能',
+    blocks: [
+      {
+        id: 'remove-background',
+        name: '去背',
+        description: '去除图片背景，保留主体。',
+        kind: 'action',
+      },
+      {
+        id: 'decompose-layers',
+        name: '拆解图层',
+        description: '将图像拆解为多图层元素。',
+        kind: 'action',
+      },
+    ],
+  },
+]
+
+const WORKFLOW_BLOCK_MAP = new Map(
+  WORKFLOW_BLOCK_GROUPS.flatMap((group) => group.blocks.map((block) => [block.id, block]))
+)
 
 const WORKFLOW_CARD_WIDTH = 344
 const WORKFLOW_CARD_HEIGHT = 264
@@ -1083,8 +1146,13 @@ export function InfiniteCanvas() {
   const [isCanvasPresetOpen, setIsCanvasPresetOpen] = useState(false)
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
   const [isWorkflowPanelOpen, setIsWorkflowPanelOpen] = useState(false)
+  const [workflowPanelMode, setWorkflowPanelMode] = useState<'templates' | 'builder'>('templates')
   const [workflowCards, setWorkflowCards] = useState<WorkflowCard[]>([])
   const [activeWorkflowCardId, setActiveWorkflowCardId] = useState<string | null>(null)
+  const [customWorkflowTemplates, setCustomWorkflowTemplates] = useState<WorkflowTemplateDefinition[]>([])
+  const [builderName, setBuilderName] = useState('')
+  const [builderDescription, setBuilderDescription] = useState('')
+  const [builderSteps, setBuilderSteps] = useState<WorkflowStep[]>([])
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(false)
   const [isDecomposeMenuOpen, setIsDecomposeMenuOpen] = useState(false)
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null)
@@ -1118,6 +1186,14 @@ export function InfiniteCanvas() {
     null
   )
   const isSpacePanningActive = isSpaceDown && isPointerInViewport
+  const workflowTemplates = useMemo(
+    () => [...customWorkflowTemplates, ...WORKFLOW_TEMPLATES],
+    [customWorkflowTemplates]
+  )
+  const workflowTemplateMap = useMemo(
+    () => new Map(workflowTemplates.map((template) => [template.id, template])),
+    [workflowTemplates]
+  )
 
   const { messages, sendMessage, setMessages, status, error } = useChat({
     messages: [
@@ -1546,7 +1622,13 @@ export function InfiniteCanvas() {
       if (key === 'w') {
         event.preventDefault()
         setActiveTool('workflow')
-        setIsWorkflowPanelOpen((prev) => !prev)
+        setIsWorkflowPanelOpen((prev) => {
+          const next = !prev
+          if (next) {
+            setWorkflowPanelMode('templates')
+          }
+          return next
+        })
         return
       }
       const toolMap: Record<string, ToolId> = {
@@ -3967,7 +4049,13 @@ export function InfiniteCanvas() {
     }
     if (toolId === 'workflow') {
       setActiveTool('workflow')
-      setIsWorkflowPanelOpen((prev) => !prev)
+      setIsWorkflowPanelOpen((prev) => {
+        const next = !prev
+        if (next) {
+          setWorkflowPanelMode('templates')
+        }
+        return next
+      })
       return
     }
     setActiveTool(toolId)
@@ -3991,9 +4079,63 @@ export function InfiniteCanvas() {
     [screenToWorld]
   )
 
+  const handleAddWorkflowStep = useCallback((block: WorkflowBlock) => {
+    setBuilderSteps((prev) => [
+      ...prev,
+      {
+        id: `step-${nanoid(6)}`,
+        blockId: block.id,
+        name: block.name,
+        description: block.description,
+        kind: block.kind,
+      },
+    ])
+  }, [])
+
+  const handleMoveWorkflowStep = useCallback((index: number, direction: -1 | 1) => {
+    setBuilderSteps((prev) => {
+      const targetIndex = index + direction
+      if (index < 0 || index >= prev.length) return prev
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev
+      const next = [...prev]
+      const [item] = next.splice(index, 1)
+      next.splice(targetIndex, 0, item)
+      return next
+    })
+  }, [])
+
+  const handleRemoveWorkflowStep = useCallback((stepId: string) => {
+    setBuilderSteps((prev) => prev.filter((step) => step.id !== stepId))
+  }, [])
+
+  const resetWorkflowBuilder = useCallback(() => {
+    setBuilderName('')
+    setBuilderDescription('')
+    setBuilderSteps([])
+  }, [])
+
+  const handleSaveCustomWorkflow = useCallback(() => {
+    const name = builderName.trim()
+    if (!name || builderSteps.length === 0) return
+    const description = builderDescription.trim() || '自定义工作流'
+    const nextTemplate: WorkflowTemplateDefinition = {
+      id: `custom-${nanoid(6)}`,
+      name,
+      description,
+      badge: '自定义',
+      inputs: [],
+      outputs: [],
+      kind: 'custom',
+      steps: builderSteps,
+    }
+    setCustomWorkflowTemplates((prev) => [nextTemplate, ...prev])
+    setWorkflowPanelMode('templates')
+    resetWorkflowBuilder()
+  }, [builderName, builderDescription, builderSteps, resetWorkflowBuilder])
+
   const handleCreateWorkflowCard = useCallback(
     (templateId: string) => {
-      const template = WORKFLOW_TEMPLATES.find((item) => item.id === templateId)
+      const template = workflowTemplates.find((item) => item.id === templateId)
       if (!template) return
       const center = getViewportCenterWorld()
       const nextId = `workflow-${nanoid(8)}`
@@ -4018,7 +4160,7 @@ export function InfiniteCanvas() {
       setIsWorkflowPanelOpen(false)
       toast.success(`已添加工作流：${template.name}`)
     },
-    [getViewportCenterWorld]
+    [getViewportCenterWorld, workflowTemplates]
   )
 
   const handleWorkflowCardDragStart = useCallback(
@@ -4074,8 +4216,12 @@ export function InfiniteCanvas() {
       setWorkflowCards((prev) =>
         prev.map((card) => {
           if (card.id !== cardId) return card
-          const template = WORKFLOW_TEMPLATES.find((item) => item.id === card.templateId)
+          const template = workflowTemplateMap.get(card.templateId)
           if (!template) return card
+          if (template.kind === 'custom') {
+            toast.message('自定义工作流暂不支持绑定素材')
+            return card
+          }
           const slot = template.inputs.find((item) => item.id === slotId)
           if (!slot) return card
           const limit = slot.multiple ? MAX_WORKFLOW_SLOT_BINDINGS : 1
@@ -4096,7 +4242,7 @@ export function InfiniteCanvas() {
       )
       toast.success('槽位绑定成功')
     },
-    [items, selectedIds]
+    [items, selectedIds, workflowTemplateMap]
   )
 
   const handleClearWorkflowSlot = useCallback((cardId: string, slotId: string) => {
@@ -4190,9 +4336,12 @@ export function InfiniteCanvas() {
 
   const executeWorkflowCard = useCallback(
     async (card: WorkflowCard) => {
-      const template = WORKFLOW_TEMPLATES.find((entry) => entry.id === card.templateId)
+      const template = workflowTemplateMap.get(card.templateId)
       if (!template) {
         throw new Error('未找到工作流模板')
+      }
+      if (template.kind === 'custom') {
+        throw new Error('自定义工作流暂不支持执行')
       }
       for (const requiredSlot of template.inputs.filter((slot) => slot.required)) {
         const requiredBindings = card.inputs[requiredSlot.id] ?? []
@@ -4258,13 +4407,18 @@ export function InfiniteCanvas() {
       }
       return [imageUrl]
     },
-    [ensureRemoteImageUrl, imageModel, imageSizeMode, pollWorkflowTask]
+    [ensureRemoteImageUrl, imageModel, imageSizeMode, pollWorkflowTask, workflowTemplateMap]
   )
 
   const handleRunWorkflowUI = useCallback(
     async (cardId: string) => {
       const targetCard = workflowCards.find((card) => card.id === cardId)
       if (!targetCard || targetCard.status === 'running') return
+      const template = workflowTemplateMap.get(targetCard.templateId)
+      if (template?.kind === 'custom') {
+        toast.message('自定义工作流暂不支持运行')
+        return
+      }
 
       setWorkflowCards((prev) =>
         prev.map((card) =>
@@ -4311,7 +4465,7 @@ export function InfiniteCanvas() {
         toast.error(message)
       }
     },
-    [appendWorkflowOutputsToCanvas, executeWorkflowCard, workflowCards]
+    [appendWorkflowOutputsToCanvas, executeWorkflowCard, workflowCards, workflowTemplateMap]
   )
 
   useEffect(() => {
@@ -4859,10 +5013,6 @@ export function InfiniteCanvas() {
   const isChatPanelOpen = isChatOpen && !isChatMinimized
   const layerPanelShiftClass = isLayerPanelOpen ? 'translate-x-[296px]' : 'translate-x-0'
   const chatPanelShiftClass = isChatPanelOpen ? '-translate-x-[376px]' : 'translate-x-0'
-  const workflowTemplateMap = useMemo(
-    () => new Map(WORKFLOW_TEMPLATES.map((template) => [template.id, template])),
-    []
-  )
   const workflowRunningCount = useMemo(
     () => workflowCards.filter((card) => card.status === 'running').length,
     [workflowCards]
@@ -5714,7 +5864,13 @@ export function InfiniteCanvas() {
           <button
             type="button"
             onClick={() => {
-              setIsWorkflowPanelOpen((prev) => !prev)
+              setIsWorkflowPanelOpen((prev) => {
+                const next = !prev
+                if (next) {
+                  setWorkflowPanelMode('templates')
+                }
+                return next
+              })
               setActiveTool('workflow')
             }}
             className={cn(
@@ -5733,66 +5889,278 @@ export function InfiniteCanvas() {
         </div>
       </div>
 
-      <div
-        className={cn(
-          'absolute top-36 z-20 w-[320px] transition-all duration-300 ease-out',
-          isChatPanelOpen ? 'right-[381px]' : 'right-5',
-          isWorkflowPanelOpen
-            ? 'pointer-events-auto translate-x-0 opacity-100'
-            : 'pointer-events-none translate-x-4 opacity-0'
-        )}
-        aria-hidden={!isWorkflowPanelOpen}
-      >
-        <div className="overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <div>
-              <div className="text-sm font-semibold text-foreground">工作流模板</div>
-              <div className="text-xs text-muted-foreground">拖素材到画布后，一键创建流程卡片</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsWorkflowPanelOpen(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              aria-label="收起工作流面板"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <div className="max-h-[420px] space-y-2 overflow-y-auto px-3 py-3">
-            {WORKFLOW_TEMPLATES.map((template) => (
-              <button
-                key={template.id}
-                type="button"
-                onClick={() => handleCreateWorkflowCard(template.id)}
-                className="w-full rounded-2xl border border-border bg-background/80 px-3 py-3 text-left transition hover:border-primary/40 hover:bg-muted"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-foreground">{template.name}</div>
-                    <p className="mt-1 text-xs text-muted-foreground">{template.description}</p>
-                  </div>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                    {template.badge}
-                  </span>
+      {workflowPanelMode === 'templates' && (
+        <div
+          className={cn(
+            'absolute top-36 z-20 w-[320px] transition-all duration-300 ease-out',
+            isChatPanelOpen ? 'right-[381px]' : 'right-5',
+            isWorkflowPanelOpen
+              ? 'pointer-events-auto translate-x-0 opacity-100'
+              : 'pointer-events-none translate-x-4 opacity-0'
+          )}
+          aria-hidden={!isWorkflowPanelOpen}
+        >
+          <div className="overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur">
+            <>
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">工作流模板</div>
+                  <div className="text-xs text-muted-foreground">拖素材到画布后，一键创建流程卡片</div>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {template.inputs.map((slot) => (
-                    <span
-                      key={slot.id}
-                      className={cn(
-                        'rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground',
-                        slot.required && 'border-primary/40 text-primary'
-                      )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setWorkflowPanelMode('builder')}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label="搭建自定义工作流"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsWorkflowPanelOpen(false)}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label="收起工作流面板"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-[420px] space-y-3 overflow-y-auto px-3 py-3">
+                {customWorkflowTemplates.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="px-1 text-xs font-semibold text-muted-foreground">我的工作流</div>
+                    {customWorkflowTemplates.map((template) => (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => handleCreateWorkflowCard(template.id)}
+                        className="w-full rounded-2xl border border-border bg-background/80 px-3 py-3 text-left transition hover:border-primary/40 hover:bg-muted"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-foreground">{template.name}</div>
+                            <p className="mt-1 text-xs text-muted-foreground">{template.description}</p>
+                          </div>
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                            {template.badge}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {(template.steps ?? []).length > 0 ? (
+                            template.steps?.map((step, index) => {
+                              const stepLabel = step.name || WORKFLOW_BLOCK_MAP.get(step.blockId)?.name || '未命名步骤'
+                              return (
+                                <span
+                                  key={`${template.id}-step-${step.id}-${index}`}
+                                  className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground"
+                                >
+                                  {stepLabel}
+                                </span>
+                              )
+                            })
+                          ) : (
+                            <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                              暂无步骤
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <div className="px-1 text-xs font-semibold text-muted-foreground">内置模板</div>
+                  {WORKFLOW_TEMPLATES.map((template) => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => handleCreateWorkflowCard(template.id)}
+                      className="w-full rounded-2xl border border-border bg-background/80 px-3 py-3 text-left transition hover:border-primary/40 hover:bg-muted"
                     >
-                      {slot.label}
-                    </span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-foreground">{template.name}</div>
+                          <p className="mt-1 text-xs text-muted-foreground">{template.description}</p>
+                        </div>
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                          {template.badge}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {template.inputs.map((slot) => (
+                          <span
+                            key={slot.id}
+                            className={cn(
+                              'rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground',
+                              slot.required && 'border-primary/40 text-primary'
+                            )}
+                          >
+                            {slot.label}
+                          </span>
+                        ))}
+                      </div>
+                    </button>
                   ))}
                 </div>
-              </button>
-            ))}
+              </div>
+            </>
           </div>
         </div>
-      </div>
+      )}
+
+      {workflowPanelMode === 'builder' && (
+        <div
+          className={cn(
+            'fixed inset-0 z-40 flex items-center justify-center bg-background/40 backdrop-blur-sm transition-opacity duration-200',
+            isWorkflowPanelOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+          )}
+          aria-hidden={!isWorkflowPanelOpen}
+        >
+          <div className="relative w-[min(860px,calc(100vw-2.5rem))] max-h-[80vh] overflow-hidden rounded-[28px] border border-border bg-background/95 shadow-2xl backdrop-blur">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setWorkflowPanelMode('templates')}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  aria-label="返回工作流模板"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <div>
+                  <div className="text-base font-semibold text-foreground">搭建工作流</div>
+                  <div className="text-xs text-muted-foreground">组合内置功能块，形成线性步骤</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWorkflowPanelOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="收起工作流面板"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid max-h-[calc(80vh-64px)] grid-cols-1 gap-6 overflow-y-auto px-6 py-5 lg:grid-cols-[1fr_1fr]">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-muted-foreground">工作流名称</div>
+                  <input
+                    value={builderName}
+                    onChange={(event) => setBuilderName(event.target.value)}
+                    placeholder="例如：爆款换衣流程"
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-muted-foreground">工作流简介</div>
+                  <textarea
+                    value={builderDescription}
+                    onChange={(event) => setBuilderDescription(event.target.value)}
+                    placeholder="描述这个流程的用途（可选）"
+                    rows={3}
+                    className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <div className="text-sm font-semibold text-foreground">功能块库</div>
+                  {WORKFLOW_BLOCK_GROUPS.map((group) => (
+                    <div key={group.id} className="space-y-2">
+                      <div className="text-xs font-semibold text-muted-foreground">{group.label}</div>
+                      <div className="space-y-2">
+                        {group.blocks.map((block) => (
+                          <div
+                            key={block.id}
+                            className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-background/80 px-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-xs font-semibold text-foreground">{block.name}</div>
+                              <div className="mt-1 text-[11px] text-muted-foreground">{block.description}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleAddWorkflowStep(block)}
+                              className="rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+                            >
+                              添加
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-4">
+                <div className="text-sm font-semibold text-foreground">步骤列表</div>
+                {builderSteps.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
+                    还没有步骤，从左侧添加功能块开始搭建。
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {builderSteps.map((step, index) => (
+                      <div
+                        key={step.id}
+                        className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-background/80 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-xs font-semibold text-foreground">
+                            {index + 1}. {step.name}
+                          </div>
+                          <div className="mt-1 text-[11px] text-muted-foreground">{step.description}</div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveWorkflowStep(index, -1)}
+                            disabled={index === 0}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                            aria-label="上移步骤"
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveWorkflowStep(index, 1)}
+                            disabled={index === builderSteps.length - 1}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                            aria-label="下移步骤"
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveWorkflowStep(step.id)}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                            aria-label="删除步骤"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-auto flex items-center gap-2 pt-2">
+                  <Button size="sm" variant="outline" className="h-9 rounded-full px-4" onClick={() => setWorkflowPanelMode('templates')}>
+                    返回
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-9 flex-1 rounded-full"
+                    onClick={handleSaveCustomWorkflow}
+                    disabled={!builderName.trim() || builderSteps.length === 0}
+                  >
+                    保存为模板
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="pointer-events-none absolute bottom-3 left-2 top-4 z-20">
         <div className="relative h-full w-[280px]">
@@ -7852,6 +8220,7 @@ export function InfiniteCanvas() {
             const template = workflowTemplateMap.get(card.templateId)
             if (!template) return null
             const isActive = activeWorkflowCardId === card.id
+            const isCustomTemplate = template.kind === 'custom'
             const statusMeta =
               card.status === 'running'
                 ? {
@@ -7925,118 +8294,173 @@ export function InfiniteCanvas() {
 
                 {!card.collapsed && (
                   <div className="space-y-3 px-3 py-3">
-                    <div className="space-y-2">
-                      {template.inputs.map((slot) => {
-                        const bindings = card.inputs[slot.id] ?? []
-                        return (
-                          <div key={slot.id} className="rounded-xl border border-border bg-background/80 p-2">
-                            <div className="mb-2 flex items-center justify-between gap-2">
-                              <div className="truncate text-xs font-medium text-foreground">
-                                {slot.label}
-                                {slot.required && <span className="ml-1 text-primary">*</span>}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleBindWorkflowSlot(card.id, slot.id)}
-                                  className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-primary"
-                                >
-                                  绑定选中
-                                </button>
-                                {bindings.length > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleClearWorkflowSlot(card.id, slot.id)}
-                                    className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition hover:text-foreground"
-                                  >
-                                    清空
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            {bindings.length === 0 ? (
-                              <div className="rounded-lg border border-dashed border-border px-2 py-2 text-[11px] text-muted-foreground">
-                                请选择素材后点击“绑定选中”
-                              </div>
-                            ) : (
-                              <div className="space-y-1.5">
-                                {bindings.map((binding) => (
+                    {isCustomTemplate ? (
+                      <>
+                        <div className="space-y-2">
+                          <div className="text-[11px] font-medium text-foreground">步骤列表</div>
+                          {(template.steps ?? []).length > 0 ? (
+                            <div className="space-y-1.5">
+                              {template.steps?.map((step, index) => {
+                                const stepLabel = step.name || WORKFLOW_BLOCK_MAP.get(step.blockId)?.name || '未命名步骤'
+                                return (
                                   <div
-                                    key={`${slot.id}-${binding.itemId}`}
+                                    key={`${card.id}-step-${step.id}-${index}`}
                                     className="flex items-center gap-2 rounded-lg border border-border/80 bg-muted/20 px-2 py-1"
                                   >
                                     <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                                      {binding.type === 'image' ? '图' : '文'}
+                                      {index + 1}
                                     </span>
-                                    <span className="truncate text-[11px] text-foreground">{binding.label}</span>
+                                    <span className="truncate text-[11px] text-foreground">{stepLabel}</span>
                                   </div>
-                                ))}
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-dashed border-border px-2 py-2 text-[11px] text-muted-foreground">
+                              暂无步骤
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border border-border bg-muted/20 px-2.5 py-2">
+                          <div className="text-[11px] font-medium text-foreground">输出预览（占位）</div>
+                          <div className="mt-1 text-[11px] text-muted-foreground">暂不支持运行自定义工作流</div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" className="h-8 flex-1 rounded-full" disabled>
+                            <Lock className="mr-1.5 h-3.5 w-3.5" />
+                            暂不支持运行
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 rounded-full px-3 text-xs"
+                            onClick={() => setActiveWorkflowCardId(card.id)}
+                          >
+                            定位
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          {template.inputs.map((slot) => {
+                            const bindings = card.inputs[slot.id] ?? []
+                            return (
+                              <div key={slot.id} className="rounded-xl border border-border bg-background/80 p-2">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <div className="truncate text-xs font-medium text-foreground">
+                                    {slot.label}
+                                    {slot.required && <span className="ml-1 text-primary">*</span>}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleBindWorkflowSlot(card.id, slot.id)}
+                                      className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+                                    >
+                                      绑定选中
+                                    </button>
+                                    {bindings.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleClearWorkflowSlot(card.id, slot.id)}
+                                        className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition hover:text-foreground"
+                                      >
+                                        清空
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                {bindings.length === 0 ? (
+                                  <div className="rounded-lg border border-dashed border-border px-2 py-2 text-[11px] text-muted-foreground">
+                                    请选择素材后点击“绑定选中”
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1.5">
+                                    {bindings.map((binding) => (
+                                      <div
+                                        key={`${slot.id}-${binding.itemId}`}
+                                        className="flex items-center gap-2 rounded-lg border border-border/80 bg-muted/20 px-2 py-1"
+                                      >
+                                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                          {binding.type === 'image' ? '图' : '文'}
+                                        </span>
+                                        <span className="truncate text-[11px] text-foreground">{binding.label}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            )
+                          })}
+                        </div>
+
+                        <div className="rounded-xl border border-border bg-muted/20 px-2.5 py-2">
+                          <div className="text-[11px] font-medium text-foreground">输出预览（占位）</div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {template.outputs.map((output) => (
+                              <span
+                                key={output}
+                                className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground"
+                              >
+                                {output}
+                              </span>
+                            ))}
                           </div>
-                        )
-                      })}
-                    </div>
-
-                    <div className="rounded-xl border border-border bg-muted/20 px-2.5 py-2">
-                      <div className="text-[11px] font-medium text-foreground">输出预览（占位）</div>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {template.outputs.map((output) => (
-                          <span key={output} className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
-                            {output}
-                          </span>
-                        ))}
-                      </div>
-                      {card.outputUrls.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {card.outputUrls.slice(0, 3).map((url, index) => (
-                            <a
-                              key={`${card.id}-output-${index}`}
-                              href={url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="block truncate rounded border border-border/70 bg-background px-2 py-1 text-[10px] text-muted-foreground transition hover:text-foreground"
-                            >
-                              输出 #{index + 1}
-                            </a>
-                          ))}
+                          {card.outputUrls.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {card.outputUrls.slice(0, 3).map((url, index) => (
+                                <a
+                                  key={`${card.id}-output-${index}`}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="block truncate rounded border border-border/70 bg-background px-2 py-1 text-[10px] text-muted-foreground transition hover:text-foreground"
+                                >
+                                  输出 #{index + 1}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                          {card.lastError && (
+                            <div className="mt-2 rounded border border-destructive/30 bg-destructive/5 px-2 py-1 text-[10px] text-destructive">
+                              {card.lastError}
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {card.lastError && (
-                        <div className="mt-2 rounded border border-destructive/30 bg-destructive/5 px-2 py-1 text-[10px] text-destructive">
-                          {card.lastError}
-                        </div>
-                      )}
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        className="h-8 flex-1 rounded-full"
-                        onClick={() => handleRunWorkflowUI(card.id)}
-                        disabled={card.status === 'running'}
-                      >
-                        {card.status === 'running' ? (
-                          <>
-                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                            执行中...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                            运行工作流
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 rounded-full px-3 text-xs"
-                        onClick={() => setActiveWorkflowCardId(card.id)}
-                      >
-                        定位
-                      </Button>
-                    </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            className="h-8 flex-1 rounded-full"
+                            onClick={() => handleRunWorkflowUI(card.id)}
+                            disabled={card.status === 'running'}
+                          >
+                            {card.status === 'running' ? (
+                              <>
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                执行中...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                运行工作流
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 rounded-full px-3 text-xs"
+                            onClick={() => setActiveWorkflowCardId(card.id)}
+                          >
+                            定位
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

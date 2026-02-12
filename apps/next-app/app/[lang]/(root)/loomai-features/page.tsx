@@ -2,14 +2,21 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { motion } from "framer-motion";
-import { ArrowUpRight, CheckCircle2, Clock, Layers3, ScanLine, Sparkles, SwatchBook, X, Zap } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, ChevronDown, Clock, Layers3, ScanLine, SlidersHorizontal, Sparkles, SwatchBook, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 import { FeatureCard, FeaturePageShell } from "@/components/feature-page-shell";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -22,7 +29,21 @@ import { useTranslation } from "@/hooks/use-translation";
 import { ImageUploader } from "../ai-generate/components/ImageUploader";
 import { PromptEditor } from "../ai-generate/components/PromptEditor";
 import { ResultDisplay } from "../ai-generate/components/ResultDisplay";
-import { modelOptions, sizeOptions, styleOptions } from "@libs/ai/prompt-engine";
+import {
+  ageOptions,
+  colorOptions,
+  elementOptions,
+  fabricOptions,
+  fitOptions,
+  genderOptions,
+  generateRandomPrompt,
+  modelOptions,
+  sceneOptions,
+  seasonOptions,
+  sizeOptions,
+  styleOptions,
+  viewOptions,
+} from "@libs/ai/prompt-engine";
 
 const panelClass =
   "border-border/60 bg-card/50 shadow-[0_30px_80px_-60px_hsl(var(--primary)/0.25)] backdrop-blur-xl";
@@ -44,6 +65,7 @@ const accentToneClasses = [
 const capabilityIcons = [Layers3, ScanLine, SwatchBook, Sparkles, CheckCircle2, ArrowUpRight];
 
 export default function LoomaiFeaturesPage() {
+  const router = useRouter();
   const { t, locale: currentLocale } = useTranslation();
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -52,14 +74,33 @@ export default function LoomaiFeaturesPage() {
   const [showNegative, setShowNegative] = useState(false);
   const [size, setSize] = useState("Auto");
   const [style, setStyle] = useState("none");
+  const [colorScheme, setColorScheme] = useState("none");
+  const [fabric, setFabric] = useState("none");
+  const [view, setView] = useState("none");
+  const [fit, setFit] = useState("none");
+  const [element, setElement] = useState("none");
+  const [targetGender, setTargetGender] = useState("none");
+  const [targetAge, setTargetAge] = useState("none");
+  const [targetScene, setTargetScene] = useState("none");
+  const [targetSeason, setTargetSeason] = useState("none");
   const [model, setModel] = useState("loom-pro");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const hintItems = t.aiGenerate.hints;
   const sizeLabels = t.aiGenerate.params.options?.size as Record<string, string> | undefined;
   const styleLabels = t.aiGenerate.params.options?.style as Record<string, string> | undefined;
+  const colorLabels = t.aiGenerate.params.options?.color as Record<string, string> | undefined;
+  const fabricLabels = t.aiGenerate.params.options?.fabric as Record<string, string> | undefined;
+  const viewLabels = t.aiGenerate.params.options?.view as Record<string, string> | undefined;
+  const fitLabels = t.aiGenerate.params.options?.fit as Record<string, string> | undefined;
+  const elementLabels = t.aiGenerate.params.options?.element as Record<string, string> | undefined;
+  const genderLabels = t.aiGenerate.params.options?.gender as Record<string, string> | undefined;
+  const ageLabels = t.aiGenerate.params.options?.age as Record<string, string> | undefined;
+  const sceneLabels = t.aiGenerate.params.options?.scene as Record<string, string> | undefined;
+  const seasonLabels = t.aiGenerate.params.options?.season as Record<string, string> | undefined;
   const modelLabels = t.aiGenerate.params.options?.model as Record<string, string> | undefined;
-  const canGenerate = Boolean(uploadedImage && prompt);
+  const canGenerate = Boolean(uploadedImage && prompt && !isGenerating);
 
   const handleImageUpload = (imageData: string) => {
     if (!imageData) {
@@ -100,8 +141,24 @@ export default function LoomaiFeaturesPage() {
     setPrompt("");
     setNegativePrompt("");
     setShowNegative(false);
+    setSize("Auto");
+    setStyle("none");
+    setColorScheme("none");
+    setFabric("none");
+    setView("none");
+    setFit("none");
+    setElement("none");
+    setTargetGender("none");
+    setTargetAge("none");
+    setTargetScene("none");
+    setTargetSeason("none");
     setGeneratedImage(null);
     toast.info(t.aiGenerate.toasts.clearedAll);
+  };
+
+  const handleRandom = () => {
+    const randomPrompt = generateRandomPrompt();
+    setPrompt(randomPrompt);
   };
 
   const handleGenerate = async () => {
@@ -125,15 +182,15 @@ export default function LoomaiFeaturesPage() {
           negativePrompt: showNegative ? negativePrompt : "",
           size,
           style,
-          colorScheme: "none",
-          fabric: "none",
-          view: "none",
-          fit: "none",
-          element: "none",
-          targetGender: "none",
-          targetAge: "none",
-          targetScene: "none",
-          targetSeason: "none",
+          colorScheme,
+          fabric,
+          view,
+          fit,
+          element,
+          targetGender,
+          targetAge,
+          targetScene,
+          targetSeason,
           model,
         }),
       });
@@ -151,6 +208,27 @@ export default function LoomaiFeaturesPage() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleGenerateInCanvas = () => {
+    if (!uploadedImage || !prompt) {
+      toast.error(t.aiGenerate.toasts.needUploadPrompt);
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(
+        "loomai:canvas:seed",
+        JSON.stringify({
+          prompt,
+          image: uploadedImage,
+        })
+      );
+    } catch (error) {
+      console.error("Failed to seed canvas state", error);
+    }
+
+    router.push(`/${currentLocale}/canvas`);
   };
 
   return (
@@ -352,36 +430,178 @@ export default function LoomaiFeaturesPage() {
                       />
                     </div>
 
-                  <div className="mt-4 space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Select value={size} onValueChange={setSize}>
-                        <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
-                          <SelectValue placeholder={t.aiGenerate.params.sizePlaceholder} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border-border/60 text-foreground">
-                          {sizeOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                              {sizeLabels?.[option.value] ?? option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Select value={size} onValueChange={setSize}>
+                      <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                        <SelectValue placeholder={t.aiGenerate.params.sizePlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border/60 text-foreground">
+                        {sizeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                            {sizeLabels?.[option.value] ?? option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                      <Select value={style} onValueChange={setStyle}>
-                        <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
-                          <SelectValue placeholder={t.aiGenerate.params.stylePlaceholder} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border-border/60 text-foreground">
-                          {styleOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
-                              {styleLabels?.[option.value] ?? option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <Select value={style} onValueChange={setStyle}>
+                      <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                        <SelectValue placeholder={t.aiGenerate.params.stylePlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border/60 text-foreground">
+                        {styleOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                            {styleLabels?.[option.value] ?? option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={colorScheme} onValueChange={setColorScheme}>
+                      <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                        <SelectValue placeholder={t.aiGenerate.params.colorPlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border/60 text-foreground">
+                        {colorOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                            {colorLabels?.[option.value] ?? option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={fabric} onValueChange={setFabric}>
+                      <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                        <SelectValue placeholder={t.aiGenerate.params.fabricPlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border/60 text-foreground">
+                        {fabricOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                            {fabricLabels?.[option.value] ?? option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={view} onValueChange={setView}>
+                      <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                        <SelectValue placeholder={t.aiGenerate.params.viewPlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border/60 text-foreground">
+                        {viewOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                            {viewLabels?.[option.value] ?? option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <div
+                      className="ml-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-2 py-1 text-xs text-foreground/80"
+                      aria-label={t.aiGenerate.params.advancedLabel}
+                    >
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                      <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} />
+                    </div>
+                  </div>
+
+                  {showAdvanced && (
+                    <div className="mt-3 space-y-2">
+                      <div className="text-xs text-muted-foreground">
+                        {t.aiGenerate.params.advancedLabel}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Select value={fit} onValueChange={setFit}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.fitPlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {fitOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {fitLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={element} onValueChange={setElement}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.elementPlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {elementOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {elementLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={targetGender} onValueChange={setTargetGender}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.genderPlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {genderOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {genderLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={targetAge} onValueChange={setTargetAge}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.agePlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {ageOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {ageLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={targetScene} onValueChange={setTargetScene}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.scenePlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {sceneOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {sceneLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={targetSeason} onValueChange={setTargetSeason}>
+                          <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                            <SelectValue placeholder={t.aiGenerate.params.seasonPlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border/60 text-foreground">
+                            {seasonOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value} className="focus:bg-muted/40">
+                                {seasonLabels?.[option.value] ?? option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2 text-xs text-foreground/80">
+                        <span>{t.aiGenerate.prompt.negativeLabel}</span>
+                        <Switch checked={showNegative} onCheckedChange={setShowNegative} />
+                      </div>
 
                       <Select value={model} onValueChange={setModel}>
-                        <SelectTrigger className="h-8 rounded-full border-border/60 bg-background/70 px-3 text-xs text-foreground/90">
+                        <SelectTrigger className="h-8 rounded-md border-border/60 bg-background/60 px-3 text-xs text-foreground/80 hover:bg-muted/40">
+                          <span className="text-xs text-foreground/80">模型：</span>
                           <SelectValue placeholder={t.aiGenerate.params.modelPlaceholder} />
                         </SelectTrigger>
                         <SelectContent className="bg-background border-border/60 text-foreground">
@@ -394,29 +614,55 @@ export default function LoomaiFeaturesPage() {
                       </Select>
                     </div>
 
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-2 text-xs text-foreground/80">
-                        <span>{t.aiGenerate.prompt.negativeLabel}</span>
-                        <Switch checked={showNegative} onCheckedChange={setShowNegative} />
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleClear}
+                        className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 shadow-sm hover:bg-muted/40 hover:text-foreground"
+                      >
+                        {t.aiGenerate.prompt.clear}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRandom}
+                        className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 shadow-sm hover:bg-muted/40 hover:text-foreground"
+                      >
+                        {t.aiGenerate.prompt.random}
+                      </Button>
+                      <div className="inline-flex items-center">
                         <Button
-                          onClick={handleClear}
-                          variant="outline"
-                          size="sm"
-                          className="h-9 rounded-full border-border/50 bg-background/60 px-4 text-xs text-foreground/85 hover:bg-muted/40 hover:text-foreground"
-                        >
-                          {t.aiGenerate.prompt.clear}
-                        </Button>
-                        <Button
+                          type="button"
                           onClick={handleGenerate}
                           disabled={!canGenerate}
-                          size="sm"
-                          className="h-9 rounded-full bg-foreground px-6 text-xs font-semibold text-background shadow-[0_12px_30px_-18px_rgba(0,0,0,0.45)] hover:opacity-90 disabled:opacity-50"
+                          className="h-9 rounded-l-full rounded-r-none bg-foreground px-5 text-xs font-medium text-background shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)] hover:opacity-90 disabled:opacity-50"
                         >
                           {isGenerating ? t.aiGenerate.generate.generating : t.aiGenerate.generate.button}
                         </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              size="icon"
+                              disabled={!canGenerate}
+                              className="h-9 w-9 rounded-l-none rounded-r-full bg-foreground text-background shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)] hover:opacity-90 disabled:opacity-50"
+                              aria-label={t.aiGenerate.generate.button}
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={handleGenerate}>
+                              {t.aiGenerate.generate.button}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleGenerateInCanvas}>
+                              {t.aiGenerate.generate.canvas}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </div>
@@ -518,16 +764,17 @@ export default function LoomaiFeaturesPage() {
                 </div>
 
                 <div className={index % 2 === 0 ? "order-2" : "order-2 lg:order-1"}>
-                  <div
-                    className={`relative aspect-[16/10] overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br ${visualToneClasses[index % visualToneClasses.length]}`}
-                  >
-                    <div className="absolute inset-4 rounded-xl border border-border/65 bg-background/70" />
-                    <div className="absolute left-8 top-8 h-8 w-28 rounded-full border border-border/70 bg-background/70" />
-                    <div className="absolute right-8 top-8 h-8 w-20 rounded-full border border-border/70 bg-background/70" />
-                    <div className="absolute inset-x-8 bottom-8 grid grid-cols-3 gap-3">
-                      <div className="h-14 rounded-xl border border-border/70 bg-background/75" />
-                      <div className="h-14 rounded-xl border border-border/70 bg-background/75" />
-                      <div className="h-14 rounded-xl border border-border/70 bg-background/75" />
+                  <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-border/60 bg-muted/20">
+                    <img
+                      src={`https://picsum.photos/seed/${item.imageSeed}/1200/760`}
+                      alt={item.title}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/30 via-transparent to-transparent" />
+                    <div className="absolute left-3 top-3 rounded-full border border-white/40 bg-black/45 px-2.5 py-1 text-[11px] text-white/90 backdrop-blur-sm">
+                      {item.tag}
                     </div>
                   </div>
                 </div>
@@ -607,15 +854,15 @@ export default function LoomaiFeaturesPage() {
             {t.featuresPage.explore.items.map((item: any, index: number) => (
               <FeatureCard key={index} className="overflow-hidden border-border/60 bg-background/80">
                 <CardContent className="space-y-4 pt-6">
-                  <div
-                    className={`relative aspect-[16/10] overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br ${visualToneClasses[(index + 1) % visualToneClasses.length]}`}
-                  >
-                    <div className="absolute inset-4 grid grid-cols-2 gap-2">
-                      <div className="rounded-lg border border-border/70 bg-background/70" />
-                      <div className="rounded-lg border border-border/70 bg-background/70" />
-                      <div className="rounded-lg border border-border/70 bg-background/70" />
-                      <div className="rounded-lg border border-border/70 bg-background/70" />
-                    </div>
+                  <div className="relative aspect-[16/10] overflow-hidden rounded-xl border border-border/60 bg-muted/20">
+                    <img
+                      src={`https://picsum.photos/seed/${item.imageSeed}/1200/760`}
+                      alt={item.title}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/35 via-transparent to-transparent" />
                   </div>
                   <div className={`flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-semibold ${accentToneClasses[index % accentToneClasses.length]}`}>
                     {index + 1}
