@@ -5,6 +5,7 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -240,6 +241,29 @@ function getQualityBadgeClass(level?: QualityLevel) {
   return 'bg-muted text-muted-foreground'
 }
 
+function buildMockResult() {
+  const roll = Math.random()
+  if (roll < 0.12) {
+    return {
+      status: 'failed' as const,
+      quality: 'failed' as const,
+      error: '主体边缘过暗，识别不稳定',
+    }
+  }
+
+  if (roll < 0.32) {
+    return {
+      status: 'done' as const,
+      quality: 'review' as const,
+    }
+  }
+
+  return {
+    status: 'done' as const,
+    quality: 'pass' as const,
+  }
+}
+
 function buildPicsumUrl(seed: string, width: number, height: number) {
   return `https://picsum.photos/seed/${seed}/${width}/${height}`
 }
@@ -392,13 +416,17 @@ export default function ProductWhiteBackgroundPage() {
     config.aiImage.defaultModels[defaultImageProvider] ?? imageProviderModels[defaultImageProvider]?.[0] ?? ''
   const [imageModel, setImageModel] = useState<string>(defaultImageModel)
   const [protectColor, setProtectColor] = useState(true)
+  const [isTestMode, setIsTestMode] = useState(true)
   const [namingMode, setNamingMode] = useState<NamingMode>('origin-suffix')
   const [filePrefix, setFilePrefix] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterValue>('all')
   const [exportOnlyPass, setExportOnlyPass] = useState(true)
-  const [resultView, setResultView] = useState<1 | 2 | 3>(2)
+  const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null)
+  const [previewMode, setPreviewMode] = useState<'result' | 'original'>('result')
   const [compareItem, setCompareItem] = useState<UploadItem | null>(null)
   const [isEditorOpen, setIsEditorOpen] = useState(false)
+  const previewStripRef = useRef<HTMLDivElement | null>(null)
+  const previewScrollRafRef = useRef<number | null>(null)
 
   useEffect(() => {
     itemsRef.current = items
@@ -414,7 +442,14 @@ export default function ProductWhiteBackgroundPage() {
   }, [])
 
   const hasUploads = items.length > 0
-  const activeItem = items[0]
+
+  useEffect(() => {
+    return () => {
+      if (previewScrollRafRef.current) {
+        cancelAnimationFrame(previewScrollRafRef.current)
+      }
+    }
+  }, [])
 
   const processedItems = useMemo(
     () => items.filter((item) => item.status !== 'ready' && item.status !== 'processing'),
@@ -430,6 +465,92 @@ export default function ProductWhiteBackgroundPage() {
     if (activeFilter === 'all') return processedItems
     return processedItems.filter((item) => item.quality === activeFilter)
   }, [processedItems, activeFilter])
+
+  const previewItems = useMemo(() => {
+    if (processedItems.length > 0) {
+      return filteredItems
+    }
+    return items
+  }, [processedItems.length, filteredItems, items])
+
+  const previewItemMap = useMemo(() => {
+    return new Map(items.map((item) => [item.id, item]))
+  }, [items])
+
+  useEffect(() => {
+    if (previewItems.length === 0) {
+      if (selectedPreviewId) setSelectedPreviewId(null)
+      return
+    }
+
+    if (selectedPreviewId && previewItems.some((item) => item.id === selectedPreviewId)) {
+      return
+    }
+
+    const fallback = previewItems[0]
+    if (fallback) {
+      setSelectedPreviewId(fallback.id)
+      setPreviewMode(fallback.generatedUrl ? 'result' : 'original')
+    }
+  }, [previewItems, selectedPreviewId])
+
+  const activeItem = useMemo(
+    () => items.find((item) => item.id === selectedPreviewId) ?? previewItems[0] ?? null,
+    [items, previewItems, selectedPreviewId]
+  )
+  const previewKind = previewMode === 'result' && activeItem?.generatedUrl ? 'result' : 'original'
+
+  const scrollPreviewIntoView = useCallback((id: string) => {
+    const container = previewStripRef.current
+    if (!container) return
+    const target = container.querySelector<HTMLElement>(`[data-preview-id="${id}"]`)
+    if (!target) return
+    const left = target.offsetLeft - (container.clientWidth - target.offsetWidth) / 2
+    container.scrollTo({ left, behavior: 'smooth' })
+  }, [])
+
+  const selectPreviewItem = useCallback(
+    (item: UploadItem, options?: { center?: boolean }) => {
+      setSelectedPreviewId(item.id)
+      setPreviewMode(item.generatedUrl ? 'result' : 'original')
+      if (options?.center !== false) {
+        scrollPreviewIntoView(item.id)
+      }
+    },
+    [scrollPreviewIntoView]
+  )
+
+  const handlePreviewScroll = useCallback(() => {
+    if (previewScrollRafRef.current) {
+      cancelAnimationFrame(previewScrollRafRef.current)
+    }
+
+    previewScrollRafRef.current = window.requestAnimationFrame(() => {
+      const container = previewStripRef.current
+      if (!container) return
+      const nodes = Array.from(container.querySelectorAll<HTMLElement>('[data-preview-id]'))
+      if (nodes.length === 0) return
+
+      const center = container.scrollLeft + container.clientWidth / 2
+      let closestId: string | null = null
+      let closestDistance = Number.POSITIVE_INFINITY
+
+      for (const node of nodes) {
+        const nodeCenter = node.offsetLeft + node.offsetWidth / 2
+        const distance = Math.abs(nodeCenter - center)
+        if (distance < closestDistance) {
+          closestDistance = distance
+          closestId = node.dataset.previewId ?? null
+        }
+      }
+
+      if (!closestId || closestId === selectedPreviewId) return
+      const targetItem = previewItemMap.get(closestId)
+      if (!targetItem) return
+      setSelectedPreviewId(closestId)
+      setPreviewMode(targetItem.generatedUrl ? 'result' : 'original')
+    })
+  }, [previewItemMap, selectedPreviewId])
 
   const counts = useMemo(() => {
     return {
@@ -591,12 +712,55 @@ export default function ProductWhiteBackgroundPage() {
     setItems((prev) => prev.map((item) => (item.id === id ? updater(item) : item)))
   }
 
+  const applyMockResults = (targetIds?: Set<string>) => {
+    const sizeValue = resolveSizeFromPreset(sizePreset)
+    setItems((prev) =>
+      prev.map((item) => {
+        if (targetIds && !targetIds.has(item.id)) return item
+        const mock = buildMockResult()
+        return {
+          ...item,
+          status: mock.status,
+          quality: mock.quality,
+          error: mock.error,
+          generatedUrl: mock.status === 'done' ? item.previewUrl : undefined,
+          model: imageModel,
+          size: sizeValue,
+        }
+      })
+    )
+  }
+
+  const runTestGeneration = (targetIds: Set<string>, total: number, delayMs: number) => {
+    setIsGenerating(true)
+    setItems((prev) =>
+      prev.map((item) => {
+        if (!targetIds.has(item.id)) return item
+        return { ...item, status: 'processing', error: undefined }
+      })
+    )
+
+    const timer = window.setTimeout(() => {
+      applyMockResults(targetIds)
+      setIsGenerating(false)
+      toast.success(`已完成 ${total} 张白底图生成（测试模式）`)
+    }, delayMs)
+
+    timeoutRef.current.push(timer)
+  }
+
   const generateWhiteBackgrounds = async () => {
     if (!canGenerate) return
 
     const queue = itemsRef.current.filter((item) => item.status === 'ready' || item.status === 'failed')
     if (queue.length === 0) {
       toast.error('当前没有待生成的图片')
+      return
+    }
+
+    if (isTestMode) {
+      const targetIds = new Set(queue.map((item) => item.id))
+      runTestGeneration(targetIds, targetIds.size, 600)
       return
     }
 
@@ -693,6 +857,11 @@ export default function ProductWhiteBackgroundPage() {
   const retryItem = async (id: string) => {
     const target = itemsRef.current.find((item) => item.id === id)
     if (!target || isGenerating) return
+
+    if (isTestMode) {
+      runTestGeneration(new Set([id]), 1, 450)
+      return
+    }
 
     const sizeValue = resolveSizeFromPreset(sizePreset)
     const prompt = buildWhiteBackgroundPrompt({
@@ -917,6 +1086,33 @@ export default function ProductWhiteBackgroundPage() {
                     </div>
 
                     <div className="flex items-center justify-between rounded-full bg-background/60 px-3 py-2">
+                      <div>
+                        <p className="text-sm">生成模式</p>
+                        <p className="text-xs text-muted-foreground">测试模式不消耗积分</p>
+                      </div>
+                      <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/70 p-1">
+                        <Button
+                          size="sm"
+                          variant={isTestMode ? 'default' : 'ghost'}
+                          className="h-7 rounded-full px-2 text-[11px]"
+                          onClick={() => setIsTestMode(true)}
+                          disabled={isGenerating}
+                        >
+                          测试
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={!isTestMode ? 'default' : 'ghost'}
+                          className="h-7 rounded-full px-2 text-[11px]"
+                          onClick={() => setIsTestMode(false)}
+                          disabled={isGenerating}
+                        >
+                          正式
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-full bg-background/60 px-3 py-2">
                       <p className="text-sm">色彩保护</p>
                       <Switch checked={protectColor} onCheckedChange={setProtectColor} />
                     </div>
@@ -1005,20 +1201,123 @@ export default function ProductWhiteBackgroundPage() {
                   }}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-white/5" />
-                  <div className="relative z-10 flex h-full items-center justify-center">
-                    {activeItem ? (
-                      <img
-                        src={activeItem.generatedUrl ?? activeItem.previewUrl}
-                        alt={activeItem.fileName}
-                        className="max-h-[360px] w-auto rounded-2xl bg-white p-4 shadow-xl"
-                      />
+                  {activeItem && (
+                    <div className="absolute right-4 top-4 z-20 flex items-center gap-1 rounded-full border border-white/10 bg-black/40 p-1 text-[11px] text-white/80 backdrop-blur">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewMode('original')}
+                        className={cn(
+                          'rounded-full px-2 py-1 transition',
+                          previewKind === 'original' ? 'bg-white/20 text-white' : 'hover:bg-white/10'
+                        )}
+                      >
+                        原图
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewMode('result')}
+                        disabled={!activeItem.generatedUrl}
+                        className={cn(
+                          'rounded-full px-2 py-1 transition',
+                          previewKind === 'result' ? 'bg-white/20 text-white' : 'hover:bg-white/10',
+                          !activeItem.generatedUrl && 'cursor-not-allowed opacity-50'
+                        )}
+                      >
+                        白底
+                      </button>
+                    </div>
+                  )}
+                  <div className="relative z-10 flex h-full items-center">
+                    {previewItems.length > 0 ? (
+                      <div
+                        ref={previewStripRef}
+                        onScroll={handlePreviewScroll}
+                        className="flex h-full w-full items-center gap-10 overflow-x-auto px-10 py-4 snap-x snap-mandatory"
+                      >
+                        {previewItems.map((item) => {
+                          const isActive = activeItem?.id === item.id
+                          const canCompare = Boolean(item.generatedUrl)
+                          const showResult = previewMode === 'result' && item.generatedUrl
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              data-preview-id={item.id}
+                              onClick={() => {
+                                selectPreviewItem(item)
+                                if (canCompare) setCompareItem(item)
+                              }}
+                              className={cn(
+                                'relative flex shrink-0 snap-center flex-col items-center gap-3 transition',
+                                isActive ? 'scale-100 opacity-100' : 'scale-[0.92] opacity-70'
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  'relative h-[320px] w-[280px] overflow-hidden rounded-2xl border bg-white/95 p-4 shadow-xl',
+                                  isActive ? 'border-primary/60 ring-2 ring-primary/20' : 'border-white/10'
+                                )}
+                              >
+                                {showResult ? (
+                                  <img
+                                    src={item.generatedUrl}
+                                    alt={`${item.fileName} 白底图`}
+                                    className={cn(
+                                      'h-full w-full object-contain',
+                                      shadow === 'none'
+                                        ? ''
+                                        : shadow === 'soft'
+                                          ? 'drop-shadow-sm'
+                                          : 'drop-shadow-md'
+                                    )}
+                                  />
+                                ) : (
+                                  <img
+                                    src={item.previewUrl}
+                                    alt={`${item.fileName} 原图`}
+                                    className="h-full w-full object-contain"
+                                  />
+                                )}
+                                {previewMode === 'result' && !item.generatedUrl && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-xs text-white">
+                                    {item.status === 'failed' ? '生成失败' : '未生成'}
+                                  </div>
+                                )}
+                                <span
+                                  className={cn(
+                                    'absolute left-3 top-3 rounded-full px-2 py-0.5 text-[10px]',
+                                    getQualityBadgeClass(item.quality)
+                                  )}
+                                >
+                                  {item.quality ? QUALITY_LABELS[item.quality] : '待处理'}
+                                </span>
+                              </div>
+                              <div className="flex w-[280px] items-center justify-between text-xs text-white/70">
+                                <span className="truncate">{item.fileName}</span>
+                                <span>{formatBytes(item.fileSize)}</span>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
                     ) : (
-                      <div className="text-sm text-white/70">上传图片后开始编辑</div>
+                      <div className="flex h-full w-full items-center justify-center text-sm text-white/70">
+                        {items.length === 0
+                          ? '上传图片后开始编辑'
+                          : processedItems.length === 0
+                            ? isGenerating
+                              ? '正在生成中，预计还需 30 秒。'
+                              : '点击“开始生成”后将在这里展示结果。'
+                            : '当前筛选条件下没有结果。'}
+                      </div>
                     )}
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between text-xs text-white/70">
-                  <span>{activeItem ? activeItem.fileName : '未选择图片'}</span>
+                  <span>
+                    {activeItem ? activeItem.fileName : '未选择图片'}
+                    {activeItem ? ` · ${previewKind === 'result' ? '白底图' : '原图'}` : ''}
+                  </span>
                   <span>{activeItem ? formatBytes(activeItem.fileSize) : ''}</span>
                 </div>
               </div>
@@ -1038,32 +1337,6 @@ export default function ProductWhiteBackgroundPage() {
                     ))}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/70 p-1">
-                      <Button
-                        size="sm"
-                        variant={resultView === 1 ? 'default' : 'ghost'}
-                        className="h-7 rounded-full px-2 text-[11px]"
-                        onClick={() => setResultView(1)}
-                      >
-                        1列
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={resultView === 2 ? 'default' : 'ghost'}
-                        className="h-7 rounded-full px-2 text-[11px]"
-                        onClick={() => setResultView(2)}
-                      >
-                        2列
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={resultView === 3 ? 'default' : 'ghost'}
-                        className="h-7 rounded-full px-2 text-[11px]"
-                        onClick={() => setResultView(3)}
-                      >
-                        3列
-                      </Button>
-                    </div>
                     <span>已上传 {counts.uploaded}</span>
                     <span>已生成 {counts.generated}</span>
                   </div>
@@ -1078,82 +1351,184 @@ export default function ProductWhiteBackgroundPage() {
                     当前筛选条件下没有结果。
                   </div>
                 ) : (
-                  <div
-                    className={cn(
-                      'grid gap-6',
-                      resultView === 1 && 'grid-cols-1',
-                      resultView === 2 && 'sm:grid-cols-2',
-                      resultView === 3 && 'sm:grid-cols-2 lg:grid-cols-3'
-                    )}
-                  >
-                    {filteredItems.map((item, index) => (
-                      <div key={item.id} className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <p className="truncate text-xs font-medium text-muted-foreground">{item.fileName}</p>
-                          <span
-                            className={cn(
-                              'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs',
-                              getQualityBadgeClass(item.quality)
-                            )}
-                          >
-                            {item.quality ? QUALITY_LABELS[item.quality] : '待处理'}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="overflow-hidden rounded-xl bg-background/80">
-                            <img
-                              src={item.previewUrl}
-                              alt={`${item.fileName} 原图`}
-                              className="h-32 w-full object-cover"
-                            />
-                            <p className="px-2 py-1 text-center text-xs text-muted-foreground">原图</p>
-                          </div>
-                          <div className="overflow-hidden rounded-xl bg-white">
-                            <div className="flex h-32 w-full items-center justify-center bg-white/80 p-2">
+                  <div className="space-y-4">
+                    {filteredItems.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {filteredItems.map((item) => {
+                          const canCompare = Boolean(item.generatedUrl)
+                          const isActive = activeItem?.id === item.id
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => {
+                                selectPreviewItem(item)
+                              }}
+                              className={cn(
+                                'group relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border bg-muted/20 transition',
+                                isActive ? 'border-primary/60 ring-2 ring-primary/20' : 'border-border/60',
+                                canCompare ? 'cursor-pointer hover:border-primary/50' : 'cursor-pointer'
+                              )}
+                            >
                               <img
                                 src={item.generatedUrl ?? item.previewUrl}
-                                alt={`${item.fileName} 白底图`}
-                                className={cn(
-                                  'max-h-full w-full object-contain',
-                                  shadow === 'none'
-                                    ? ''
-                                    : shadow === 'soft'
-                                      ? 'drop-shadow-sm'
-                                      : 'drop-shadow-md'
-                                )}
+                                alt={item.fileName}
+                                className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
                               />
-                            </div>
-                            <p className="px-2 py-1 text-center text-xs text-muted-foreground">白底图</p>
-                          </div>
-                        </div>
-
-                        {item.status === 'failed' && item.error && (
-                          <div className="flex items-start gap-2 rounded-xl bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5" />
-                            <span>{item.error}</span>
-                          </div>
-                        )}
-
-                        <div className="flex flex-wrap items-center justify-end gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => setCompareItem(item)}>
-                            对比查看
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => retryItem(item.id)}
-                            disabled={item.status === 'processing'}
-                          >
-                            再生成
-                          </Button>
-                          <Button size="sm" onClick={() => downloadSingle(item, index)} disabled={item.status !== 'done'}>
-                            <Download className="mr-1.5 h-4 w-4" />
-                            下载
-                          </Button>
-                        </div>
+                              {!item.generatedUrl && (
+                                <span className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
+                                  {item.status === 'failed' ? '失败' : '未生成'}
+                                </span>
+                              )}
+                              <span
+                                className={cn(
+                                  'absolute bottom-1 left-1 rounded-full px-1.5 py-0.5 text-[10px]',
+                                  getQualityBadgeClass(item.quality)
+                                )}
+                              >
+                                {item.quality ? QUALITY_LABELS[item.quality] : '待处理'}
+                              </span>
+                            </button>
+                          )
+                        })}
                       </div>
-                    ))}
+                    )}
+
+                    <div className="space-y-3">
+                      {filteredItems.map((item, index) => {
+                        const canCompare = Boolean(item.generatedUrl)
+                        const isActive = activeItem?.id === item.id
+                        const sizeLabel = item.size ?? resolveSizeFromPreset(sizePreset)
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              selectPreviewItem(item)
+                            }}
+                            className={cn(
+                              'flex flex-col gap-3 rounded-2xl border bg-muted/10 p-3 transition sm:flex-row sm:items-center',
+                              isActive ? 'border-primary/60 bg-primary/5' : 'border-border/60'
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  if (canCompare) setCompareItem(item)
+                                }}
+                                className={cn(
+                                  'relative h-16 w-16 overflow-hidden rounded-lg border border-border/60 bg-background',
+                                  canCompare ? 'cursor-pointer' : 'cursor-default'
+                                )}
+                              >
+                                <img src={item.previewUrl} alt={`${item.fileName} 原图`} className="h-full w-full object-cover" />
+                                <span className="absolute bottom-1 left-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                                  原图
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  if (canCompare) setCompareItem(item)
+                                }}
+                                className={cn(
+                                  'relative h-16 w-16 overflow-hidden rounded-lg border border-border/60 bg-white',
+                                  canCompare ? 'cursor-pointer' : 'cursor-default opacity-70'
+                                )}
+                              >
+                                {item.generatedUrl ? (
+                                  <img
+                                    src={item.generatedUrl}
+                                    alt={`${item.fileName} 白底图`}
+                                    className={cn(
+                                      'h-full w-full object-contain',
+                                      shadow === 'none'
+                                        ? ''
+                                        : shadow === 'soft'
+                                          ? 'drop-shadow-sm'
+                                          : 'drop-shadow-md'
+                                    )}
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+                                    {item.status === 'failed' ? '生成失败' : '未生成'}
+                                  </div>
+                                )}
+                                <span className="absolute bottom-1 left-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                                  白底
+                                </span>
+                              </button>
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-medium text-foreground">{item.fileName}</p>
+                                  <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                                    <span>{formatBytes(item.fileSize)}</span>
+                                    <span>模型 {item.model ?? imageModel}</span>
+                                    <span>尺寸 {sizeLabel}</span>
+                                  </div>
+                                </div>
+                                <span
+                                  className={cn(
+                                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs',
+                                    getQualityBadgeClass(item.quality)
+                                  )}
+                                >
+                                  {item.quality ? QUALITY_LABELS[item.quality] : '待处理'}
+                                </span>
+                              </div>
+
+                              {item.status === 'failed' && item.error && (
+                                <div className="mt-2 flex items-start gap-2 rounded-xl bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5" />
+                                  <span>{item.error}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setCompareItem(item)
+                                }}
+                                disabled={!canCompare}
+                              >
+                                对比查看
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  retryItem(item.id)
+                                }}
+                                disabled={item.status === 'processing'}
+                              >
+                                再生成
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  downloadSingle(item, index)
+                                }}
+                                disabled={item.status !== 'done'}
+                              >
+                                <Download className="mr-1.5 h-4 w-4" />
+                                下载
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

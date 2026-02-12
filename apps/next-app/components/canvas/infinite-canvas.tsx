@@ -241,6 +241,7 @@ type WorkflowStep = {
   inputSource?: 'step' | 'manual' | 'previous'
   inputFromStepId?: string
   outputSelection?: 'all' | 'first'
+  model?: string
 }
 
 type WorkflowTemplateDefinition = {
@@ -405,6 +406,23 @@ const WORKFLOW_OUTPUT_ITEM_WIDTH = 220
 const WORKFLOW_OUTPUT_ITEM_HEIGHT = 220
 const WORKFLOW_POLL_INTERVAL_MS = 1500
 const WORKFLOW_POLL_MAX_ATTEMPTS = 60
+
+const buildWorkflowPlaceholderImage = (label: string) => {
+  const safeLabel = label.replace(/[<>]/g, '').slice(0, 32)
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="480">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#eef2ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#bg)"/>
+  <rect x="24" y="24" width="672" height="432" rx="28" fill="#ffffff" stroke="#dfe3ea" stroke-width="2" stroke-dasharray="6 6"/>
+  <text x="50%" y="46%" text-anchor="middle" font-size="22" font-family="sans-serif" fill="#1f2937">占位结果</text>
+  <text x="50%" y="56%" text-anchor="middle" font-size="16" font-family="sans-serif" fill="#6b7280">${safeLabel}</text>
+</svg>`
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+}
 
 const resolveWorkflowInputs = (template: WorkflowTemplateDefinition) =>
   template.kind === 'custom' ? CUSTOM_WORKFLOW_INPUTS : template.inputs
@@ -1163,6 +1181,7 @@ export function InfiniteCanvas() {
   const [builderName, setBuilderName] = useState('')
   const [builderDescription, setBuilderDescription] = useState('')
   const [builderSteps, setBuilderSteps] = useState<WorkflowStep[]>([])
+  const [isWorkflowMetaOpen, setIsWorkflowMetaOpen] = useState(true)
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(false)
   const [isDecomposeMenuOpen, setIsDecomposeMenuOpen] = useState(false)
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null)
@@ -1204,6 +1223,13 @@ export function InfiniteCanvas() {
     () => new Map(workflowTemplates.map((template) => [template.id, template])),
     [workflowTemplates]
   )
+  const workflowPillBase = 'h-6 rounded-full border border-border px-2 text-[12px] font-medium transition'
+  const workflowPillMuted = 'text-muted-foreground hover:text-foreground'
+  const workflowPillActive = 'border-primary/40 bg-primary/10 text-primary'
+  const workflowIconBtn =
+    'flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground'
+  const workflowSelectTrigger =
+    'h-6 w-fit max-w-[140px] overflow-hidden rounded-full border border-border/70 bg-muted/20 px-2 text-[12px] font-medium text-muted-foreground shadow-none transition hover:bg-muted/30 focus:border-primary/40 focus:ring-0 [&_svg]:size-3'
 
   const { messages, sendMessage, setMessages, status, error } = useChat({
     messages: [
@@ -4140,10 +4166,11 @@ export function InfiniteCanvas() {
         inputSource: prev.length === 0 ? 'manual' : 'step',
         inputFromStepId: prev.length === 0 ? undefined : prev[prev.length - 1]?.id,
         outputSelection: 'all',
+        model: block.kind === 'prompt' ? imageModel : undefined,
         },
       ])
     )
-  }, [normalizeBuilderSteps])
+  }, [imageModel, normalizeBuilderSteps])
 
   const handleMoveWorkflowStep = useCallback((index: number, direction: -1 | 1) => {
     setBuilderSteps((prev) => {
@@ -4390,7 +4417,13 @@ export function InfiniteCanvas() {
         throw new Error('未找到工作流模板')
       }
       if (template.kind === 'custom') {
-        throw new Error('自定义工作流暂不支持执行')
+        const steps = template.steps ?? []
+        const lastStep = steps[steps.length - 1]
+        const label = lastStep?.name || template.name || '自定义工作流'
+        const count = Math.max(1, Math.min(3, steps.length || 1))
+        return Array.from({ length: count }, (_, index) =>
+          buildWorkflowPlaceholderImage(`${label} 结果 ${index + 1}`)
+        )
       }
       for (const requiredSlot of template.inputs.filter((slot) => slot.required)) {
         const requiredBindings = card.inputs[requiredSlot.id] ?? []
@@ -4463,11 +4496,6 @@ export function InfiniteCanvas() {
     async (cardId: string) => {
       const targetCard = workflowCards.find((card) => card.id === cardId)
       if (!targetCard || targetCard.status === 'running') return
-      const template = workflowTemplateMap.get(targetCard.templateId)
-      if (template?.kind === 'custom') {
-        toast.message('自定义工作流暂不支持运行')
-        return
-      }
 
       setWorkflowCards((prev) =>
         prev.map((card) =>
@@ -4514,7 +4542,7 @@ export function InfiniteCanvas() {
         toast.error(message)
       }
     },
-    [appendWorkflowOutputsToCanvas, executeWorkflowCard, workflowCards, workflowTemplateMap]
+    [appendWorkflowOutputsToCanvas, executeWorkflowCard, workflowCards]
   )
 
   useEffect(() => {
@@ -6072,10 +6100,10 @@ export function InfiniteCanvas() {
                 <button
                   type="button"
                   onClick={() => setWorkflowPanelMode('templates')}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className={workflowIconBtn}
                   aria-label="返回工作流模板"
                 >
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft className="h-3.5 w-3.5" />
                 </button>
                 <div>
                   <div className="text-base font-semibold text-foreground">搭建工作流</div>
@@ -6085,63 +6113,78 @@ export function InfiniteCanvas() {
               <button
                 type="button"
                 onClick={() => setIsWorkflowPanelOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className={workflowIconBtn}
                 aria-label="收起工作流面板"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
-            <div className="grid max-h-[calc(80vh-64px)] grid-cols-1 gap-6 overflow-y-auto px-6 py-5 lg:grid-cols-[1fr_1fr]">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-muted-foreground">工作流名称</div>
-                  <input
-                    value={builderName}
-                    onChange={(event) => setBuilderName(event.target.value)}
-                    placeholder="例如：爆款换衣流程"
-                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-muted-foreground">工作流简介</div>
-                  <textarea
-                    value={builderDescription}
-                    onChange={(event) => setBuilderDescription(event.target.value)}
-                    placeholder="描述这个流程的用途（可选）"
-                    rows={3}
-                    className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
-                  />
-                </div>
-                <div className="space-y-3">
-                  <div className="text-sm font-semibold text-foreground">功能块库</div>
-                  {WORKFLOW_BLOCK_GROUPS.map((group) => (
-                    <div key={group.id} className="space-y-2">
-                      <div className="text-xs font-semibold text-muted-foreground">{group.label}</div>
-                      <div className="space-y-2">
-                        {group.blocks.map((block) => (
-                          <div
-                            key={block.id}
-                            className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-background/80 px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate text-xs font-semibold text-foreground">{block.name}</div>
-                              <div className="mt-1 text-[11px] text-muted-foreground">{block.description}</div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleAddWorkflowStep(block)}
-                              className="rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-primary"
-                            >
-                              添加
-                            </button>
+            <div className="grid max-h-[calc(80vh-64px)] grid-cols-1 gap-6 overflow-y-auto px-6 py-5 lg:grid-cols-[0.3fr_0.7fr]">
+              <div className="space-y-3">
+                <div className="text-sm font-semibold text-foreground">功能块库</div>
+                {WORKFLOW_BLOCK_GROUPS.map((group) => (
+                  <div key={group.id} className="space-y-2">
+                    <div className="text-xs font-semibold text-muted-foreground">{group.label}</div>
+                    <div className="space-y-1.5">
+                      {group.blocks.map((block) => (
+                        <div
+                          key={block.id}
+                          className="flex items-start justify-between gap-2 rounded-2xl border border-border bg-background/80 px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate text-xs font-semibold text-foreground">{block.name}</div>
+                            <div className="mt-1 text-[11px] text-muted-foreground">{block.description}</div>
                           </div>
-                        ))}
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => handleAddWorkflowStep(block)}
+                            className={cn(workflowPillBase, workflowPillMuted)}
+                          >
+                            添加
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
               <div className="flex flex-col gap-4">
+                <div className="rounded-2xl border border-border bg-background/80 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-foreground">工作流信息</div>
+                    <button
+                      type="button"
+                      onClick={() => setIsWorkflowMetaOpen((prev) => !prev)}
+                      className={workflowIconBtn}
+                      aria-label={isWorkflowMetaOpen ? '收起工作流信息' : '展开工作流信息'}
+                    >
+                      <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', !isWorkflowMetaOpen && '-rotate-90')} />
+                    </button>
+                  </div>
+                  {isWorkflowMetaOpen && (
+                    <div className="mt-3 space-y-3">
+                      <div className="space-y-1.5">
+                        <div className="text-xs font-medium text-muted-foreground">工作流名称</div>
+                        <input
+                          value={builderName}
+                          onChange={(event) => setBuilderName(event.target.value)}
+                          placeholder="例如：爆款换衣流程"
+                          className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground shadow-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="text-xs font-medium text-muted-foreground">工作流简介</div>
+                        <textarea
+                          value={builderDescription}
+                          onChange={(event) => setBuilderDescription(event.target.value)}
+                          placeholder="描述这个流程的用途（可选）"
+                          rows={3}
+                          className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="text-sm font-semibold text-foreground">步骤列表</div>
                 {builderSteps.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
@@ -6159,7 +6202,7 @@ export function InfiniteCanvas() {
                             {index + 1}. {step.name}
                           </div>
                           <div className="mt-1 text-[11px] text-muted-foreground">{step.description}</div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
                             <span className="font-medium text-foreground/80">输入来源</span>
                             <Select
                               value={
@@ -6185,10 +6228,10 @@ export function InfiniteCanvas() {
                               }}
                               disabled={index === 0 || builderSteps.slice(0, index).length === 0}
                             >
-                              <SelectTrigger
+                            <SelectTrigger
                                 className={cn(
-                                  'h-7 rounded-full border px-2 text-[10px] text-muted-foreground',
-                                  step.inputSource === 'step' && 'border-primary/40 text-primary',
+                                  workflowSelectTrigger,
+                                  step.inputSource === 'step' && workflowPillActive,
                                   index === 0 && 'cursor-not-allowed opacity-50'
                                 )}
                               >
@@ -6221,10 +6264,8 @@ export function InfiniteCanvas() {
                                 )
                               }
                               className={cn(
-                                'rounded-full border px-2 py-0.5 text-[10px] transition',
-                                step.inputSource === 'manual'
-                                  ? 'border-primary/40 bg-primary/10 text-primary'
-                                  : 'border-border text-muted-foreground hover:text-foreground'
+                                workflowPillBase,
+                                step.inputSource === 'manual' ? workflowPillActive : workflowPillMuted
                               )}
                             >
                               手动输入
@@ -6247,10 +6288,8 @@ export function InfiniteCanvas() {
                                     )
                                   }
                                   className={cn(
-                                    'rounded-full border px-2 py-0.5 text-[10px] transition',
-                                    (step.outputSelection ?? 'all') === 'all'
-                                      ? 'border-primary/40 bg-primary/10 text-primary'
-                                      : 'border-border text-muted-foreground hover:text-foreground'
+                                    workflowPillBase,
+                                    (step.outputSelection ?? 'all') === 'all' ? workflowPillActive : workflowPillMuted
                                   )}
                                 >
                                   全部
@@ -6270,10 +6309,8 @@ export function InfiniteCanvas() {
                                     )
                                   }
                                   className={cn(
-                                    'rounded-full border px-2 py-0.5 text-[10px] transition',
-                                    step.outputSelection === 'first'
-                                      ? 'border-primary/40 bg-primary/10 text-primary'
-                                      : 'border-border text-muted-foreground hover:text-foreground'
+                                    workflowPillBase,
+                                    step.outputSelection === 'first' ? workflowPillActive : workflowPillMuted
                                   )}
                                 >
                                   首张
@@ -6281,33 +6318,66 @@ export function InfiniteCanvas() {
                               </>
                             )}
                           </div>
+                          {step.kind === 'prompt' ? (
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+                              <span className="font-medium text-foreground/80">模型</span>
+                              <Select
+                                value={step.model ?? imageModel}
+                                onValueChange={(value) =>
+                                  setBuilderSteps((prev) =>
+                                    prev.map((item) =>
+                                      item.id === step.id
+                                        ? {
+                                            ...item,
+                                            model: value,
+                                          }
+                                        : item
+                                    )
+                                  )
+                                }
+                              >
+                              <SelectTrigger className={workflowSelectTrigger}>
+                                <SelectValue placeholder="选择模型" />
+                              </SelectTrigger>
+                                <SelectContent>
+                                  {(imageProviderModels[defaultImageProvider] ?? []).map((model) => (
+                                    <SelectItem key={model} value={model}>
+                                      {model}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : (
+                            <div className="mt-2 text-[12px] text-muted-foreground">模型：无需</div>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => handleMoveWorkflowStep(index, -1)}
                             disabled={index === 0}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                            className={cn(workflowIconBtn, index === 0 && 'opacity-40')}
                             aria-label="上移步骤"
                           >
-                            <ArrowUp className="h-3.5 w-3.5" />
+                            <ArrowUp className="h-3 w-3" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleMoveWorkflowStep(index, 1)}
                             disabled={index === builderSteps.length - 1}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                            className={cn(workflowIconBtn, index === builderSteps.length - 1 && 'opacity-40')}
                             aria-label="下移步骤"
                           >
-                            <ArrowDown className="h-3.5 w-3.5" />
+                            <ArrowDown className="h-3 w-3" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleRemoveWorkflowStep(step.id)}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                            className={workflowIconBtn}
                             aria-label="删除步骤"
                           >
-                            <X className="h-3.5 w-3.5" />
+                            <X className="h-3 w-3" />
                           </button>
                         </div>
                       </div>
@@ -8567,13 +8637,13 @@ export function InfiniteCanvas() {
 
                         <div className="rounded-xl border border-border bg-muted/20 px-2.5 py-2">
                           <div className="text-[11px] font-medium text-foreground">输出预览（占位）</div>
-                          <div className="mt-1 text-[11px] text-muted-foreground">暂不支持运行自定义工作流</div>
+                          <div className="mt-1 text-[11px] text-muted-foreground">点击运行生成占位结果</div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <Button size="sm" className="h-8 flex-1 rounded-full" disabled>
-                            <Lock className="mr-1.5 h-3.5 w-3.5" />
-                            暂不支持运行
+                          <Button size="sm" className="h-8 flex-1 rounded-full" onClick={() => handleRunWorkflowUI(card.id)}>
+                            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                            运行工作流
                           </Button>
                           <Button
                             size="sm"
