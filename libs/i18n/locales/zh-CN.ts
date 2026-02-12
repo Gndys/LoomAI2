@@ -1674,6 +1674,194 @@ export const zhCN: Locale = {
       learnMore: "了解更多"
     }
   },
+  featuresPage: {
+    hero: {
+      badge: "LoomAI 能力总览",
+      title: "一个无限画布，贯通设计到交付",
+      subtitle: "把生成、编辑、校对与导出放进同一工作空间，减少切换、减少返工、提升团队协作效率。",
+      buttons: {
+        primary: "进入无限画布",
+        secondary: "先体验图像生成"
+      },
+      highlights: ["无限画布实时编排", "线稿到 CAD 连续处理", "多任务并行工作流"],
+      promises: ["一页完成全链路操作", "结果可追踪可复用", "直接导出 DXF/SVG/PDF"]
+    },
+    stats: {
+      items: [
+        { value: "120", suffix: "+", label: "品牌与工作室" },
+        { value: "3.6", suffix: "x", label: "平均打样提速" },
+        { value: "93", suffix: "%", label: "关键细节识别准确率" },
+        { value: "30", suffix: "秒", label: "单款平均生成时间" }
+      ]
+    },
+    experience: {
+      title: "先从一个任务开始",
+      subtitle: "上传参考图，感受 LoomAI 如何在同一页面完成生成、对比与迭代。",
+      badge: "Live Playground"
+    },
+    inspiration: {
+      title: "核心技术能力，一屏一能力",
+      subtitle: "借鉴 Gemini 的叙事节奏，用更短路径展示 LoomAI 的真实能力栈。",
+      items: [
+        {
+          tag: "画布编排",
+          title: "无限画布上的多素材创作",
+          description: "在一个画布中同时放置参考图、生成图、注释与版本，支持大画布缩放与区域聚焦。",
+          prompt: "Infinite canvas workspace · Multi-asset layout · Zoom-and-pan precision",
+          imageSeed: "loomai-flatlay-01"
+        },
+        {
+          tag: "AI 工作流",
+          title: "节点式流程串联工具能力",
+          description: "把去底、平铺图、线稿、配色与导出串成流程，按任务批量执行，减少重复操作。",
+          prompt: "Workflow orchestration · Node pipeline · Batch-ready execution",
+          imageSeed: "loomai-sketch-01"
+        },
+        {
+          tag: "技术交付",
+          title: "从生成结果到工厂可用文件",
+          description: "在校对后直接导出 DXF、SVG、PDF 等格式，缩短设计到打样之间的传递链路。",
+          prompt: "Production export · DXF/SVG/PDF delivery · Faster handoff",
+          imageSeed: "loomai-pattern-01"
+        }
+      ]
+    },
+    styles: {
+      title: "风格基线库",
+      subtitle: "先定义视觉基调，再批量稳定输出。",
+      items: [
+        { title: "极简", imageSeed: "loomai-style-minimal" },
+        { title: "街头", imageSeed: "loomai-style-street" },
+        { title: "复古", imageSeed: "loomai-style-vintage" },
+        { title: "运动", imageSeed: "loomai-style-sport" },
+        { title: "通勤", imageSeed: "loomai-style-commute" },
+        { title: "度假", imageSeed: "loomai-style-resort" },
+        { title: "机能", imageSeed: "loomai-style-tech" },
+        { title: "高定", imageSeed: "loomai-style-couture" }
+      ]
+    },
+    explore: {
+      title: "典型工作流场景",
+      subtitle: "围绕真实服装任务，把能力组织成可复用流程。",
+      items: [
+        {
+          title: "批量平铺图处理",
+          description: "去背景、对齐角度，批量输出一致视觉。",
+          imageSeed: "loomai-explore-batch"
+        },
+        {
+          title: "线稿转 CAD",
+          description: "线条矢量化，导出 DXF/SVG 版型文件。",
+          imageSeed: "loomai-explore-cad"
+        },
+        {
+          title: "配色/面料迭代",
+          description: "快速测试不同配色与材质方案。",
+          imageSeed: "loomai-explore-colorway"
+        }
+      ]
+    },
+    features: {
+      title: "无限画布能力矩阵",
+      subtitle: "所有能力都以画布为中心组织，方便团队协同、对比与复用。",
+      items: [
+        {
+          title: "画布内生成",
+          description: "在选区内直接发起生成任务，结果就地回写到当前工作区。"
+        },
+        {
+          title: "多图层编辑",
+          description: "支持图层级叠加、替换与微调，适合复杂设计稿迭代。"
+        },
+        {
+          title: "流程节点串联",
+          description: "把多个工具按顺序编排成流程，一次配置，反复执行。"
+        },
+        {
+          title: "局部区域处理",
+          description: "针对局部区域进行重绘或优化，避免整图重做。"
+        },
+        {
+          title: "版本对比与回溯",
+          description: "保留关键版本节点，快速回看与选择最佳结果。"
+        },
+        {
+          title: "多格式专业导出",
+          description: "支持 DXF/SVG/PDF/PNG 输出，直接进入后续打样或交付。"
+        }
+      ]
+    },
+    workflow: {
+      title: "三步跑通端到端流程",
+      subtitle: "从输入素材到导出文件，保持同一工作上下文。",
+      steps: [
+        {
+          title: "导入素材到画布",
+          description: "上传参考图、线稿或历史结果，统一在同一画布中管理。"
+        },
+        {
+          title: "运行工作流节点",
+          description: "按任务调用去底、生成、校对、结构提取等节点自动处理。"
+        },
+        {
+          title: "确认并导出交付",
+          description: "完成团队校对后导出工厂可用格式，进入下一生产环节。"
+        }
+      ],
+      tip: "常见任务可在 30 秒内得到首版结果，并继续在画布中迭代。"
+    },
+    testimonials: {
+      title: "来自一线设计团队",
+      subtitle: "他们用 LoomAI 提升交付效率，同时保持设计标准。",
+      items: [
+        {
+          quote: "以前做平铺图要反复修边，现在上传后很快就能直接进 tech pack。",
+          author: "陈妍",
+          role: "独立品牌主理人"
+        },
+        {
+          quote: "线稿转 CAD 的一致性很高，新同事也能快速跟上输出标准。",
+          author: "周航",
+          role: "版型研发主管"
+        },
+        {
+          quote: "批量处理让我们在上新前压缩了打样周期，团队协作更顺。",
+          author: "林薇",
+          role: "时装工作室负责人"
+        }
+      ]
+    },
+    faq: {
+      title: "常见问题",
+      subtitle: "关于无限画布、工作流和交付格式的核心问题。",
+      items: [
+        {
+          question: "无限画布适合做什么？",
+          answer: "适合把参考图、生成图、注释与流程结果统一管理，尤其适合多版本并行的服装设计任务。"
+        },
+        {
+          question: "工作流是固定模板吗？",
+          answer: "不是。你可以按团队流程组合不同节点，形成自己的标准化任务链路。"
+        },
+        {
+          question: "支持哪些输入与导出格式？",
+          answer: "支持 JPG、PNG、PDF 输入，导出支持 DXF、SVG、PDF、PNG，便于打样与生产协作。"
+        },
+        {
+          question: "生成结果可以用于商业项目吗？",
+          answer: "可以。你生成与编辑后的结果可用于商业设计、打样与生产流程。"
+        }
+      ]
+    },
+    finalCta: {
+      title: "把你的下一套流程搬进无限画布",
+      subtitle: "从第一张图开始，搭建可复用、可协作、可交付的 AI 设计工作流。",
+      buttons: {
+        primary: "进入无限画布",
+        secondary: "查看定价"
+      }
+    }
+  },
   validators: {
     user: {
       name: {

@@ -225,6 +225,128 @@ type CanvasChatHistoryItem = {
   messages: UIMessage[]
 }
 
+type WorkflowSlotDefinition = {
+  id: string
+  label: string
+  required?: boolean
+  multiple?: boolean
+}
+
+type WorkflowTemplateDefinition = {
+  id: string
+  name: string
+  description: string
+  badge: string
+  inputs: WorkflowSlotDefinition[]
+  outputs: string[]
+}
+
+type WorkflowSlotBinding = {
+  itemId: string
+  type: CanvasItem['type']
+  label: string
+  preview?: string
+}
+
+type WorkflowCard = {
+  id: string
+  templateId: string
+  title: string
+  x: number
+  y: number
+  collapsed: boolean
+  status: 'idle' | 'running' | 'success' | 'failed'
+  outputUrls: string[]
+  lastError?: string
+  inputs: Record<string, WorkflowSlotBinding[]>
+}
+
+const WORKFLOW_TEMPLATES: WorkflowTemplateDefinition[] = [
+  {
+    id: 'tryon-basic',
+    name: '简单换衣',
+    description: '服装图 + 模特图，快速完成 1 对 1 换衣。',
+    badge: 'Workflow',
+    inputs: [
+      { id: 'garment', label: '服装图', required: true },
+      { id: 'model', label: '模特图', required: true },
+      { id: 'instruction', label: '附加指令' },
+    ],
+    outputs: ['换衣结果图'],
+  },
+  {
+    id: 'face-lock',
+    name: '固定面部换衣',
+    description: '保持面部一致，同时完成服装替换。',
+    badge: 'Workflow',
+    inputs: [
+      { id: 'garment', label: '服装图', required: true },
+      { id: 'model', label: '模特图', required: true },
+      { id: 'face', label: '人脸参考', required: true },
+      { id: 'instruction', label: '附加指令' },
+    ],
+    outputs: ['固定面部换衣图'],
+  },
+  {
+    id: 'face-bg-pose',
+    name: '面部+背景+姿势',
+    description: '高可控场景：锁定人脸、背景并参考姿势生成。',
+    badge: 'Workflow',
+    inputs: [
+      { id: 'garment', label: '服装图', required: true },
+      { id: 'face', label: '人脸参考', required: true },
+      { id: 'background', label: '背景参考', required: true },
+      { id: 'pose', label: '姿势参考', required: true, multiple: true },
+      { id: 'instruction', label: '附加指令' },
+    ],
+    outputs: ['多姿势换衣图'],
+  },
+  {
+    id: 'model-generate',
+    name: '模特图生成',
+    description: '以参考图为基础，生成面部一致的模特组图。',
+    badge: 'Workflow',
+    inputs: [
+      { id: 'model_ref', label: '模特参考图', required: true },
+      { id: 'scene_ref', label: '场景参考' },
+      { id: 'style_ref', label: '风格参考' },
+      { id: 'instruction', label: '生成指令', required: true },
+    ],
+    outputs: ['模特图组'],
+  },
+  {
+    id: 'detail-page',
+    name: '详情页制作',
+    description: '从产品图出发，生成电商详情页素材。',
+    badge: 'Workflow',
+    inputs: [
+      { id: 'product', label: '产品图', required: true, multiple: true },
+      { id: 'selling_points', label: '核心卖点' },
+      { id: 'brand_story', label: '品牌故事' },
+    ],
+    outputs: ['首图', '细节图', '卖点页'],
+  },
+]
+
+const WORKFLOW_CARD_WIDTH = 344
+const WORKFLOW_CARD_HEIGHT = 264
+const MAX_WORKFLOW_SLOT_BINDINGS = 6
+const WORKFLOW_OUTPUT_ITEM_WIDTH = 220
+const WORKFLOW_OUTPUT_ITEM_HEIGHT = 220
+const WORKFLOW_POLL_INTERVAL_MS = 1500
+const WORKFLOW_POLL_MAX_ATTEMPTS = 60
+
+const resolveWorkflowItemLabel = (item: CanvasItem) => {
+  if (item.type === 'image') {
+    return item.data?.name?.trim() || '未命名图片'
+  }
+  const customLabel = item.label?.trim()
+  if (customLabel) return customLabel
+  const text = item.data?.text?.trim() || ''
+  if (!text) return '未命名文本'
+  return text.split('\n')[0]?.slice(0, 16) || '未命名文本'
+}
+
 const STORAGE_KEY = 'loomai:canvas:phase0'
 const SEED_STORAGE_KEY = 'loomai:canvas:seed'
 const CHAT_AGENT_STORAGE_KEY = 'loomai:canvas:chat-agents:v1'
@@ -570,7 +692,7 @@ const RESIZE_HANDLES = [
   { id: 'br', className: '-right-1.5 -bottom-1.5', cursor: 'nwse-resize' },
 ] as const
 
-type ToolId = 'select' | 'hand' | 'text' | 'image' | 'shape'
+type ToolId = 'select' | 'hand' | 'text' | 'image' | 'shape' | 'workflow'
 
 const CANVAS_PRESET_ICON_MAP: Record<string, LucideIcon> = {
   'flat-lay': ImagePlus,
@@ -909,6 +1031,13 @@ export function InfiniteCanvas() {
   const brokenImagesRef = useRef<Record<string, boolean>>({})
   const imageLoadRetryTimersRef = useRef<Record<string, number>>({})
   const refreshingImageUrlsRef = useRef<Record<string, boolean>>({})
+  const workflowDragRef = useRef<{
+    id: string
+    startWorldX: number
+    startWorldY: number
+    cardX: number
+    cardY: number
+  } | null>(null)
 
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, scale: 1 })
   const [items, setItems] = useState<CanvasItem[]>([])
@@ -953,7 +1082,10 @@ export function InfiniteCanvas() {
   const [isCanvasPromptAdvanced, setIsCanvasPromptAdvanced] = useState(false)
   const [isCanvasPresetOpen, setIsCanvasPresetOpen] = useState(false)
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
-  const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(true)
+  const [isWorkflowPanelOpen, setIsWorkflowPanelOpen] = useState(false)
+  const [workflowCards, setWorkflowCards] = useState<WorkflowCard[]>([])
+  const [activeWorkflowCardId, setActiveWorkflowCardId] = useState<string | null>(null)
+  const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(false)
   const [isDecomposeMenuOpen, setIsDecomposeMenuOpen] = useState(false)
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null)
   const [layerNameDraft, setLayerNameDraft] = useState('')
@@ -1411,10 +1543,17 @@ export function InfiniteCanvas() {
       }
 
       const key = event.key.toLowerCase()
+      if (key === 'w') {
+        event.preventDefault()
+        setActiveTool('workflow')
+        setIsWorkflowPanelOpen((prev) => !prev)
+        return
+      }
       const toolMap: Record<string, ToolId> = {
         v: 'select',
         h: 'hand',
         t: 'text',
+        w: 'workflow',
         i: 'image',
         s: 'shape',
       }
@@ -3826,7 +3965,13 @@ export function InfiniteCanvas() {
     if (lassoState) {
       setLassoState(null)
     }
+    if (toolId === 'workflow') {
+      setActiveTool('workflow')
+      setIsWorkflowPanelOpen((prev) => !prev)
+      return
+    }
     setActiveTool(toolId)
+    setIsWorkflowPanelOpen(false)
     if (toolId === 'image') {
       setIsCanvasPromptOpen((prev) => !prev)
       return
@@ -3836,6 +3981,373 @@ export function InfiniteCanvas() {
       setIsChatMinimized(false)
     }
   }
+
+  const resolvePointerWorldPoint = useCallback(
+    (clientX: number, clientY: number) => {
+      const rect = getViewportRect()
+      if (!rect) return null
+      return screenToWorld(clientX - rect.left, clientY - rect.top)
+    },
+    [screenToWorld]
+  )
+
+  const handleCreateWorkflowCard = useCallback(
+    (templateId: string) => {
+      const template = WORKFLOW_TEMPLATES.find((item) => item.id === templateId)
+      if (!template) return
+      const center = getViewportCenterWorld()
+      const nextId = `workflow-${nanoid(8)}`
+      const inputs: Record<string, WorkflowSlotBinding[]> = {}
+      template.inputs.forEach((slot) => {
+        inputs[slot.id] = []
+      })
+      const nextCard: WorkflowCard = {
+        id: nextId,
+        templateId: template.id,
+        title: template.name,
+        x: Math.round((center.x - WORKFLOW_CARD_WIDTH / 2) * 100) / 100,
+        y: Math.round((center.y - WORKFLOW_CARD_HEIGHT / 2) * 100) / 100,
+        collapsed: false,
+        status: 'idle',
+        outputUrls: [],
+        lastError: undefined,
+        inputs,
+      }
+      setWorkflowCards((prev) => [...prev, nextCard])
+      setActiveWorkflowCardId(nextId)
+      setIsWorkflowPanelOpen(false)
+      toast.success(`已添加工作流：${template.name}`)
+    },
+    [getViewportCenterWorld]
+  )
+
+  const handleWorkflowCardDragStart = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>, cardId: string) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const worldPoint = resolvePointerWorldPoint(event.clientX, event.clientY)
+      if (!worldPoint) return
+      const card = workflowCards.find((item) => item.id === cardId)
+      if (!card) return
+      workflowDragRef.current = {
+        id: card.id,
+        startWorldX: worldPoint.x,
+        startWorldY: worldPoint.y,
+        cardX: card.x,
+        cardY: card.y,
+      }
+      setActiveWorkflowCardId(card.id)
+    },
+    [resolvePointerWorldPoint, workflowCards]
+  )
+
+  const handleToggleWorkflowCard = useCallback((cardId: string) => {
+    setWorkflowCards((prev) =>
+      prev.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              collapsed: !card.collapsed,
+            }
+          : card
+      )
+    )
+  }, [])
+
+  const handleRemoveWorkflowCard = useCallback((cardId: string) => {
+    setWorkflowCards((prev) => prev.filter((card) => card.id !== cardId))
+    setActiveWorkflowCardId((prev) => (prev === cardId ? null : prev))
+  }, [])
+
+  const handleBindWorkflowSlot = useCallback(
+    (cardId: string, slotId: string) => {
+      const selectedItems = items.filter(
+        (item) =>
+          selectedIds.includes(item.id) &&
+          !(item.type === 'image' && item.data?.generation?.status === 'pending')
+      )
+      if (selectedItems.length === 0) {
+        toast.message('请先在画布中选中素材，再绑定到槽位')
+        return
+      }
+
+      setWorkflowCards((prev) =>
+        prev.map((card) => {
+          if (card.id !== cardId) return card
+          const template = WORKFLOW_TEMPLATES.find((item) => item.id === card.templateId)
+          if (!template) return card
+          const slot = template.inputs.find((item) => item.id === slotId)
+          if (!slot) return card
+          const limit = slot.multiple ? MAX_WORKFLOW_SLOT_BINDINGS : 1
+          const bindings: WorkflowSlotBinding[] = selectedItems.slice(0, limit).map((item) => ({
+            itemId: item.id,
+            type: item.type,
+            label: resolveWorkflowItemLabel(item),
+            preview: item.type === 'image' ? item.data?.src : undefined,
+          }))
+          return {
+            ...card,
+            inputs: {
+              ...card.inputs,
+              [slotId]: bindings,
+            },
+          }
+        })
+      )
+      toast.success('槽位绑定成功')
+    },
+    [items, selectedIds]
+  )
+
+  const handleClearWorkflowSlot = useCallback((cardId: string, slotId: string) => {
+    setWorkflowCards((prev) =>
+      prev.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              inputs: {
+                ...card.inputs,
+                [slotId]: [],
+              },
+            }
+          : card
+      )
+    )
+  }, [])
+
+  const extractTaskResultUrls = useCallback((detail: unknown) => {
+    if (!detail || typeof detail !== 'object') return []
+    const record = detail as Record<string, unknown>
+    const directResults = record.results
+    if (Array.isArray(directResults)) {
+      const urls = directResults.filter((item): item is string => typeof item === 'string' && item.length > 0)
+      if (urls.length > 0) return urls
+    }
+    const nestedData = record.data
+    if (nestedData && typeof nestedData === 'object') {
+      const nestedResults = (nestedData as Record<string, unknown>).results
+      if (Array.isArray(nestedResults)) {
+        const urls = nestedResults.filter((item): item is string => typeof item === 'string' && item.length > 0)
+        if (urls.length > 0) return urls
+      }
+    }
+    return []
+  }, [])
+
+  const pollWorkflowTask = useCallback(
+    async (endpoint: string, taskId: string) => {
+      for (let attempt = 0; attempt < WORKFLOW_POLL_MAX_ATTEMPTS; attempt += 1) {
+        const response = await fetch(`${endpoint}?taskId=${encodeURIComponent(taskId)}`)
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(payload?.message || payload?.error || '任务查询失败')
+        }
+        const detail = payload?.data ?? payload
+        const status = String(detail?.status ?? '').toLowerCase()
+        if (status === 'completed') {
+          const urls = extractTaskResultUrls(detail)
+          if (!urls.length) {
+            throw new Error('任务完成但未返回结果图')
+          }
+          return urls
+        }
+        if (status === 'failed' || status === 'cancelled') {
+          const errorMessage = detail?.error?.message || detail?.message || '任务失败'
+          throw new Error(errorMessage)
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, WORKFLOW_POLL_INTERVAL_MS))
+      }
+      throw new Error('任务超时，请稍后重试')
+    },
+    [extractTaskResultUrls]
+  )
+
+  const appendWorkflowOutputsToCanvas = useCallback(
+    (card: WorkflowCard, urls: string[]) => {
+      urls.forEach((url, index) => {
+        addImageItem(
+          url,
+          `${card.title}-output-${index + 1}`,
+          {
+            meta: {
+              source: 'generate',
+              model: `workflow-${card.templateId}`,
+              prompt: `workflow:${card.title}`,
+              createdAt: new Date().toISOString(),
+            },
+          },
+          {
+            x: card.x + WORKFLOW_CARD_WIDTH + 28 + index * 24,
+            y: card.y + index * 24,
+            width: WORKFLOW_OUTPUT_ITEM_WIDTH,
+            height: WORKFLOW_OUTPUT_ITEM_HEIGHT,
+          }
+        )
+      })
+    },
+    [addImageItem]
+  )
+
+  const executeWorkflowCard = useCallback(
+    async (card: WorkflowCard) => {
+      const template = WORKFLOW_TEMPLATES.find((entry) => entry.id === card.templateId)
+      if (!template) {
+        throw new Error('未找到工作流模板')
+      }
+      for (const requiredSlot of template.inputs.filter((slot) => slot.required)) {
+        const requiredBindings = card.inputs[requiredSlot.id] ?? []
+        if (requiredBindings.length === 0) {
+          throw new Error(`请先绑定必填槽位：${requiredSlot.label}`)
+        }
+      }
+
+      if (card.templateId === 'detail-page') {
+        const productBinding = (card.inputs.product ?? [])[0]
+        if (!productBinding) {
+          throw new Error('请先绑定产品图')
+        }
+        const productItem = itemsRef.current.find((item) => item.id === productBinding.itemId)
+        if (!productItem || productItem.type !== 'image') {
+          throw new Error('产品图素材不存在')
+        }
+        const productRemote = await ensureRemoteImageUrl(productItem)
+        const response = await fetch('/api/clothes-promo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageUrl: productRemote.url,
+            promoType: 'taobao',
+            layout: 'collage',
+            aiOutfit: false,
+          }),
+        })
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(payload?.message || payload?.error || '详情页任务提交失败')
+        }
+        const taskId = payload?.data?.id
+        if (!taskId || typeof taskId !== 'string') {
+          throw new Error('详情页任务缺少 taskId')
+        }
+        const resultUrls = await pollWorkflowTask('/api/clothes-promo', taskId)
+        return resultUrls
+      }
+
+      const instructionBinding = (card.inputs.instruction ?? [])[0]
+      const instructionItem = instructionBinding
+        ? itemsRef.current.find((item) => item.id === instructionBinding.itemId)
+        : null
+      const instructionText =
+        instructionItem?.type === 'text' ? instructionItem.data.text.trim() : 'Generate clean ecommerce product image'
+      const response = await fetch('/api/image-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: instructionText,
+          model: imageModel,
+          size: imageSizeMode,
+        }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(payload?.message || payload?.error || '工作流生成失败')
+      }
+      const imageUrl = payload?.data?.imageUrl
+      if (!imageUrl || typeof imageUrl !== 'string') {
+        throw new Error('未返回结果图地址')
+      }
+      return [imageUrl]
+    },
+    [ensureRemoteImageUrl, imageModel, imageSizeMode, pollWorkflowTask]
+  )
+
+  const handleRunWorkflowUI = useCallback(
+    async (cardId: string) => {
+      const targetCard = workflowCards.find((card) => card.id === cardId)
+      if (!targetCard || targetCard.status === 'running') return
+
+      setWorkflowCards((prev) =>
+        prev.map((card) =>
+          card.id === cardId
+            ? {
+                ...card,
+                status: 'running',
+                outputUrls: [],
+                lastError: undefined,
+              }
+            : card
+        )
+      )
+
+      try {
+        const resultUrls = await executeWorkflowCard(targetCard)
+        setWorkflowCards((prev) =>
+          prev.map((card) =>
+            card.id === cardId
+              ? {
+                  ...card,
+                  status: 'success',
+                  outputUrls: resultUrls,
+                  lastError: undefined,
+                }
+              : card
+          )
+        )
+        appendWorkflowOutputsToCanvas(targetCard, resultUrls)
+        toast.success('工作流执行完成，结果已回流到画布')
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '工作流执行失败'
+        setWorkflowCards((prev) =>
+          prev.map((card) =>
+            card.id === cardId
+              ? {
+                  ...card,
+                  status: 'failed',
+                  lastError: message,
+                }
+              : card
+          )
+        )
+        toast.error(message)
+      }
+    },
+    [appendWorkflowOutputsToCanvas, executeWorkflowCard, workflowCards]
+  )
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const dragState = workflowDragRef.current
+      if (!dragState) return
+      const worldPoint = resolvePointerWorldPoint(event.clientX, event.clientY)
+      if (!worldPoint) return
+      const deltaX = worldPoint.x - dragState.startWorldX
+      const deltaY = worldPoint.y - dragState.startWorldY
+      setWorkflowCards((prev) =>
+        prev.map((card) =>
+          card.id === dragState.id
+            ? {
+                ...card,
+                x: Math.round((dragState.cardX + deltaX) * 100) / 100,
+                y: Math.round((dragState.cardY + deltaY) * 100) / 100,
+              }
+            : card
+        )
+      )
+    }
+
+    const handlePointerUp = () => {
+      if (!workflowDragRef.current) return
+      workflowDragRef.current = null
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [resolvePointerWorldPoint])
 
   const resolveImageMediaType = (src: string, name?: string) => {
     if (src.startsWith('data:')) {
@@ -4347,6 +4859,14 @@ export function InfiniteCanvas() {
   const isChatPanelOpen = isChatOpen && !isChatMinimized
   const layerPanelShiftClass = isLayerPanelOpen ? 'translate-x-[296px]' : 'translate-x-0'
   const chatPanelShiftClass = isChatPanelOpen ? '-translate-x-[376px]' : 'translate-x-0'
+  const workflowTemplateMap = useMemo(
+    () => new Map(WORKFLOW_TEMPLATES.map((template) => [template.id, template])),
+    []
+  )
+  const workflowRunningCount = useMemo(
+    () => workflowCards.filter((card) => card.status === 'running').length,
+    [workflowCards]
+  )
   const resolveTextLabel = (text: string) => {
     const trimmed = text.trim()
     if (!trimmed) return '未命名文本'
@@ -4610,10 +5130,11 @@ export function InfiniteCanvas() {
     { id: 'select', label: '选择', Icon: MousePointer2, shortcut: 'V' },
     { id: 'hand', label: '拖拽', Icon: Hand, shortcut: 'H' },
     { id: 'text', label: '文本', Icon: Type, shortcut: 'T' },
+    { id: 'workflow', label: '工作流', Icon: DraftingCompass, shortcut: 'W' },
     { id: 'image', label: '图像生成器', Icon: ImagePlus, shortcut: 'I' },
     { id: 'shape', label: '形状', Icon: Square, shortcut: 'S' },
   ]
-  const toolOrder: Array<ToolId | 'upload'> = ['select', 'hand', 'text', 'upload', 'shape']
+  const toolOrder: Array<ToolId | 'upload'> = ['select', 'hand', 'text', 'workflow', 'upload', 'shape']
   const imageTool = tools.find((tool) => tool.id === 'image')
 
   const splitChatTextToNotes = useCallback((text: string) => {
@@ -5189,6 +5710,86 @@ export function InfiniteCanvas() {
         <div className="pointer-events-auto flex items-center gap-2">
           <div className="rounded-full border border-border bg-background/85 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
             缩放 {zoomPercent}%
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsWorkflowPanelOpen((prev) => !prev)
+              setActiveTool('workflow')
+            }}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full border border-border bg-background/85 px-3 py-1 text-xs font-medium shadow-sm transition hover:bg-muted',
+              isWorkflowPanelOpen ? 'text-primary border-primary/40' : 'text-muted-foreground'
+            )}
+          >
+            <DraftingCompass className="h-3.5 w-3.5" />
+            工作流
+            {workflowRunningCount > 0 && (
+              <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary">
+                {workflowRunningCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          'absolute top-36 z-20 w-[320px] transition-all duration-300 ease-out',
+          isChatPanelOpen ? 'right-[381px]' : 'right-5',
+          isWorkflowPanelOpen
+            ? 'pointer-events-auto translate-x-0 opacity-100'
+            : 'pointer-events-none translate-x-4 opacity-0'
+        )}
+        aria-hidden={!isWorkflowPanelOpen}
+      >
+        <div className="overflow-hidden rounded-3xl border border-border bg-background/95 shadow-lg backdrop-blur">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div>
+              <div className="text-sm font-semibold text-foreground">工作流模板</div>
+              <div className="text-xs text-muted-foreground">拖素材到画布后，一键创建流程卡片</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsWorkflowPanelOpen(false)}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              aria-label="收起工作流面板"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="max-h-[420px] space-y-2 overflow-y-auto px-3 py-3">
+            {WORKFLOW_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                onClick={() => handleCreateWorkflowCard(template.id)}
+                className="w-full rounded-2xl border border-border bg-background/80 px-3 py-3 text-left transition hover:border-primary/40 hover:bg-muted"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-foreground">{template.name}</div>
+                    <p className="mt-1 text-xs text-muted-foreground">{template.description}</p>
+                  </div>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    {template.badge}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {template.inputs.map((slot) => (
+                    <span
+                      key={slot.id}
+                      className={cn(
+                        'rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground',
+                        slot.required && 'border-primary/40 text-primary'
+                      )}
+                    >
+                      {slot.label}
+                    </span>
+                  ))}
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -7247,7 +7848,202 @@ export function InfiniteCanvas() {
             )
           })}
 
-          {items.length === 0 && (
+          {workflowCards.map((card) => {
+            const template = workflowTemplateMap.get(card.templateId)
+            if (!template) return null
+            const isActive = activeWorkflowCardId === card.id
+            const statusMeta =
+              card.status === 'running'
+                ? {
+                    label: '执行中',
+                    className: 'border-sky-400/50 bg-sky-500/10 text-sky-600',
+                  }
+                : card.status === 'success'
+                ? {
+                    label: '已完成',
+                    className: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-600',
+                  }
+                : card.status === 'failed'
+                ? {
+                    label: '失败',
+                    className: 'border-destructive/50 bg-destructive/10 text-destructive',
+                  }
+                : {
+                    label: '待执行',
+                    className: 'border-border bg-muted/30 text-muted-foreground',
+                  }
+
+            return (
+              <div
+                key={card.id}
+                className={cn(
+                  'absolute overflow-hidden rounded-2xl border bg-background/95 shadow-xl backdrop-blur transition',
+                  isActive ? 'border-primary/50' : 'border-border'
+                )}
+                style={{
+                  left: card.x,
+                  top: card.y,
+                  width: WORKFLOW_CARD_WIDTH,
+                }}
+                onPointerDown={(event) => {
+                  event.stopPropagation()
+                  setActiveWorkflowCardId(card.id)
+                  const target = event.target as HTMLElement
+                  if (!target.closest('[data-workflow-drag-handle]')) return
+                  handleWorkflowCardDragStart(event, card.id)
+                }}
+              >
+                <div className="border-b border-border px-3 py-2.5" data-workflow-drag-handle>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-foreground">{card.title}</div>
+                      <div className="text-[11px] text-muted-foreground">{template.description}</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium', statusMeta.className)}>
+                        {statusMeta.label}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleWorkflowCard(card.id)}
+                        className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label={card.collapsed ? '展开工作流卡片' : '收起工作流卡片'}
+                      >
+                        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', card.collapsed && '-rotate-90')} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveWorkflowCard(card.id)}
+                        className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="删除工作流卡片"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {!card.collapsed && (
+                  <div className="space-y-3 px-3 py-3">
+                    <div className="space-y-2">
+                      {template.inputs.map((slot) => {
+                        const bindings = card.inputs[slot.id] ?? []
+                        return (
+                          <div key={slot.id} className="rounded-xl border border-border bg-background/80 p-2">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <div className="truncate text-xs font-medium text-foreground">
+                                {slot.label}
+                                {slot.required && <span className="ml-1 text-primary">*</span>}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleBindWorkflowSlot(card.id, slot.id)}
+                                  className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+                                >
+                                  绑定选中
+                                </button>
+                                {bindings.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleClearWorkflowSlot(card.id, slot.id)}
+                                    className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition hover:text-foreground"
+                                  >
+                                    清空
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            {bindings.length === 0 ? (
+                              <div className="rounded-lg border border-dashed border-border px-2 py-2 text-[11px] text-muted-foreground">
+                                请选择素材后点击“绑定选中”
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {bindings.map((binding) => (
+                                  <div
+                                    key={`${slot.id}-${binding.itemId}`}
+                                    className="flex items-center gap-2 rounded-lg border border-border/80 bg-muted/20 px-2 py-1"
+                                  >
+                                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                      {binding.type === 'image' ? '图' : '文'}
+                                    </span>
+                                    <span className="truncate text-[11px] text-foreground">{binding.label}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-muted/20 px-2.5 py-2">
+                      <div className="text-[11px] font-medium text-foreground">输出预览（占位）</div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {template.outputs.map((output) => (
+                          <span key={output} className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                            {output}
+                          </span>
+                        ))}
+                      </div>
+                      {card.outputUrls.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {card.outputUrls.slice(0, 3).map((url, index) => (
+                            <a
+                              key={`${card.id}-output-${index}`}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block truncate rounded border border-border/70 bg-background px-2 py-1 text-[10px] text-muted-foreground transition hover:text-foreground"
+                            >
+                              输出 #{index + 1}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                      {card.lastError && (
+                        <div className="mt-2 rounded border border-destructive/30 bg-destructive/5 px-2 py-1 text-[10px] text-destructive">
+                          {card.lastError}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        className="h-8 flex-1 rounded-full"
+                        onClick={() => handleRunWorkflowUI(card.id)}
+                        disabled={card.status === 'running'}
+                      >
+                        {card.status === 'running' ? (
+                          <>
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            执行中...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                            运行工作流
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-full px-3 text-xs"
+                        onClick={() => setActiveWorkflowCardId(card.id)}
+                      >
+                        定位
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {items.length === 0 && workflowCards.length === 0 && (
             <div className="absolute left-1/2 top-1/2 w-[min(560px,calc(100%-3rem))] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-dashed border-border bg-background/85 p-6 text-center text-sm text-muted-foreground shadow-[0_16px_45px_-28px_hsl(var(--foreground)/0.3)] backdrop-blur">
               <div className="space-y-2">
                 <p className="text-base font-semibold text-foreground">爆款服装拆解工作台</p>

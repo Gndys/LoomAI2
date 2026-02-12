@@ -1481,6 +1481,194 @@ export const en: Locale = {
       learnMore: "Learn More"
     }
   },
+  featuresPage: {
+    hero: {
+      badge: "LoomAI Capability Overview",
+      title: "One infinite canvas for design-to-delivery",
+      subtitle: "Keep generation, editing, review, and export in one shared workspace to reduce context switching and rework.",
+      buttons: {
+        primary: "Open Infinite Canvas",
+        secondary: "Try Image Generation"
+      },
+      highlights: ["Real-time canvas orchestration", "Sketch-to-CAD continuity", "Parallel workflow execution"],
+      promises: ["End-to-end flow in one page", "Traceable and reusable results", "Direct DXF/SVG/PDF exports"]
+    },
+    stats: {
+      items: [
+        { value: "120", suffix: "+", label: "Brands and studios" },
+        { value: "3.6", suffix: "x", label: "Average sampling speedup" },
+        { value: "93", suffix: "%", label: "Critical-detail recognition" },
+        { value: "30", suffix: "s", label: "Average first-output time" }
+      ]
+    },
+    experience: {
+      title: "Start with a single task",
+      subtitle: "Upload a reference and experience generation, comparison, and iteration in one place.",
+      badge: "Live Playground"
+    },
+    inspiration: {
+      title: "Core technology, one spotlight at a time",
+      subtitle: "Following Gemini-like storytelling rhythm, but focused on LoomAI's real capability stack.",
+      items: [
+        {
+          tag: "Canvas Orchestration",
+          title: "Multi-asset creation on infinite canvas",
+          description: "Place references, generated outputs, notes, and versions in one zoomable workspace.",
+          prompt: "Infinite canvas workspace · Multi-asset layout · Zoom-and-pan precision",
+          imageSeed: "loomai-flatlay-01"
+        },
+        {
+          tag: "AI Workflows",
+          title: "Node-based pipeline orchestration",
+          description: "Chain background cleanup, flat lay, sketch, colorway, and export into reusable flows.",
+          prompt: "Workflow orchestration · Node pipeline · Batch-ready execution",
+          imageSeed: "loomai-sketch-01"
+        },
+        {
+          tag: "Production Handoff",
+          title: "From generated assets to factory-ready files",
+          description: "Review outputs and export DXF, SVG, and PDF formats without leaving the workflow context.",
+          prompt: "Production export · DXF/SVG/PDF delivery · Faster handoff",
+          imageSeed: "loomai-pattern-01"
+        }
+      ]
+    },
+    styles: {
+      title: "Style baseline library",
+      subtitle: "Set a visual tone first, then scale consistent output.",
+      items: [
+        { title: "Minimal", imageSeed: "loomai-style-minimal" },
+        { title: "Street", imageSeed: "loomai-style-street" },
+        { title: "Vintage", imageSeed: "loomai-style-vintage" },
+        { title: "Sport", imageSeed: "loomai-style-sport" },
+        { title: "Workwear", imageSeed: "loomai-style-commute" },
+        { title: "Resort", imageSeed: "loomai-style-resort" },
+        { title: "Techwear", imageSeed: "loomai-style-tech" },
+        { title: "Couture", imageSeed: "loomai-style-couture" }
+      ]
+    },
+    explore: {
+      title: "Typical workflow scenarios",
+      subtitle: "Organize capabilities around real garment production tasks.",
+      items: [
+        {
+          title: "Batch flat lay cleanup",
+          description: "Remove backgrounds, align angles, and output consistent product imagery.",
+          imageSeed: "loomai-explore-batch"
+        },
+        {
+          title: "Sketch to CAD export",
+          description: "Vectorize lines and export DXF/SVG for pattern making.",
+          imageSeed: "loomai-explore-cad"
+        },
+        {
+          title: "Colorway & fabric iterations",
+          description: "Generate quick palette and material variations for review.",
+          imageSeed: "loomai-explore-colorway"
+        }
+      ]
+    },
+    features: {
+      title: "Infinite canvas capability matrix",
+      subtitle: "Every capability is organized around the canvas for clearer collaboration, comparison, and reuse.",
+      items: [
+        {
+          title: "Generate inside canvas",
+          description: "Trigger generation within selected regions and write outputs directly back to your workspace."
+        },
+        {
+          title: "Layer-based editing",
+          description: "Stack, swap, and fine-tune assets at layer level for complex design iterations."
+        },
+        {
+          title: "Workflow node chaining",
+          description: "Compose tools into repeatable pipelines and run standardized tasks at scale."
+        },
+        {
+          title: "Localized processing",
+          description: "Target specific regions for redraw and optimization without reprocessing entire images."
+        },
+        {
+          title: "Version comparison",
+          description: "Keep milestone versions and rapidly compare options before making final decisions."
+        },
+        {
+          title: "Professional export",
+          description: "Export DXF, SVG, PDF, and PNG formats for downstream sampling and production."
+        }
+      ]
+    },
+    workflow: {
+      title: "Three steps to end-to-end execution",
+      subtitle: "From input assets to delivery files, keep the same working context throughout.",
+      steps: [
+        {
+          title: "Import assets to canvas",
+          description: "Bring in references, sketches, and prior outputs into one centralized workspace."
+        },
+        {
+          title: "Run workflow nodes",
+          description: "Execute cleanup, generation, review, and extraction nodes aligned to your task goal."
+        },
+        {
+          title: "Approve and export",
+          description: "Finalize with team review and export factory-ready files for the next production stage."
+        }
+      ],
+      tip: "Most common tasks deliver a first output in around 30 seconds, then continue iterating on canvas."
+    },
+    testimonials: {
+      title: "Used by frontline design teams",
+      subtitle: "LoomAI helps teams move faster while maintaining quality standards.",
+      items: [
+        {
+          quote: "Flat lays used to require repeated cleanup. Now we can move straight into tech packs much faster.",
+          author: "Yana Chen",
+          role: "Independent Brand Founder"
+        },
+        {
+          quote: "Sketch-to-CAD consistency is strong, and new teammates quickly align with our output standards.",
+          author: "Howard Zhou",
+          role: "Pattern Development Lead"
+        },
+        {
+          quote: "Batch processing helped us compress sampling timelines before launch, with smoother team coordination.",
+          author: "Vera Lin",
+          role: "Fashion Studio Director"
+        }
+      ]
+    },
+    faq: {
+      title: "Frequently asked questions",
+      subtitle: "Core answers on infinite canvas, workflow orchestration, and delivery formats.",
+      items: [
+        {
+          question: "What is infinite canvas best for?",
+          answer: "It is ideal for organizing references, generated results, notes, and versions in one zoomable workspace."
+        },
+        {
+          question: "Are workflows fixed templates?",
+          answer: "No. You can compose nodes to match your team process and reuse those flows across tasks."
+        },
+        {
+          question: "Which formats are supported?",
+          answer: "Inputs support JPG, PNG, and PDF. Exports support DXF, SVG, PDF, and PNG for production handoff."
+        },
+        {
+          question: "Can outputs be used commercially?",
+          answer: "Yes. Generated and edited outputs can be used in commercial design, sampling, and production workflows."
+        }
+      ]
+    },
+    finalCta: {
+      title: "Move your next workflow into infinite canvas",
+      subtitle: "Start with one task and build a reusable, collaborative, production-ready AI workflow.",
+      buttons: {
+        primary: "Open Infinite Canvas",
+        secondary: "View Pricing"
+      }
+    }
+  },
   ai: {
     metadata: {
       title: "TinyShip - AI Assistant",

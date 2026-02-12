@@ -1,5 +1,9 @@
 'use client'
 
+// TODO: i18n
+
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import {
   useEffect,
   useMemo,
@@ -8,21 +12,33 @@ import {
   type ChangeEvent,
   type DragEvent as ReactDragEvent,
 } from 'react'
-import { CheckCircle2, Download, ImagePlus, Loader2, Shirt, WandSparkles, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Download,
+  ImagePlus,
+  Loader2,
+  WandSparkles,
+} from 'lucide-react'
 import { toast } from 'sonner'
-import { FeatureCard, FeaturePageShell } from '@/components/feature-page-shell'
+import { FeaturePageShell } from '@/components/feature-page-shell'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { cn } from '@/lib/utils'
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024
 const MAX_BATCH = 30
 
-type ItemStatus = 'ready' | 'processing' | 'done'
+type ItemStatus = 'ready' | 'processing' | 'done' | 'failed'
 type NamingMode = 'origin-suffix' | 'prefix-index' | 'date-index'
+type QualityLevel = 'pass' | 'review' | 'failed'
+type FilterValue = 'all' | 'pass' | 'review' | 'failed'
 
 type UploadItem = {
   id: string
@@ -30,6 +46,19 @@ type UploadItem = {
   fileSize: number
   previewUrl: string
   status: ItemStatus
+  quality?: QualityLevel
+  error?: string
+}
+
+type SampleItem = {
+  label: string
+  seed: string
+}
+
+type ShowcaseItem = {
+  title: string
+  description: string
+  seed: string
 }
 
 const CATEGORY_OPTIONS = [
@@ -59,6 +88,70 @@ const SIZE_PRESETS = [
   { value: 'pdd-1-1-1000', label: '拼多多 1:1 · 1000x1000' },
   { value: '1688-1-1-1500', label: '1688 1:1 · 1500x1500' },
 ]
+
+const QUALITY_LABELS: Record<QualityLevel, string> = {
+  pass: '通过',
+  review: '建议复检',
+  failed: '失败',
+}
+
+const FILTER_OPTIONS: Array<{ value: FilterValue; label: string }> = [
+  { value: 'all', label: '全部' },
+  { value: 'pass', label: '已通过' },
+  { value: 'review', label: '建议复检' },
+  { value: 'failed', label: '失败' },
+]
+
+const STEP_ITEMS = [
+  {
+    title: '上传商品图',
+    description: '支持 JPG/PNG/WEBP，批量上传更省时。',
+  },
+  {
+    title: 'AI 自动生成',
+    description: '按推荐参数快速生成白底图，可复检再生成。',
+  },
+  {
+    title: '预览与导出',
+    description: '先筛通过的图片，再批量导出上架。',
+  },
+]
+
+const FAQ_ITEMS = [
+  {
+    question: '支持哪些图片格式？',
+    answer: '支持 JPG、PNG、WEBP，单张不超过 15MB。',
+  },
+  {
+    question: '生成需要多久？',
+    answer: '一般 10-30 秒即可完成，批量任务会依次处理。',
+  },
+  {
+    question: '可以先导出已通过的吗？',
+    answer: '可以，打开“仅导出已通过”开关即可。',
+  },
+  {
+    question: '生成失败怎么办？',
+    answer: '失败项可单独重试，不影响已完成图片。',
+  },
+]
+
+const SHOWCASE_BASE = [
+  {
+    title: '服装上新更高效',
+    description: '快速把商品图转成上架可用的白底主图。',
+  },
+  {
+    title: '主图一致性更稳',
+    description: '统一比例与留白，保持店铺视觉整洁。',
+  },
+  {
+    title: '批量出图更省人力',
+    description: '不用反复修图，直接批量导出。',
+  },
+]
+
+const SAMPLE_LABELS = ['女装上新', '男装基础款', '裙装上架', '配饰单品']
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
@@ -99,9 +192,47 @@ function buildDownloadName(fileName: string, mode: NamingMode, prefix: string, i
   return `${safePrefix || '白底图'}_${getDateStamp()}_${seq}`
 }
 
+function getQualityBadgeClass(level?: QualityLevel) {
+  if (level === 'pass') return 'bg-emerald-500/10 text-emerald-600'
+  if (level === 'review') return 'bg-amber-500/10 text-amber-700'
+  if (level === 'failed') return 'bg-destructive/10 text-destructive'
+  return 'bg-muted text-muted-foreground'
+}
+
+function buildMockResult(index: number) {
+  if (index % 7 === 0) {
+    return {
+      status: 'failed' as const,
+      quality: 'failed' as const,
+      error: '主体边缘过暗，识别不稳定',
+    }
+  }
+
+  if (index % 3 === 0) {
+    return {
+      status: 'done' as const,
+      quality: 'review' as const,
+    }
+  }
+
+  return {
+    status: 'done' as const,
+    quality: 'pass' as const,
+  }
+}
+
+function buildPicsumUrl(seed: string, width: number, height: number) {
+  return `https://picsum.photos/seed/${seed}/${width}/${height}`
+}
+
 export default function ProductWhiteBackgroundPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const itemsRef = useRef<UploadItem[]>([])
+  const timeoutRef = useRef<number[]>([])
+  const uploadSectionRef = useRef<HTMLDivElement | null>(null)
+
+  const params = useParams()
+  const currentLocale = typeof params?.lang === 'string' ? params.lang : 'zh-CN'
 
   const [items, setItems] = useState<UploadItem[]>([])
   const [isDragActive, setIsDragActive] = useState(false)
@@ -113,6 +244,10 @@ export default function ProductWhiteBackgroundPage() {
   const [protectColor, setProtectColor] = useState(true)
   const [namingMode, setNamingMode] = useState<NamingMode>('origin-suffix')
   const [filePrefix, setFilePrefix] = useState('')
+  const [activeFilter, setActiveFilter] = useState<FilterValue>('all')
+  const [exportOnlyPass, setExportOnlyPass] = useState(true)
+  const [compareItem, setCompareItem] = useState<UploadItem | null>(null)
+  const [isEditorOpen, setIsEditorOpen] = useState(false)
 
   useEffect(() => {
     itemsRef.current = items
@@ -123,11 +258,67 @@ export default function ProductWhiteBackgroundPage() {
       itemsRef.current.forEach((item) => {
         URL.revokeObjectURL(item.previewUrl)
       })
+      timeoutRef.current.forEach((timer) => window.clearTimeout(timer))
     }
   }, [])
 
-  const generatedItems = useMemo(() => items.filter((item) => item.status === 'done'), [items])
+  const hasUploads = items.length > 0
+  const activeItem = items[0]
+
+  const processedItems = useMemo(
+    () => items.filter((item) => item.status !== 'ready' && item.status !== 'processing'),
+    [items]
+  )
+
+  const generatedItems = useMemo(
+    () => items.filter((item) => item.status === 'done'),
+    [items]
+  )
+
+  const filteredItems = useMemo(() => {
+    if (activeFilter === 'all') return processedItems
+    return processedItems.filter((item) => item.quality === activeFilter)
+  }, [processedItems, activeFilter])
+
+  const counts = useMemo(() => {
+    return {
+      uploaded: items.length,
+      generated: generatedItems.length,
+      pass: processedItems.filter((item) => item.quality === 'pass').length,
+      review: processedItems.filter((item) => item.quality === 'review').length,
+      failed: processedItems.filter((item) => item.quality === 'failed').length,
+    }
+  }, [items.length, generatedItems.length, processedItems])
+
+  const sampleSeeds = useMemo(
+    () => Array.from({ length: SAMPLE_LABELS.length }, () => Math.random().toString(36).slice(2, 8)),
+    []
+  )
+
+  const sampleItems = useMemo<SampleItem[]>(
+    () => SAMPLE_LABELS.map((label, index) => ({ label, seed: sampleSeeds[index] })),
+    [sampleSeeds]
+  )
+
+  const showcaseSeeds = useMemo(
+    () => Array.from({ length: SHOWCASE_BASE.length }, () => Math.random().toString(36).slice(2, 8)),
+    []
+  )
+
+  const showcaseItems = useMemo<ShowcaseItem[]>(
+    () =>
+      SHOWCASE_BASE.map((item, index) => ({
+        ...item,
+        seed: showcaseSeeds[index],
+      })),
+    [showcaseSeeds]
+  )
+
   const canGenerate = items.length > 0 && !isGenerating
+
+  const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const addFiles = (fileList: FileList | null) => {
     if (!fileList) return
@@ -165,6 +356,9 @@ export default function ProductWhiteBackgroundPage() {
 
     if (validFiles.length > 0) {
       setItems((prev) => [...prev, ...validFiles])
+      if (!isEditorOpen) {
+        setIsEditorOpen(true)
+      }
     }
   }
 
@@ -207,20 +401,73 @@ export default function ProductWhiteBackgroundPage() {
       prev.forEach((item) => URL.revokeObjectURL(item.previewUrl))
       return []
     })
+    setIsEditorOpen(false)
+    setCompareItem(null)
   }
 
-  const generateMockResults = async () => {
+  const handleSampleUse = async (seed: string, label: string) => {
+    const url = buildPicsumUrl(seed, 720, 900)
+    try {
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error('Failed to fetch sample image')
+      }
+      const blob = await response.blob()
+      const file = new File([blob], `${label}-${seed}.jpg`, { type: blob.type || 'image/jpeg' })
+      const dataTransfer = new DataTransfer()
+      dataTransfer.items.add(file)
+      addFiles(dataTransfer.files)
+      toast.success(`已加载示例：${label}`)
+    } catch (error) {
+      console.error('Failed to load sample image', error)
+      toast.error('示例图加载失败，请稍后再试')
+    }
+  }
+
+  const applyMockResults = (targetIds?: Set<string>) => {
+    setItems((prev) =>
+      prev.map((item, index) => {
+        if (targetIds && !targetIds.has(item.id)) return item
+        const mock = buildMockResult(index)
+        return {
+          ...item,
+          status: mock.status,
+          quality: mock.quality,
+          error: mock.error,
+        }
+      })
+    )
+  }
+
+  const generateMockResults = () => {
     if (!canGenerate) return
 
     const total = items.length
     setIsGenerating(true)
-    setItems((prev) => prev.map((item) => ({ ...item, status: 'processing' })))
+    setItems((prev) => prev.map((item) => ({ ...item, status: 'processing', error: undefined })))
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const timer = window.setTimeout(() => {
+      applyMockResults()
+      setIsGenerating(false)
+      toast.success(`已完成 ${total} 张白底图生成`)
+    }, 900)
 
-    setItems((prev) => prev.map((item) => ({ ...item, status: 'done' })))
-    setIsGenerating(false)
-    toast.success(`已完成 ${total} 张白底图生成`)
+    timeoutRef.current.push(timer)
+  }
+
+  const retryItem = (id: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: 'processing', error: undefined } : item
+      )
+    )
+
+    const timer = window.setTimeout(() => {
+      applyMockResults(new Set([id]))
+      toast.success('已重新生成该图片')
+    }, 700)
+
+    timeoutRef.current.push(timer)
   }
 
   const downloadSingle = (item: UploadItem, index: number) => {
@@ -233,302 +480,624 @@ export default function ProductWhiteBackgroundPage() {
   }
 
   const exportGenerated = () => {
-    if (generatedItems.length === 0) {
+    const candidates = generatedItems.filter((item) =>
+      exportOnlyPass ? item.quality === 'pass' : true
+    )
+
+    if (candidates.length === 0) {
       toast.error('当前没有可导出的图片')
       return
     }
 
-    generatedItems.forEach((item, index) => {
+    candidates.forEach((item, index) => {
       const link = document.createElement('a')
       link.href = item.previewUrl
       link.download = `${buildDownloadName(item.fileName, namingMode, filePrefix, index)}.png`
       link.click()
     })
 
-    toast.success(`已触发 ${generatedItems.length} 张图片下载`)
+    toast.success(`已触发 ${candidates.length} 张图片下载`)
+  }
+
+  const qualityTip = useMemo(() => {
+    if (counts.failed > 0) return '检测到失败项，建议重试后再导出。'
+    if (counts.review > 0) return '部分图片建议复检，确认后再导出。'
+    if (processedItems.length > 0) return '质量检测通过，可直接导出。'
+    return '上传后将展示质量检测建议。'
+  }, [counts.failed, counts.review, processedItems.length])
+
+  if (isEditorOpen) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleInputChange}
+        />
+        <div className="sticky top-0 z-30 bg-background/90 backdrop-blur">
+          <div className="container flex flex-wrap items-center justify-between gap-3 py-3">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setIsEditorOpen(false)
+                setCompareItem(null)
+              }}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              返回
+            </button>
+            <div className="text-sm font-semibold text-foreground">白底产品图编辑器</div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span>已上传 {counts.uploaded}</span>
+              <span>已生成 {counts.generated}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="container py-6">
+          <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+            <aside className="rounded-3xl bg-muted/10 p-5">
+              <div className="space-y-8">
+                <section className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">生成设置</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">调整白底参数后直接生成。</p>
+                  </div>
+                  <div className="grid gap-3">
+                    <div className="space-y-2">
+                      <Label>商品类目</Label>
+                      <Select value={category} onValueChange={setCategory}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择类目" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CATEGORY_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>阴影</Label>
+                      <Select value={shadow} onValueChange={setShadow}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择阴影" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SHADOW_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>留白</Label>
+                      <Select value={padding} onValueChange={setPadding}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择留白" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PADDING_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>尺寸</Label>
+                      <Select value={sizePreset} onValueChange={setSizePreset}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择尺寸" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SIZE_PRESETS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-full bg-background/60 px-3 py-2">
+                      <p className="text-sm">色彩保护</p>
+                      <Switch checked={protectColor} onCheckedChange={setProtectColor} />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Button onClick={generateMockResults} disabled={!canGenerate}>
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          正在生成...
+                        </>
+                      ) : (
+                        <>
+                          <WandSparkles className="mr-2 h-4 w-4" />
+                          开始生成
+                        </>
+                      )}
+                    </Button>
+                    <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                      <ImagePlus className="mr-2 h-4 w-4" />
+                      继续上传
+                    </Button>
+                    <Button variant="ghost" onClick={clearAll}>
+                      清空上传
+                    </Button>
+                  </div>
+                </section>
+
+                <div className="h-px bg-muted/40" />
+
+                <section className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">导出设置</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">命名规则与导出控制。</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>命名规则</Label>
+                      <Select value={namingMode} onValueChange={(value) => setNamingMode(value as NamingMode)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择命名方式" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="origin-suffix">原文件名_白底（推荐）</SelectItem>
+                          <SelectItem value="prefix-index">自定义前缀_序号</SelectItem>
+                          <SelectItem value="date-index">前缀_日期_序号</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {namingMode !== 'origin-suffix' && (
+                        <Input
+                          value={filePrefix}
+                          onChange={(event) => setFilePrefix(event.target.value)}
+                          placeholder="输入文件前缀，例如：SKU2026"
+                        />
+                      )}
+                      <p className="text-[11px] text-muted-foreground">导出时自动编号，无需手动填写规则。</p>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-full bg-background/60 px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium">仅导出已通过</p>
+                        <p className="text-xs text-muted-foreground">建议先筛出可上架图</p>
+                      </div>
+                      <Switch checked={exportOnlyPass} onCheckedChange={setExportOnlyPass} />
+                    </div>
+
+                    <Button variant="outline" onClick={exportGenerated}>
+                      <Download className="mr-2 h-4 w-4" />
+                      批量导出
+                    </Button>
+                  </div>
+                </section>
+              </div>
+            </aside>
+
+            <div className="space-y-6">
+              <div className="rounded-3xl bg-neutral-900/80 p-6">
+                <div
+                  className="relative h-[420px] overflow-hidden rounded-2xl"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)',
+                    backgroundSize: '36px 36px',
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-white/5" />
+                  <div className="relative z-10 flex h-full items-center justify-center">
+                    {activeItem ? (
+                      <img
+                        src={activeItem.previewUrl}
+                        alt={activeItem.fileName}
+                        className="max-h-[360px] w-auto rounded-2xl bg-white p-4 shadow-xl"
+                      />
+                    ) : (
+                      <div className="text-sm text-white/70">上传图片后开始编辑</div>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between text-xs text-white/70">
+                  <span>{activeItem ? activeItem.fileName : '未选择图片'}</span>
+                  <span>{activeItem ? formatBytes(activeItem.fileSize) : ''}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    {FILTER_OPTIONS.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={activeFilter === option.value ? 'default' : 'ghost'}
+                        onClick={() => setActiveFilter(option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>已上传 {counts.uploaded}</span>
+                    <span>已生成 {counts.generated}</span>
+                  </div>
+                </div>
+
+                {processedItems.length === 0 ? (
+                  <div className="rounded-2xl bg-muted/10 p-8 text-center text-sm text-muted-foreground">
+                    {isGenerating ? '正在生成中，预计还需 30 秒。' : '点击“开始生成”后将在这里展示结果。'}
+                  </div>
+                ) : filteredItems.length === 0 ? (
+                  <div className="rounded-2xl bg-muted/10 p-8 text-center text-sm text-muted-foreground">
+                    当前筛选条件下没有结果。
+                  </div>
+                ) : (
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    {filteredItems.map((item, index) => (
+                      <div key={item.id} className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="truncate text-xs font-medium text-muted-foreground">{item.fileName}</p>
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs',
+                              getQualityBadgeClass(item.quality)
+                            )}
+                          >
+                            {item.quality ? QUALITY_LABELS[item.quality] : '待处理'}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="overflow-hidden rounded-xl bg-background/80">
+                            <img
+                              src={item.previewUrl}
+                              alt={`${item.fileName} 原图`}
+                              className="h-32 w-full object-cover"
+                            />
+                            <p className="px-2 py-1 text-center text-xs text-muted-foreground">原图</p>
+                          </div>
+                          <div className="overflow-hidden rounded-xl bg-white">
+                            <div className="flex h-32 w-full items-center justify-center bg-white/80 p-2">
+                              <img
+                                src={item.previewUrl}
+                                alt={`${item.fileName} 白底图`}
+                                className={cn(
+                                  'max-h-full w-full object-contain',
+                                  shadow === 'none'
+                                    ? ''
+                                    : shadow === 'soft'
+                                      ? 'drop-shadow-sm'
+                                      : 'drop-shadow-md'
+                                )}
+                              />
+                            </div>
+                            <p className="px-2 py-1 text-center text-xs text-muted-foreground">白底图</p>
+                          </div>
+                        </div>
+
+                        {item.status === 'failed' && item.error && (
+                          <div className="flex items-start gap-2 rounded-xl bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5" />
+                            <span>{item.error}</span>
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <Button size="sm" variant="ghost" onClick={() => setCompareItem(item)}>
+                            对比查看
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => retryItem(item.id)}
+                            disabled={item.status === 'processing'}
+                          >
+                            再生成
+                          </Button>
+                          <Button size="sm" onClick={() => downloadSingle(item, index)} disabled={item.status !== 'done'}>
+                            <Download className="mr-1.5 h-4 w-4" />
+                            下载
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <section className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">质量检查</div>
+                <div className="grid gap-3 text-sm sm:grid-cols-3">
+                  {['边缘质量', '背景纯度', '尺寸合规'].map((label) => (
+                    <div key={label} className="flex items-center justify-between rounded-xl bg-muted/10 px-3 py-2">
+                      <span className="text-foreground">{label}</span>
+                      <span className="text-muted-foreground">检测中</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-xl bg-muted/10 px-3 py-2 text-sm text-muted-foreground">
+                  {qualityTip}
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <Dialog open={!!compareItem} onOpenChange={(open) => !open && setCompareItem(null)}>
+          {compareItem && (
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>原图 vs 白底图</DialogTitle>
+                <DialogDescription>{compareItem.fileName}</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="overflow-hidden rounded-lg bg-muted/20">
+                  <img src={compareItem.previewUrl} alt="原图" className="h-60 w-full object-cover" />
+                  <p className="px-2 py-1 text-center text-xs text-muted-foreground">原图</p>
+                </div>
+                <div className="overflow-hidden rounded-lg bg-white">
+                  <div className="flex h-60 w-full items-center justify-center bg-white p-2">
+                    <img
+                      src={compareItem.previewUrl}
+                      alt="白底图"
+                      className={cn(
+                        'max-h-full w-full object-contain',
+                        shadow === 'none' ? '' : shadow === 'soft' ? 'drop-shadow-sm' : 'drop-shadow-md'
+                      )}
+                    />
+                  </div>
+                  <p className="px-2 py-1 text-center text-xs text-muted-foreground">白底图</p>
+                </div>
+              </div>
+            </DialogContent>
+          )}
+        </Dialog>
+      </div>
+    )
   }
 
   return (
     <FeaturePageShell
-      title="白底产品图"
-      description="上传图片后，一键生成可上架白底图。界面已简化为上传、设置、导出三步。"
-      badge={{
-        label: '服装电商工具',
-        icon: <Shirt className="h-3.5 w-3.5" />,
-      }}
-      headerAlign="left"
+      title="5分钟批量生成可上架白底产品图"
+      description="专为服装电商优化，支持平台尺寸与批量导出。"
+      badge={null}
+      headerAlign="center"
+      titleClassName="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.1]"
+      descriptionClassName="text-sm md:text-base text-muted-foreground leading-relaxed"
       className="max-w-6xl"
     >
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-5">
-          <FeatureCard>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">上传商品图</CardTitle>
-              <CardDescription>支持批量上传，单次最多 30 张。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={handleInputChange}
-              />
+      <div className="space-y-24">
+        <section className="flex flex-col items-center gap-6 text-center">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Badge variant="secondary" className="bg-primary/10 text-primary">
+              新用户首周免费 30 张
+            </Badge>
+            <Badge variant="secondary" className="bg-muted/40 text-muted-foreground">
+              服装电商白底标准化
+            </Badge>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <span>30 秒理解价值</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <span>3 步完成首图</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <span>支持批量导出</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button size="lg" className="rounded-full px-8" onClick={() => scrollTo(uploadSectionRef)}>
+              立即上传商品图
+            </Button>
+            <Button size="lg" variant="outline" className="rounded-full px-8" onClick={() => scrollTo(uploadSectionRef)}>
+              试试示例图
+            </Button>
+            {hasUploads && (
+              <Button size="lg" variant="ghost" className="rounded-full px-6" onClick={() => setIsEditorOpen(true)}>
+                进入编辑器
+              </Button>
+            )}
+          </div>
+        </section>
 
+        <section ref={uploadSectionRef} className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-semibold text-foreground">上传商品图</h2>
+              <p className="mt-3 text-sm md:text-base text-muted-foreground leading-relaxed">
+                上传后自动进入编辑器。
+              </p>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleInputChange}
+            />
+
+            <div
+              className={cn(
+                'rounded-2xl bg-muted/20 p-6 shadow-inner transition-colors',
+                isDragActive ? 'bg-primary/10' : 'hover:bg-muted/30'
+              )}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+            >
+              <div className="flex flex-col items-center justify-center gap-2 text-center">
+                <ImagePlus className="h-7 w-7 text-muted-foreground" />
+                <p className="text-sm font-medium">拖拽图片到这里，或点击上传</p>
+                <p className="text-xs text-muted-foreground">支持 JPG/PNG/WEBP，单张不超过 15MB</p>
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                  <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+                    选择图片
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={clearAll} disabled={items.length === 0}>
+                    清空列表
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">试试这些</h3>
+              <p className="mt-1 text-sm text-muted-foreground">无需准备素材，直接加载示例。</p>
+            </div>
+            <div className="grid gap-3">
+              {sampleItems.map((sample) => (
+                <button
+                  key={sample.seed}
+                  type="button"
+                  className="group flex items-center gap-3 rounded-2xl bg-muted/20 p-3 text-left transition hover:bg-muted/30"
+                  onClick={() => handleSampleUse(sample.seed, sample.label)}
+                >
+                  <img
+                    src={buildPicsumUrl(sample.seed, 160, 120)}
+                    alt={sample.label}
+                    className="h-16 w-20 rounded-xl object-cover"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{sample.label}</p>
+                    <p className="text-xs text-muted-foreground">点击加载示例图</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-10 py-6">
+          <div className="text-center">
+            <h2 className="text-2xl md:text-4xl font-semibold text-foreground">功能展示</h2>
+            <p className="mt-3 text-sm md:text-base text-muted-foreground leading-relaxed">
+              简单三步，稳定输出上架素材。
+            </p>
+          </div>
+          <div className="space-y-16">
+            {showcaseItems.map((item, index) => (
               <div
-                className={`rounded-xl border border-dashed p-5 transition-colors ${
-                  isDragActive ? 'border-primary bg-primary/5' : 'border-border/70 bg-muted/20'
-                }`}
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
+                key={item.title}
+                className={cn(
+                  'grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_480px]',
+                  index % 2 === 1 && 'lg:grid-cols-[480px_minmax(0,1fr)]'
+                )}
               >
-                <div className="flex flex-col items-center justify-center gap-2 text-center">
-                  <ImagePlus className="h-7 w-7 text-muted-foreground" />
-                  <p className="text-sm font-medium">拖拽图片到这里，或点击上传</p>
-                  <p className="text-xs text-muted-foreground">支持 JPG/PNG/WEBP，单张不超过 15MB</p>
-                  <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
-                    <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-                      选择图片
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={clearAll} disabled={items.length === 0}>
-                      清空
-                    </Button>
+                <div className={cn(index % 2 === 1 && 'lg:order-2')}>
+                  <h3 className="text-2xl font-semibold text-foreground">{item.title}</h3>
+                  <p className="mt-3 text-sm md:text-base text-muted-foreground leading-relaxed">
+                    {item.description}
+                  </p>
+                </div>
+                <div className={cn('overflow-hidden rounded-3xl bg-muted/20', index % 2 === 1 && 'lg:order-1')}>
+                  <img
+                    src={buildPicsumUrl(item.seed, 720, 540)}
+                    alt={item.title}
+                    className="h-60 w-full object-cover md:h-72"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-8 py-6">
+          <div className="text-center">
+            <h2 className="text-2xl md:text-4xl font-semibold text-foreground">三步完成，快速落地</h2>
+            <p className="mt-3 text-sm md:text-base text-muted-foreground leading-relaxed">
+              上传一次，AI 自动处理，全程可预览可导出。
+            </p>
+          </div>
+          <div className="grid gap-8 md:grid-cols-3">
+            {STEP_ITEMS.map((step, index) => (
+              <div key={step.title} className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <span className="text-base font-semibold">{index + 1}</span>
                   </div>
+                  <h3 className="text-lg font-semibold text-foreground">{step.title}</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-8 py-6">
+          <div className="text-center">
+            <h2 className="text-2xl md:text-4xl font-semibold text-foreground">常见问题</h2>
+            <p className="mt-3 text-sm md:text-base text-muted-foreground leading-relaxed">
+              快速了解使用细节。
+            </p>
+          </div>
+          <div className="grid gap-8 md:grid-cols-2">
+            {FAQ_ITEMS.map((item) => (
+              <div key={item.question} className="flex gap-3">
+                <span className="mt-2 h-2 w-2 rounded-full bg-primary/60" />
+                <div>
+                  <p className="text-base font-semibold text-foreground">{item.question}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.answer}</p>
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
 
-              {items.length > 0 && (
-                <div className="rounded-xl border border-border/70">
-                  <div className="grid grid-cols-[1fr_100px_70px] items-center gap-3 border-b border-border/70 px-4 py-2 text-xs text-muted-foreground">
-                    <span>文件名</span>
-                    <span>状态</span>
-                    <span className="text-right">操作</span>
-                  </div>
-                  <div className="max-h-72 overflow-auto">
-                    {items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="grid grid-cols-[1fr_100px_70px] items-center gap-3 border-b border-border/40 px-4 py-2.5 text-sm last:border-b-0"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate">{item.fileName}</p>
-                          <p className="text-xs text-muted-foreground">{formatBytes(item.fileSize)}</p>
-                        </div>
-                        <span
-                          className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs ${
-                            item.status === 'done'
-                              ? 'bg-emerald-500/10 text-emerald-600'
-                              : item.status === 'processing'
-                                ? 'bg-amber-500/10 text-amber-600'
-                                : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {item.status === 'done' ? '已生成' : item.status === 'processing' ? '处理中' : '待处理'}
-                        </span>
-                        <div className="flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => removeItem(item.id)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </FeatureCard>
-
-          <FeatureCard>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">生成结果</CardTitle>
-              <CardDescription>默认展示原图与白底图对比。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {generatedItems.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-                  还没有生成结果，点击右侧“开始生成”。
-                </div>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {generatedItems.map((item, index) => (
-                    <div key={item.id} className="rounded-xl border border-border/70 p-3">
-                      <div className="mb-2 flex items-center justify-between">
-                        <p className="truncate text-xs font-medium text-muted-foreground">{item.fileName}</p>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-600">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          已生成
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="overflow-hidden rounded-lg border border-border/60 bg-muted/20">
-                          <img src={item.previewUrl} alt={`${item.fileName} 原图`} className="h-36 w-full object-cover" />
-                          <p className="border-t border-border/50 px-2 py-1 text-center text-xs text-muted-foreground">原图</p>
-                        </div>
-                        <div className="overflow-hidden rounded-lg border border-border/60 bg-white">
-                          <div className="flex h-36 w-full items-center justify-center bg-white p-2">
-                            <img
-                              src={item.previewUrl}
-                              alt={`${item.fileName} 白底图`}
-                              className={`max-h-full w-full object-contain ${shadow === 'none' ? '' : shadow === 'soft' ? 'drop-shadow-sm' : 'drop-shadow-md'}`}
-                            />
-                          </div>
-                          <p className="border-t border-border/50 px-2 py-1 text-center text-xs text-muted-foreground">白底图</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-2 flex items-center justify-end">
-                        <Button size="sm" variant="outline" onClick={() => downloadSingle(item, index)}>
-                          <Download className="mr-1.5 h-4 w-4" />
-                          下载
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </FeatureCard>
-        </div>
-
-        <FeatureCard className="lg:sticky lg:top-20 lg:self-start">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">设置与导出</CardTitle>
-            <CardDescription>保留最常用参数，减少操作负担。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-border/60 p-2 text-center">
-                <p className="text-xs text-muted-foreground">已上传</p>
-                <p className="text-sm font-medium">{items.length} 张</p>
-              </div>
-              <div className="rounded-lg border border-border/60 p-2 text-center">
-                <p className="text-xs text-muted-foreground">已生成</p>
-                <p className="text-sm font-medium">{generatedItems.length} 张</p>
+        <section className="py-2">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-muted/40 via-background to-muted/10 p-8 text-center md:p-12">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-60"
+              style={{
+                backgroundImage:
+                  'linear-gradient(to right, rgba(15,23,42,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,0.08) 1px, transparent 1px)',
+                backgroundSize: '32px 32px',
+              }}
+            />
+            <div className="pointer-events-none absolute -top-20 right-10 h-40 w-40 rounded-full bg-chart-1/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-10 h-44 w-44 rounded-full bg-chart-3/20 blur-3xl" />
+            <div className="relative z-10">
+              <h2 className="text-2xl md:text-4xl font-semibold text-foreground">先出一批图，再决定是否付费</h2>
+              <p className="mt-4 text-sm md:text-base text-muted-foreground leading-relaxed">
+                首周免费 30 张，满意后再升级。
+              </p>
+              <div className="mt-6 flex flex-col justify-center gap-4 sm:flex-row">
+                <Button size="lg" className="rounded-full px-8" onClick={() => scrollTo(uploadSectionRef)}>
+                  上传第一张
+                </Button>
+                <Button size="lg" variant="outline" className="rounded-full px-8" asChild>
+                  <Link href={`/${currentLocale}/pricing`}>查看定价</Link>
+                </Button>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label>商品类目</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="选择类目" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>阴影</Label>
-              <Select value={shadow} onValueChange={setShadow}>
-                <SelectTrigger>
-                  <SelectValue placeholder="选择阴影" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SHADOW_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-2">
-                <Label>留白</Label>
-                <Select value={padding} onValueChange={setPadding}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择留白" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PADDING_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>尺寸</Label>
-                <Select value={sizePreset} onValueChange={setSizePreset}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择尺寸" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SIZE_PRESETS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-              <p className="text-sm">色彩保护</p>
-              <Switch checked={protectColor} onCheckedChange={setProtectColor} />
-            </div>
-
-            <div className="space-y-2 rounded-xl border border-border/60 bg-muted/15 p-3">
-              <Label>导出命名</Label>
-              <Select value={namingMode} onValueChange={(value) => setNamingMode(value as NamingMode)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="选择命名方式" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="origin-suffix">原文件名_白底（推荐）</SelectItem>
-                  <SelectItem value="prefix-index">自定义前缀_序号</SelectItem>
-                  <SelectItem value="date-index">前缀_日期_序号</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {namingMode !== 'origin-suffix' && (
-                <Input
-                  value={filePrefix}
-                  onChange={(event) => setFilePrefix(event.target.value)}
-                  placeholder="输入文件前缀，例如：SKU2026"
-                />
-              )}
-              <p className="text-[11px] text-muted-foreground">导出时自动编号，无需手动填写规则。</p>
-            </div>
-
-            <Button className="w-full" onClick={generateMockResults} disabled={!canGenerate}>
-              {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  正在生成...
-                </>
-              ) : (
-                <>
-                  <WandSparkles className="mr-2 h-4 w-4" />
-                  开始生成
-                </>
-              )}
-            </Button>
-
-            <Button className="w-full" variant="outline" onClick={exportGenerated} disabled={generatedItems.length === 0}>
-              <Download className="mr-2 h-4 w-4" />
-              批量导出
-            </Button>
-          </CardContent>
-        </FeatureCard>
+          </div>
+        </section>
       </div>
+
     </FeaturePageShell>
   )
 }
